@@ -49,6 +49,26 @@ export const IT = {
     "Notifications from: {apps}":
         "Notifiche da: {apps}",
 
+    // --- Calendar (sch-calendar.js) ---
+    "Today":
+        "Oggi",
+    "Previous month":
+        "Mese precedente",
+    "Next month":
+        "Mese successivo",
+    "1 event":
+        "1 impegno",
+    "{count} events":
+        "{count} impegni",
+    "No events":
+        "Nessun impegno",
+    "Tomorrow":
+        "Domani",
+    "All day":
+        "Tutto il giorno",
+    "(no title)":
+        "(senza titolo)",
+
     // --- Preferences window (prefs.js) ---
     "Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on":
         "Le icone del vassoio richiedono l'estensione «AppIndicator and KStatusNotifierItem Support»: attivala",

@@ -16,6 +16,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {_, loadUserTranslations, unloadUserTranslations} from './sch-i18n.js';
+import {CalendarView} from './sch-calendar.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
 const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
@@ -187,12 +188,15 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         this._bottomRow = null;
 
+        // Before the panel goes: it is connected to GNOME's calendar and events
+        this._calendarView?.destroy();
         this._sidebar?.destroy();
         this._sidebar = null;
         this._traySection = null;
         this._trayBox = null;
         this._calendarBox = null;
         this._calendarScroll = null;
+        this._calendarView = null;
         this._calendarArrow = null;
         this._weatherBody = null;
         this._weatherArrow = null;
@@ -253,6 +257,7 @@ export default class SmartCalendarHubExtension extends Extension {
             this._updateAlertDot();
             break;
         case 'sidebar-width':
+            this._calendarView?.setWidth(this._settings.get_int(key));
             this._updateSidebarSize();
             this._layoutTray();
             break;
@@ -811,8 +816,11 @@ export default class SmartCalendarHubExtension extends Extension {
             child: this._calendarBox,
         });
         this._sidebar.add_child(this._calendarScroll);
-        this._adopt(dm._calendar, this._calendarBox);
-        this._adopt(dm._eventsItem, this._calendarBox);
+        // Our own calendar (month grid + agenda). GNOME's calendar and events
+        // stay hidden in the original menu: GNOME's calendar still requests
+        // the events of the month we show.
+        this._calendarView = new CalendarView(dm, this._settings);
+        this._calendarBox.add_child(this._calendarView.actor);
 
         expander.connect('clicked', () => this._setCalendarExpanded(!this._calendarBox.visible));
 
