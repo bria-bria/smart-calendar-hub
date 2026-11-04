@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Smart Calendar Hub\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-04 19:42+0100\n"
+"POT-Creation-Date: 2026-11-04 19:46+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,65 +17,17 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:461
+#: extension.js:459
 #, javascript-format
 msgid "%s (tray icon)"
 msgstr ""
 
-#: extension.js:579
-msgid "Layout options"
+#: extension.js:577
+msgid "Settings"
 msgstr ""
 
-#: extension.js:604
+#: extension.js:600
 msgid "Calendar and events"
-msgstr ""
-
-#: extension.js:697 prefs.js:142
-msgid "Panel side"
-msgstr ""
-
-#: extension.js:698
-msgid "Right"
-msgstr ""
-
-#: extension.js:699 extension.js:705
-msgid "Left"
-msgstr ""
-
-#: extension.js:700
-msgid "Under the clock"
-msgstr ""
-
-#: extension.js:702 prefs.js:151
-msgid "Clock in the top bar"
-msgstr ""
-
-#: extension.js:703
-msgid "Before menus"
-msgstr ""
-
-#: extension.js:704
-msgid "Before tray"
-msgstr ""
-
-#: extension.js:706
-msgid "Center"
-msgstr ""
-
-#: extension.js:708 prefs.js:161
-msgid "Icons inside the panel"
-msgstr ""
-
-#: extension.js:709
-msgid "Tray apps"
-msgstr ""
-
-#: extension.js:710
-msgid "All icons"
-msgstr ""
-
-#: extension.js:711
-msgid "None"
 msgstr ""
 
 #: prefs.js:116
@@ -94,6 +46,10 @@ msgid ""
 "icons are gathered inside the panel."
 msgstr ""
 
+#: prefs.js:142
+msgid "Panel side"
+msgstr ""
+
 #: prefs.js:143
 msgid "Side of the screen where the panel appears when you click the clock"
 msgstr ""
@@ -108,6 +64,10 @@ msgstr ""
 
 #: prefs.js:147
 msgid "Under the clock button"
+msgstr ""
+
+#: prefs.js:151
+msgid "Clock in the top bar"
 msgstr ""
 
 #: prefs.js:152
@@ -128,6 +88,10 @@ msgstr ""
 
 #: prefs.js:157
 msgid "Center (GNOME default)"
+msgstr ""
+
+#: prefs.js:161
+msgid "Icons inside the panel"
 msgstr ""
 
 #: prefs.js:162

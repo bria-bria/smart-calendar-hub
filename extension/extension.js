@@ -123,8 +123,6 @@ export default class SmartCalendarHubExtension extends Extension {
         this._sidebar = null;
         this._traySection = null;
         this._trayBox = null;
-        this._quickPrefs = null;
-        this._quickButtons = null;
         this._calendarBox = null;
         this._calendarArrow = null;
 
@@ -184,7 +182,6 @@ export default class SmartCalendarHubExtension extends Extension {
             this._layoutTray();
             break;
         }
-        this._refreshQuickButtons();
         this._relayout();
     }
 
@@ -566,7 +563,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._traySection.add_child(this._trayBox);
         this._sidebar.add_child(this._traySection);
 
-        // Title + quick settings button
+        // Title + button that opens the preferences window
         const header = new St.BoxLayout({style_class: 'sch-header', x_expand: true});
         header.add_child(new St.Label({
             text: 'SMART CALENDAR HUB',
@@ -577,17 +574,15 @@ export default class SmartCalendarHubExtension extends Extension {
         const gear = new St.Button({
             style_class: 'sch-gear-button',
             can_focus: true,
-            accessible_name: _('Layout options'),
+            accessible_name: _('Settings'),
             child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 14}),
         });
         header.add_child(gear);
         this._sidebar.add_child(header);
 
-        this._quickPrefs = this._buildQuickPrefs();
-        this._quickPrefs.visible = false;
-        this._sidebar.add_child(this._quickPrefs);
         gear.connect('clicked', () => {
-            this._quickPrefs.visible = !this._quickPrefs.visible;
+            dm.menu.close();
+            this.openPreferences();
         });
 
         // 1. Weather, 2. Date
@@ -668,61 +663,6 @@ export default class SmartCalendarHubExtension extends Extension {
         this._sidebar.width = this._settings.get_int('sidebar-width');
         // Fill the work area, but never be taller than it
         this._sidebar.height = Math.max(0, workArea.height - 28);
-    }
-
-    _buildQuickPrefs() {
-        const box = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
-            style_class: 'sch-quick-prefs',
-            x_expand: true,
-        });
-        this._quickButtons = [];
-
-        const addRow = (title, key, options) => {
-            box.add_child(new St.Label({text: title, style_class: 'sch-quick-prefs-label'}));
-            const row = new St.BoxLayout({style_class: 'sch-quick-prefs-row', x_expand: true});
-            for (const [value, label] of options) {
-                const btn = new St.Button({
-                    label,
-                    style_class: 'sch-pill',
-                    x_expand: true,
-                    can_focus: true,
-                });
-                btn.connect('clicked', () => this._settings.set_string(key, value));
-                this._quickButtons.push({btn, key, value});
-                row.add_child(btn);
-            }
-            box.add_child(row);
-        };
-
-        addRow(_('Panel side'), 'sidebar-side', [
-            ['right', _('Right')],
-            ['left', _('Left')],
-            ['button', _('Under the clock')],
-        ]);
-        addRow(_('Clock in the top bar'), 'top-bar-position', [
-            ['right-between-tray-and-menu', _('Before menus')],
-            ['right-before-tray', _('Before tray')],
-            ['left-after-menu', _('Left')],
-            ['center', _('Center')],
-        ]);
-        addRow(_('Icons inside the panel'), 'tray-mode', [
-            ['all-tray', _('Tray apps')],
-            ['all-right-icons', _('All icons')],
-            ['disabled', _('None')],
-        ]);
-
-        this._refreshQuickButtons();
-        return box;
-    }
-
-    _refreshQuickButtons() {
-        for (const {btn, key, value} of this._quickButtons ?? []) {
-            if (this._settings.get_string(key) === value)
-                btn.add_style_class_name('sch-pill-active');
-            else
-                btn.remove_style_class_name('sch-pill-active');
-        }
     }
 
     // ------------------------------------------------------------------

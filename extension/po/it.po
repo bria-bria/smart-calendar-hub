@@ -4,146 +4,187 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Smart Calendar Hub\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-04 19:46+0100\n"
 "Language: it\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "Layout options"
-msgstr "Opzioni di posizione"
+#: extension.js:459
+#, javascript-format
+msgid "%s (tray icon)"
+msgstr "%s (icona del vassoio)"
 
+#: extension.js:577
+msgid "Settings"
+msgstr "Impostazioni"
+
+#: extension.js:600
 msgid "Calendar and events"
 msgstr "Calendario ed eventi"
 
-msgid "Panel side"
-msgstr "Lato del pannello"
+#: prefs.js:116
+msgid ""
+"Tray icons need the “AppIndicator and KStatusNotifierItem Support” "
+"extension: turn it on"
+msgstr ""
+"Le icone del vassoio richiedono l'estensione «AppIndicator and "
+"KStatusNotifierItem Support»: attivala"
 
-msgid "Right"
-msgstr "Destra"
-
-msgid "Left"
-msgstr "Sinistra"
-
-msgid "Under the clock"
-msgstr "Sotto l'ora"
-
-msgid "Clock in the top bar"
-msgstr "Ora nella barra in alto"
-
-msgid "Before menus"
-msgstr "Prima dei menu"
-
-msgid "Before tray"
-msgstr "Prima del vassoio"
-
-msgid "Center"
-msgstr "Centro"
-
-msgid "Icons inside the panel"
-msgstr "Icone dentro il pannello"
-
-msgid "Tray apps"
-msgstr "Vassoio app"
-
-msgid "All icons"
-msgstr "Tutte le icone"
-
-msgid "None"
-msgstr "Nessuna"
-
+#: prefs.js:136
 msgid "Position"
 msgstr "Posizione"
 
-msgid "Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on"
-msgstr "Le icone del vassoio richiedono l'estensione «AppIndicator and KStatusNotifierItem Support»: attivala"
+#: prefs.js:137
+msgid ""
+"Where the side panel opens, where the clock sits in the top bar and which "
+"icons are gathered inside the panel."
+msgstr ""
+"Dove si apre il pannello laterale, dove sta l'ora nella barra in alto e "
+"quali icone vengono raccolte dentro il pannello."
 
-msgid "Where the side panel opens, where the clock sits in the top bar and which icons are gathered inside the panel."
-msgstr "Dove si apre il pannello laterale, dove sta l'ora nella barra in alto e quali icone vengono raccolte dentro il pannello."
+#: prefs.js:142
+msgid "Panel side"
+msgstr "Lato del pannello"
 
+#: prefs.js:143
 msgid "Side of the screen where the panel appears when you click the clock"
 msgstr "Lato dello schermo in cui compare il pannello quando clicchi sull'ora"
 
+#: prefs.js:145
 msgid "Right edge of the screen"
 msgstr "Bordo destro dello schermo"
 
+#: prefs.js:146
 msgid "Left edge of the screen"
 msgstr "Bordo sinistro dello schermo"
 
+#: prefs.js:147
 msgid "Under the clock button"
 msgstr "Sotto il pulsante dell'ora"
 
+#: prefs.js:151
+msgid "Clock in the top bar"
+msgstr "Ora nella barra in alto"
+
+#: prefs.js:152
 msgid "Position of the clock and temperature in the GNOME top bar"
 msgstr "Posizione di ora e temperatura nella barra in alto di GNOME"
 
+#: prefs.js:154
 msgid "Right, between tray icons and system menu"
 msgstr "A destra, tra le icone del vassoio e il menu di sistema"
 
+#: prefs.js:155
 msgid "Right, before tray icons"
 msgstr "A destra, prima delle icone del vassoio"
 
+#: prefs.js:156
 msgid "Left, after the menus"
 msgstr "A sinistra, dopo i menu"
 
+#: prefs.js:157
 msgid "Center (GNOME default)"
 msgstr "Al centro (predefinito di GNOME)"
 
+#: prefs.js:161
+msgid "Icons inside the panel"
+msgstr "Icone dentro il pannello"
+
+#: prefs.js:162
 msgid "Top bar icons moved to the top of the panel"
 msgstr "Icone della barra in alto spostate in cima al pannello"
 
+#: prefs.js:164
 msgid "Tray icons of applications"
 msgstr "Icone del vassoio delle applicazioni"
 
+#: prefs.js:165
 msgid "All icons on the right side"
 msgstr "Tutte le icone del lato destro"
 
+#: prefs.js:166
 msgid "None, leave them in the top bar"
 msgstr "Nessuna, lasciale nella barra in alto"
 
-msgid "Keep Top Bar Organizer in sync"
-msgstr "Sincronizza con Top Bar Organizer"
-
-msgid "Also writes the clock position into the Top Bar Organizer extension settings; the previous order is restored when Smart Calendar Hub is turned off"
-msgstr "Scrive la posizione dell'ora anche nelle impostazioni dell'estensione Top Bar Organizer; l'ordine precedente viene ripristinato quando Smart Calendar Hub viene spenta"
-
-msgid "Panel"
-msgstr "Pannello"
-
-msgid "From top to bottom: tray icons, title, weather, date, calendar, notifications, world clocks."
-msgstr "Dall'alto in basso: icone del vassoio, titolo, meteo, data, calendario, notifiche, orologi mondiali."
-
-msgid "Calendar collapsed on opening"
-msgstr "Calendario chiuso all'apertura"
-
-msgid "Click “Calendar and events” to open it"
-msgstr "Clicca su «Calendario ed eventi» per aprirlo"
-
-msgid "Panel width (pixels)"
-msgstr "Larghezza del pannello (pixel)"
-
+#: prefs.js:170
 msgid "Apps inside the panel"
 msgstr "App dentro il pannello"
 
-msgid "Choose, among the icons present now, which ones move inside the panel and which stay in the top bar."
-msgstr "Scegli, tra le icone presenti adesso, quali vanno dentro il pannello e quali restano nella barra in alto."
+#: prefs.js:171
+msgid ""
+"Choose, among the icons present now, which ones move inside the panel and "
+"which stay in the top bar."
+msgstr ""
+"Scegli, tra le icone presenti adesso, quali vanno dentro il pannello e quali "
+"restano nella barra in alto."
 
+#: prefs.js:175
 msgid "No icons found yet"
 msgstr "Nessuna icona trovata per ora"
 
+#: prefs.js:176
 msgid "Open the panel once: the list fills in by itself"
 msgstr "Apri il pannello una volta: l'elenco si riempie da solo"
 
+#: prefs.js:182
+msgid "Keep Top Bar Organizer in sync"
+msgstr "Sincronizza con Top Bar Organizer"
+
+#: prefs.js:183
+msgid ""
+"Also writes the clock position into the Top Bar Organizer extension "
+"settings; the previous order is restored when Smart Calendar Hub is turned "
+"off"
+msgstr ""
+"Scrive la posizione dell'ora anche nelle impostazioni dell'estensione Top "
+"Bar Organizer; l'ordine precedente viene ripristinato quando Smart Calendar "
+"Hub viene spenta"
+
+#: prefs.js:189
 msgid "Red dot on the clock"
 msgstr "Puntino rosso sull'ora"
 
-msgid "A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon signals something new (only for apps that report it, e.g. Telegram)."
-msgstr "Accanto all'ora compare un puntino rosso finché una delle app accese qui ha delle notifiche, o la sua icona del vassoio segnala una novità (solo per le app che lo comunicano, per esempio Telegram)."
+#: prefs.js:190
+msgid ""
+"A red dot appears next to the clock while one of the apps switched on here "
+"has notifications, or its tray icon signals something new (only for apps "
+"that report it, e.g. Telegram)."
+msgstr ""
+"Accanto all'ora compare un puntino rosso finché una delle app accese qui ha "
+"delle notifiche, o la sua icona del vassoio segnala una novità (solo per le "
+"app che lo comunicano, per esempio Telegram)."
 
+#: prefs.js:194
 msgid "No notifications seen yet"
 msgstr "Nessuna notifica vista per ora"
 
+#: prefs.js:195
 msgid "Apps appear here after they send a notification"
 msgstr "Le app compaiono qui dopo aver inviato una notifica"
 
-msgid "%s (tray icon)"
-msgstr "%s (icona del vassoio)"
+#: prefs.js:199
+msgid "Panel"
+msgstr "Pannello"
+
+#: prefs.js:200
+msgid ""
+"From top to bottom: tray icons, title, weather, date, calendar, "
+"notifications, world clocks."
+msgstr ""
+"Dall'alto in basso: icone del vassoio, titolo, meteo, data, calendario, "
+"notifiche, orologi mondiali."
+
+#: prefs.js:205
+msgid "Calendar collapsed on opening"
+msgstr "Calendario chiuso all'apertura"
+
+#: prefs.js:206
+msgid "Click “Calendar and events” to open it"
+msgstr "Clicca su «Calendario ed eventi» per aprirlo"
+
+#: prefs.js:212
+msgid "Panel width (pixels)"
+msgstr "Larghezza del pannello (pixel)"

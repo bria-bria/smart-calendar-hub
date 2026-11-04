@@ -5,7 +5,7 @@ A GNOME Shell extension that turns the clock menu into a side panel.
 From top to bottom the panel shows:
 
 1. tray icons of applications (optional),
-2. a small header with quick layout options,
+2. a small header with a button that opens the settings,
 3. weather,
 4. today's date,
 5. the calendar and events, collapsed by default,
