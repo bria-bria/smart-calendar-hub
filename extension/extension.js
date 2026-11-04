@@ -139,6 +139,10 @@ export default class SmartCalendarHubExtension extends Extension {
 
         this._unpatchBoxPointer();
 
+        if (this._dateMenu._messageList)
+            this._dateMenu._messageList.visible = this._sessionShowsNotifications();
+        this._restoreDateAlign();
+
         // Put the original widgets back in reverse order: every saved index
         // was taken after the previous widgets had already been removed.
         for (const {actor, parent, index} of this._savedParents.reverse()) {
@@ -687,8 +691,15 @@ export default class SmartCalendarHubExtension extends Extension {
             this._updateWeatherSummary(client);
         }
 
-        // 2. Date
+        // 2. Date, aligned on the right
         this._adopt(dm._date, this._sidebar);
+        this._dateAlignOrig = [dm._date?._dayLabel, dm._date?._dateLabel]
+            .filter(Boolean)
+            .map(label => {
+                const orig = {label, x_align: label.x_align};
+                label.x_align = Clutter.ActorAlign.END;
+                return orig;
+            });
 
         // 3. Collapsible calendar + events
         const expander = new St.Button({
@@ -727,6 +738,7 @@ export default class SmartCalendarHubExtension extends Extension {
             hscrollbar_policy: St.PolicyType.NEVER,
             vscrollbar_policy: St.PolicyType.AUTOMATIC,
             x_expand: true,
+            y_expand: true,
             visible: false,
             child: this._calendarBox,
         });
@@ -776,6 +788,17 @@ export default class SmartCalendarHubExtension extends Extension {
         this._updateSidebarSize();
     }
 
+    // Same rule GNOME uses for the notification list (DateMenuButton._sessionUpdated)
+    _sessionShowsNotifications() {
+        return Main.sessionMode.hasNotifications && !Main.sessionMode.isGreeter;
+    }
+
+    _restoreDateAlign() {
+        for (const {label, x_align} of this._dateAlignOrig ?? [])
+            label.x_align = x_align;
+        this._dateAlignOrig = null;
+    }
+
     _syncWeatherExpanded() {
         if (!this._weatherBody)
             return;
@@ -804,6 +827,9 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         this._calendarScroll.visible = expanded;
         this._calendarBox.visible = expanded;
+        // The calendar takes the place of the notifications while it is open
+        if (this._dateMenu._messageList)
+            this._dateMenu._messageList.visible = !expanded && this._sessionShowsNotifications();
         this._calendarArrow.icon_name = expanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
         this._relayout();
     }
@@ -1009,11 +1035,11 @@ export default class SmartCalendarHubExtension extends Extension {
         let row = null;
         containers.forEach((container, i) => {
             if (i % perRow === 0) {
-                // packed from the left, not spread over the row
+                // packed on the right, not spread over the row
                 row = new St.BoxLayout({
                     style_class: 'sch-tray-row',
                     x_expand: false,
-                    x_align: Clutter.ActorAlign.START,
+                    x_align: Clutter.ActorAlign.END,
                 });
                 this._trayBox.add_child(row);
             }
