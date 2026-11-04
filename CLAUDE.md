@@ -59,5 +59,6 @@ aggiornare anche il mockup.
 - GitHub: `bria-bria/smart-calendar-hub`, **privato** (come BlueHub);
   niente campo `url` in `metadata.json` finché resta privato.
 - extensions.gnome.org: carica Michele lo zip di `dist/`. Solo con il suo sì.
+  Immagine principale scelta da Michele (04/11/2026): `screenshots/1-overview.png`.
 - Versioni GNOME dichiarate: 48–51 (`St.BoxLayout.orientation` e
   `-st-accent-color` richiedono GNOME 48). Provata solo su 51.
