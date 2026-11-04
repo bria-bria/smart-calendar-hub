@@ -190,6 +190,7 @@ export default class SmartCalendarHubExtension extends Extension {
             this._clocksOrig = null;
         }
         this._bottomRow = null;
+        this._clearBox = null;
 
         // Before the panel goes: it is connected to GNOME's calendar and events
         this._calendarView?.destroy();
@@ -890,7 +891,11 @@ export default class SmartCalendarHubExtension extends Extension {
             clear.x_expand = false;
             clear.x_align = Clutter.ActorAlign.FILL;
             clear.add_style_class_name('sch-clear-button');
-            this._adopt(clear, this._bottomRow);
+            // In a box of ours: GNOME drives the button's own visibility (only
+            // with notifications), we hide the box while the calendar is open.
+            this._clearBox = new St.Bin({style_class: 'sch-clear-box'});
+            this._bottomRow.add_child(this._clearBox);
+            this._adopt(clear, this._clearBox);
         }
 
         this._updateSidebarSize();
@@ -944,6 +949,9 @@ export default class SmartCalendarHubExtension extends Extension {
             this._newEventButton.visible = !!newEvent;
         if (this._clocksOrig)
             this._dateMenu._clocksItem.visible = !newEvent;
+        // "Clear" is about the notifications, hidden while the calendar is open
+        if (this._clearBox)
+            this._clearBox.visible = !expanded;
         this._relayout();
     }
 
