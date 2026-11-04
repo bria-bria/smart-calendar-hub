@@ -31,8 +31,8 @@ Le icone del vassoio sono in righe (`_layoutTray`): NON usare
 `Clutter.FlowLayout`, su GNOME 51 dà altezza 0 ai pulsanti del pannello.
 
 I commit usano l'email anonima 301696067+bria-bria@users.noreply.github.com
-(configurata in questo repository). I primi 3 commit hanno ancora l'email
-personale.
+(configurata in questo repository). Il 04/11/2026 l'email personale è stata
+tolta anche dai primi 3 commit (storia riscritta prima di renderlo pubblico).
 
 ## Traduzioni (dal 04/11/2026, come BlueHub)
 Testi del codice in **inglese**, passati a `_()` di `extension/sch-i18n.js`, con i
@@ -56,7 +56,7 @@ account example.com). Rigenerare i PNG con Firefox invisibile:
 aggiornare anche il mockup.
 
 ## Pubblicazione
-- GitHub: `bria-bria/smart-calendar-hub`, **privato** (come BlueHub);
+- GitHub: `bria-bria/smart-calendar-hub`, reso **pubblico** il 04/11/2026 (serve a extensions.gnome.org);
   campo `url` aggiunto il 04/11/2026 (extensions.gnome.org lo rifiutava senza): funziona solo con il repository pubblico.
 - extensions.gnome.org: carica Michele lo zip di `dist/`. Solo con il suo sì.
   Immagine principale scelta da Michele (04/11/2026): `screenshots/1-overview.png`.
