@@ -340,6 +340,25 @@
     border-radius: 14px;
 }
 
+/* "New event", in place of the world clocks while the calendar is open */
+.sch-new-event {
+    margin: 2px 0 2px 4px;
+    padding: 8px 12px;
+    border-radius: 14px;
+    background-color: -st-accent-color;
+    color: -st-accent-fg-color;
+    font-weight: 700;
+}
+
+.sch-new-event:hover,
+.sch-new-event:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.sch-new-event StBoxLayout {
+    spacing: 6px;
+}
+
 /* Red dot on the left of the clock: notifications of the chosen apps */
 .sch-alert-dot {
     width: 8px;

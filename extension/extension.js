@@ -107,6 +107,8 @@ export default class SmartCalendarHubExtension extends Extension {
     _applyStaticTexts() {
         if (this._calendarLabel)
             this._calendarLabel.text = _('Calendar and events');
+        if (this._newEventLabel)
+            this._newEventLabel.text = _('New event');
         if (this._gearButton)
             this._gearButton.accessible_name = _('Settings');
         if (this._weatherClient)
@@ -197,6 +199,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._calendarBox = null;
         this._calendarScroll = null;
         this._calendarView = null;
+        this._newEventButton = null;
+        this._newEventLabel = null;
         this._calendarArrow = null;
         this._weatherBody = null;
         this._weatherArrow = null;
@@ -846,10 +850,28 @@ export default class SmartCalendarHubExtension extends Extension {
         this._bottomRow = new St.BoxLayout({style_class: 'sch-bottom-row', x_expand: true});
         this._sidebar.add_child(this._bottomRow);
         if (dm._clocksItem) {
-            this._clocksOrig = {x_expand: dm._clocksItem.x_expand};
+            this._clocksOrig = {x_expand: dm._clocksItem.x_expand, visible: dm._clocksItem.visible};
             dm._clocksItem.x_expand = true;
             this._adopt(dm._clocksItem, this._bottomRow);
         }
+        // With the calendar open, "New event" (GNOME Calendar) takes the
+        // place of the world clocks.
+        this._newEventButton = new St.Button({
+            style_class: 'sch-new-event',
+            x_expand: true,
+            can_focus: true,
+            visible: false,
+        });
+        const newEventLine = new St.BoxLayout({x_align: Clutter.ActorAlign.CENTER});
+        newEventLine.add_child(new St.Icon({icon_name: 'list-add-symbolic', icon_size: 16}));
+        this._newEventLabel = new St.Label({text: _('New event'), y_align: Clutter.ActorAlign.CENTER});
+        newEventLine.add_child(this._newEventLabel);
+        this._newEventButton.set_child(newEventLine);
+        this._newEventButton.connect('clicked', () => {
+            dm.menu.close();
+            this._calendarView?.openNewEvent();
+        });
+        this._bottomRow.insert_child_at_index(this._newEventButton, 0);
         const clear = dm._messageList?._clearButton;
         if (clear) {
             this._clearButton = clear;
@@ -907,6 +929,11 @@ export default class SmartCalendarHubExtension extends Extension {
         if (this._dateMenu._messageList)
             this._dateMenu._messageList.visible = !expanded && this._sessionShowsNotifications();
         this._calendarArrow.icon_name = expanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
+        const newEvent = expanded && this._calendarView?.hasCalendarApp;
+        if (this._newEventButton)
+            this._newEventButton.visible = !!newEvent;
+        if (this._clocksOrig)
+            this._dateMenu._clocksItem.visible = !newEvent;
         this._relayout();
     }
 

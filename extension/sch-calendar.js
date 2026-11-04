@@ -126,6 +126,10 @@ export class CalendarView {
             GLib.source_remove(this._refreshId);
             this._refreshId = 0;
         }
+        if (this._waitId) {
+            GLib.source_remove(this._waitId);
+            this._waitId = 0;
+        }
         for (const [obj, id] of this._signals) {
             try {
                 obj.disconnect(id);
@@ -520,6 +524,63 @@ export class CalendarView {
         });
         button.connect('clicked', () => this._openInCalendar(ev));
         return button;
+    }
+
+    get hasCalendarApp() {
+        return this._calendarCmd !== null;
+    }
+
+    // Opens GNOME Calendar and its "new event" window. The action belongs to
+    // the Calendar window, so wait for the window to exist on
+    // D-Bus (up to 10 s: a Flatpak cold start is slow), then activate
+    // win.new-event on the newest one.
+    async openNewEvent() {
+        if (!this._calendarCmd)
+            return;
+        try {
+            Gio.Subprocess.new(this._calendarCmd, Gio.SubprocessFlags.NONE);
+            for (let i = 0; i < 40; i++) {
+                await this._wait(250);
+                const win = await this._calendarWindow();
+                if (win) {
+                    await Gio.DBus.session.call('org.gnome.Calendar', win, 'org.gtk.Actions',
+                        'Activate', new GLib.Variant('(sava{sv})', ['new-event', [], {}]),
+                        null, Gio.DBusCallFlags.NONE, -1, this._cancellable);
+                    return;
+                }
+            }
+            console.error('Smart Calendar Hub: GNOME Calendar window not found');
+        } catch (e) {
+            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                console.error(`Smart Calendar Hub: cannot open a new event: ${e}`);
+        }
+    }
+
+    _wait(ms) {
+        return new Promise(resolve => {
+            this._waitId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+                this._waitId = 0;
+                resolve();
+                return GLib.SOURCE_REMOVE;
+            });
+        });
+    }
+
+    // D-Bus path of the newest GNOME Calendar window, or null
+    async _calendarWindow() {
+        try {
+            const reply = await Gio.DBus.session.call('org.gnome.Calendar',
+                '/org/gnome/Calendar/window', 'org.freedesktop.DBus.Introspectable',
+                'Introspect', null, new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE,
+                1000, this._cancellable);
+            const [xml] = reply.deepUnpack();
+            const ids = [...xml.matchAll(/<node name="(\d+)"/g)].map(m => Number(m[1]));
+            return ids.length ? `/org/gnome/Calendar/window/${Math.max(...ids)}` : null;
+        } catch (e) {
+            if (e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                throw e;
+            return null; // Calendar still starting
+        }
     }
 
     _openInCalendar(ev) {

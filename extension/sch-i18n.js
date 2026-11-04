@@ -48,6 +48,8 @@ export const IT = {
         "Calendario ed eventi",
     "Notifications from: {apps}":
         "Notifiche da: {apps}",
+    "New event":
+        "Nuovo impegno",
 
     // --- Calendar (sch-calendar.js) ---
     "Today":
