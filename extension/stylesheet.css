@@ -175,6 +175,16 @@
     background-color: #e01b24;
 }
 
+/* Label under the clock: which apps the red dot is about */
+.sch-alert-tip {
+    padding: 6px 12px;
+    border-radius: 99px;
+    background-color: rgba(30, 30, 30, 0.95);
+    color: #ffffff;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
 /* Temperature next to the clock */
 .sch-panel-weather-box {
     spacing: 4px;

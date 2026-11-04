@@ -46,6 +46,8 @@ export const IT = {
         "Impostazioni",
     "Calendar and events":
         "Calendario ed eventi",
+    "Notifications from: {apps}":
+        "Notifiche da: {apps}",
 
     // --- Preferences window (prefs.js) ---
     "Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on":

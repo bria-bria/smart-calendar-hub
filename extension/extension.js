@@ -125,6 +125,8 @@ export default class SmartCalendarHubExtension extends Extension {
             ids.forEach(id => sni.disconnect(id));
         this._alertTray = null;
         this._alertDot?.destroy();
+        this._alertTip?.destroy();
+        this._alertTip = null;
         this._alertDot = null;
 
         this._weatherBox?.destroy();
@@ -436,6 +438,7 @@ export default class SmartCalendarHubExtension extends Extension {
         });
         for (const source of Main.messageTray.getSources())
             this._watchSource(source);
+        this._buildAlertTip();
         this._syncTrayAlerts();
     }
 
@@ -484,15 +487,61 @@ export default class SmartCalendarHubExtension extends Extension {
         this._settings.set_strv('notify-apps-seen', kept);
     }
 
+    // Names of the chosen apps that are alerting right now (no duplicates).
+    _alertingApps() {
+        const wanted = new Set(this._settings.get_strv('alert-apps'));
+        const names = new Set();
+        for (const s of this._alertSources?.keys() ?? []) {
+            if (s.count > 0 && wanted.has(this._sourceKey(s)))
+                names.add(s.title || this._sourceKey(s));
+        }
+        for (const sni of this._alertTray?.keys() ?? []) {
+            if (wanted.has(`tray:${sni.id}`) && this._trayIsAlerting(sni))
+                names.add(sni.title || sni.id);
+        }
+        return [...names];
+    }
+
     _updateAlertDot() {
         if (!this._alertDot)
             return;
-        const wanted = new Set(this._settings.get_strv('alert-apps'));
-        this._alertDot.visible =
-            [...this._alertSources.keys()]
-                .some(s => s.count > 0 && wanted.has(this._sourceKey(s))) ||
-            [...this._alertTray.keys()]
-                .some(sni => wanted.has(`tray:${sni.id}`) && this._trayIsAlerting(sni));
+        const apps = this._alertingApps();
+        this._alertDot.visible = apps.length > 0;
+        if (this._alertTip?.visible)
+            this._showAlertTip();
+    }
+
+    // Label under the clock, while the pointer is on it and the dot is on,
+    // telling which apps the dot is about.
+    _buildAlertTip() {
+        this._alertTip = new St.Label({style_class: 'sch-alert-tip', visible: false});
+        Main.layoutManager.addTopChrome(this._alertTip, {affectsInputRegion: false});
+        this._connect(this._dateMenu, 'notify::hover', () => {
+            if (this._dateMenu.hover && this._alertDot?.visible && !this._dateMenu.menu.isOpen)
+                this._showAlertTip();
+            else
+                this._alertTip.hide();
+        });
+        this._connect(this._dateMenu.menu, 'open-state-changed', () => this._alertTip.hide());
+    }
+
+    _showAlertTip() {
+        const apps = this._alertingApps();
+        if (!apps.length) {
+            this._alertTip.hide();
+            return;
+        }
+        this._alertTip.text = _('Notifications from: {apps}', {apps: apps.join(', ')});
+        this._alertTip.show();
+        // Under the clock, kept inside its monitor
+        const button = this._dateMenu;
+        const [bx, by] = button.get_transformed_position();
+        const [bw, bh] = button.get_transformed_size();
+        const monitor = Main.layoutManager.findMonitorForActor(button) ?? Main.layoutManager.primaryMonitor;
+        const [, natWidth] = this._alertTip.get_preferred_width(-1);
+        const x = Math.min(Math.max(bx + (bw - natWidth) / 2, monitor.x + 4),
+            monitor.x + monitor.width - natWidth - 4);
+        this._alertTip.set_position(Math.floor(x), Math.floor(by + bh + 6));
     }
 
     // Tray icons (AppIndicator) can also ask for attention: either with the
