@@ -1,0 +1,776 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 bria-bria
+//
+// Smart Calendar Hub: turns the date menu into a side panel.
+// Vertical order: tray icons → title → weather → date → collapsible
+// calendar → notifications → world clocks.
+
+import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import GWeather from 'gi://GWeather';
+import St from 'gi://St';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+
+const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
+const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
+
+// Panel items that must never be moved inside the panel tray.
+const ROLES_NEVER_IN_TRAY = new Set([
+    'dateMenu',
+    'quickSettings',
+    'screenRecording',
+    'screenSharing',
+    'keyboard',
+    'a11y',
+    'dwellClick',
+    'activities',
+    'appMenu',
+    'places-menu',
+    'apps-menu',
+    'activities-icon-button',
+]);
+
+// Items of the right box that are "GNOME menus": the clock goes just before them.
+const MENU_TAIL_ROLES = ['EmojisMenu', 'clipboardIndicator', 'quickSettings'];
+
+export default class SmartCalendarHubExtension extends Extension {
+    enable() {
+        this._dateMenu = Main.panel.statusArea.dateMenu;
+        if (!this._dateMenu)
+            return;
+
+        this._settings = this.getSettings();
+        this._signals = [];
+        this._savedParents = [];
+        this._movedTrayItems = new Map();
+        this._idleId = 0;
+
+        const dmContainer = this._dateMenu.container;
+        const dmParent = dmContainer.get_parent();
+        this._dateMenuOrigin = dmParent
+            ? {parent: dmParent, index: dmParent.get_children().indexOf(dmContainer)}
+            : null;
+
+        this._initTopBarOrganizer();
+        this._syncTopBarOrganizer();
+        this._buildSidebar();
+        this._syncTray();
+        this._patchBoxPointer();
+        this._buildWeatherBadge();
+        this._applyTopBarPosition();
+        this._watchPanelBoxes();
+
+        this._connect(this._settings, 'changed', (_s, key) => this._onSettingChanged(key));
+    }
+
+    disable() {
+        if (!this._dateMenu)
+            return;
+
+        if (this._idleId) {
+            GLib.source_remove(this._idleId);
+            this._idleId = 0;
+        }
+
+        for (const [obj, id] of this._signals) {
+            try {
+                obj.disconnect(id);
+            } catch (_e) {
+                // the object may already be gone
+            }
+        }
+        this._signals = null;
+
+        this._weatherBox?.destroy();
+        this._weatherBox = null;
+        this._weatherIcon = null;
+        this._weatherTemp = null;
+
+        this._restoreAllTrayItems();
+        this._movedTrayItems = null;
+        this._trayMenuManager = null;
+
+        this._unpatchBoxPointer();
+
+        // Put the original widgets back in reverse order: every saved index
+        // was taken after the previous widgets had already been removed.
+        for (const {actor, parent, index} of this._savedParents.reverse()) {
+            try {
+                actor.get_parent()?.remove_child(actor);
+                parent.insert_child_at_index(actor, index);
+            } catch (e) {
+                console.error(`Smart Calendar Hub: cannot restore a widget: ${e}`);
+            }
+        }
+        this._savedParents = null;
+
+        this._sidebar?.destroy();
+        this._sidebar = null;
+        this._traySection = null;
+        this._trayBox = null;
+        this._quickPrefs = null;
+        this._quickButtons = null;
+        this._calendarBox = null;
+        this._calendarArrow = null;
+
+        this._origBin?.show();
+        this._origBin = null;
+
+        this._restoreTopBarOrganizer();
+        this._tbo = null;
+
+        const container = this._dateMenu.container;
+        const origin = this._dateMenuOrigin;
+        if (origin && container.get_parent() !== origin.parent) {
+            container.get_parent()?.remove_child(container);
+            origin.parent.insert_child_at_index(container, origin.index);
+        }
+        this._dateMenuOrigin = null;
+
+        this._settings = null;
+        this._dateMenu = null;
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    _connect(obj, signal, callback) {
+        this._signals.push([obj, obj.connect(signal, callback)]);
+    }
+
+    _relayout() {
+        this._dateMenu?.menu?._boxPointer?.queue_relayout();
+    }
+
+    _onSettingChanged(key) {
+        switch (key) {
+        case 'tray-mode':
+            this._syncTray();
+            this._applyTopBarPosition();
+            break;
+        case 'top-bar-position':
+            this._syncTopBarOrganizer();
+            this._applyTopBarPosition();
+            break;
+        case 'sync-top-bar-organizer':
+            if (this._settings.get_boolean(key))
+                this._syncTopBarOrganizer();
+            else
+                this._restoreTopBarOrganizer();
+            this._applyTopBarPosition();
+            break;
+        case 'sidebar-width':
+            this._updateSidebarSize();
+            break;
+        }
+        this._refreshQuickButtons();
+        this._relayout();
+    }
+
+    // Moves a date-menu widget into the panel, remembering where it was.
+    _adopt(actor, newParent) {
+        if (!actor)
+            return;
+        const parent = actor.get_parent();
+        if (parent) {
+            this._savedParents.push({actor, parent, index: parent.get_children().indexOf(actor)});
+            parent.remove_child(actor);
+        }
+        newParent.add_child(actor);
+    }
+
+    // ------------------------------------------------------------------
+    // Top Bar Organizer (optional, off by default)
+    // ------------------------------------------------------------------
+
+    _initTopBarOrganizer() {
+        this._tbo = null;
+        this._tboOrig = undefined; // undefined = clock position not saved yet
+        const schema = Gio.SettingsSchemaSource.get_default()?.lookup(TBO_SCHEMA, true);
+        if (schema)
+            this._tbo = new Gio.Settings({settings_schema: schema});
+    }
+
+    // Reads the three TBO lists without 'dateMenu' and tells where it was.
+    _readTopBarOrganizer() {
+        const lists = {};
+        let where = null;
+        for (const key of TBO_KEYS) {
+            const list = this._tbo.get_strv(key);
+            const i = list.indexOf('dateMenu');
+            if (i !== -1 && !where)
+                where = {key, index: i};
+            lists[key] = list.filter(x => x !== 'dateMenu');
+        }
+        return {lists, where};
+    }
+
+    // Writes only the lists that actually changed (no needless dconf writes).
+    _writeTopBarOrganizer(lists) {
+        for (const key of TBO_KEYS) {
+            const old = this._tbo.get_strv(key);
+            if (old.length !== lists[key].length || old.some((x, i) => x !== lists[key][i]))
+                this._tbo.set_strv(key, lists[key]);
+        }
+    }
+
+    // Called only on enable and when a related setting changes, never on
+    // panel changes: TBO reorders the panel when its settings change.
+    _syncTopBarOrganizer() {
+        if (!this._tbo || !this._settings.get_boolean('sync-top-bar-organizer'))
+            return;
+        try {
+            const {lists, where} = this._readTopBarOrganizer();
+            // Remember only where the clock was, so on restore the entries
+            // TBO added in the meantime are kept.
+            if (this._tboOrig === undefined)
+                this._tboOrig = where;
+
+            const mode = this._settings.get_string('top-bar-position');
+            const left = lists['left-box-order'];
+            const center = lists['center-box-order'];
+            const right = lists['right-box-order'];
+            if (mode === 'right-between-tray-and-menu') {
+                let i = right.findIndex(r => MENU_TAIL_ROLES.includes(r));
+                if (i === -1)
+                    i = right.length;
+                right.splice(i, 0, 'dateMenu');
+            } else if (mode === 'right-before-tray') {
+                right.unshift('dateMenu');
+            } else if (mode === 'left-after-menu') {
+                left.push('dateMenu');
+            } else {
+                center.splice(Math.min(1, center.length), 0, 'dateMenu');
+            }
+            this._writeTopBarOrganizer(lists);
+        } catch (e) {
+            console.error(`Smart Calendar Hub: Top Bar Organizer sync failed: ${e}`);
+        }
+    }
+
+    _restoreTopBarOrganizer() {
+        if (!this._tbo || this._tboOrig === undefined)
+            return;
+        try {
+            const {lists} = this._readTopBarOrganizer();
+            const where = this._tboOrig;
+            if (where) {
+                const list = lists[where.key];
+                list.splice(Math.min(where.index, list.length), 0, 'dateMenu');
+            }
+            this._writeTopBarOrganizer(lists);
+        } catch (e) {
+            console.error(`Smart Calendar Hub: Top Bar Organizer restore failed: ${e}`);
+        }
+        this._tboOrig = undefined;
+    }
+
+    // ------------------------------------------------------------------
+    // Clock position in the top bar
+    // ------------------------------------------------------------------
+
+    _applyTopBarPosition() {
+        const container = this._dateMenu?.container;
+        if (!container || this._positioning)
+            return;
+
+        const mode = this._settings.get_string('top-bar-position');
+        this._positioning = true;
+        try {
+            let box, index;
+            if (mode === 'right-between-tray-and-menu') {
+                box = Main.panel._rightBox;
+                const tails = MENU_TAIL_ROLES
+                    .map(r => Main.panel.statusArea[r]?.container)
+                    .filter(Boolean);
+                const children = box.get_children().filter(c => c !== container);
+                index = children.findIndex(c => tails.includes(c));
+                if (index === -1)
+                    index = children.length;
+            } else if (mode === 'right-before-tray') {
+                box = Main.panel._rightBox;
+                index = 0;
+            } else if (mode === 'left-after-menu') {
+                box = Main.panel._leftBox;
+                index = box.get_children().filter(c => c !== container).length;
+            } else {
+                box = Main.panel._centerBox;
+                index = 0;
+            }
+
+            const parent = container.get_parent();
+            if (parent !== box) {
+                parent?.remove_child(container);
+                box.insert_child_at_index(container, index);
+            } else if (box.get_children().indexOf(container) !== index) {
+                box.set_child_at_index(container, index);
+            }
+        } catch (e) {
+            console.error(`Smart Calendar Hub: cannot move the clock: ${e}`);
+        } finally {
+            this._positioning = false;
+        }
+    }
+
+    // When other extensions add icons, re-check tray and clock position (once per idle).
+    _watchPanelBoxes() {
+        for (const box of [Main.panel._leftBox, Main.panel._centerBox, Main.panel._rightBox]) {
+            this._connect(box, 'child-added', () => {
+                if (this._positioning || this._syncingTray || this._idleId)
+                    return;
+                this._idleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                    this._idleId = 0;
+                    this._syncTray();
+                    this._applyTopBarPosition();
+                    return GLib.SOURCE_REMOVE;
+                });
+            });
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Temperature next to the clock
+    // ------------------------------------------------------------------
+
+    _buildWeatherBadge() {
+        const dm = this._dateMenu;
+        const clockBox = dm._clockDisplay?.get_parent();
+        const client = dm._weatherItem?._weatherClient;
+        if (!clockBox || !client)
+            return;
+
+        this._weatherIcon = new St.Icon({
+            style_class: 'sch-panel-weather-icon system-status-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._weatherTemp = new St.Label({
+            style_class: 'sch-panel-weather-temp',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._weatherBox = new St.BoxLayout({
+            style_class: 'sch-panel-weather-box',
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: false,
+        });
+        this._weatherBox.add_child(this._weatherIcon);
+        this._weatherBox.add_child(this._weatherTemp);
+        clockBox.add_child(this._weatherBox);
+        // Another extension may destroy the box we live in (Weather O'Clock
+        // wraps the clock in its own box and destroys it when turned off).
+        this._weatherBox.connect('destroy', () => {
+            this._weatherBox = null;
+            this._weatherIcon = null;
+            this._weatherTemp = null;
+        });
+
+        const isWeather = actor => (actor.style_class ?? '').includes('weather');
+
+        const update = () => {
+            if (!this._weatherBox)
+                return;
+            // Another extension already shows the weather next to the clock:
+            // either it wrapped the clock in its own box (Weather O'Clock
+            // loaded after us) or a weather widget sits beside the clock.
+            const other = dm._clockDisplay.get_parent() !== clockBox ||
+                clockBox.get_children().some(ch => ch !== this._weatherBox &&
+                    (isWeather(ch) || ch.get_children().some(isWeather)));
+            const info = client.info;
+            const [ok, temp] = info?.is_valid()
+                ? info.get_value_temp(GWeather.TemperatureUnit.DEFAULT)
+                : [false, 0];
+            if (other || !client.hasLocation || !ok || !Number.isFinite(temp)) {
+                this._weatherBox.visible = false;
+                return;
+            }
+            this._weatherIcon.icon_name = info.get_symbolic_icon_name() || 'weather-clear-symbolic';
+            this._weatherTemp.text = `${Math.round(temp)}°`;
+            this._weatherBox.visible = true;
+        };
+
+        this._connect(client, 'changed', update);
+        this._connect(clockBox, 'child-added', update);
+        this._connect(clockBox, 'child-removed', update);
+        update();
+    }
+
+    // ------------------------------------------------------------------
+    // Side panel layout
+    // ------------------------------------------------------------------
+
+    _buildSidebar() {
+        const dm = this._dateMenu;
+        const menuBox = dm.menu.box;
+
+        this._origBin = menuBox.get_first_child();
+        this._origBin?.hide();
+
+        this._sidebar = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'sch-sidebar-box',
+            x_expand: true,
+            y_expand: true,
+        });
+        menuBox.add_child(this._sidebar);
+        this._trayMenuManager = new PopupMenu.PopupMenuManager(this._sidebar);
+
+        // 0. Tray icons
+        this._traySection = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'sch-tray-section',
+            x_expand: true,
+            visible: false,
+        });
+        this._trayBox = new St.Widget({
+            style_class: 'sch-tray-box',
+            layout_manager: new Clutter.FlowLayout({
+                orientation: Clutter.Orientation.HORIZONTAL,
+                homogeneous: false,
+                column_spacing: 6,
+                row_spacing: 6,
+            }),
+            x_expand: true,
+        });
+        this._traySection.add_child(this._trayBox);
+        this._sidebar.add_child(this._traySection);
+
+        // Title + quick settings button
+        const header = new St.BoxLayout({style_class: 'sch-header', x_expand: true});
+        header.add_child(new St.Label({
+            text: 'SMART CALENDAR HUB',
+            style_class: 'sch-header-title',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+        const gear = new St.Button({
+            style_class: 'sch-gear-button',
+            can_focus: true,
+            accessible_name: _('Layout options'),
+            child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 14}),
+        });
+        header.add_child(gear);
+        this._sidebar.add_child(header);
+
+        this._quickPrefs = this._buildQuickPrefs();
+        this._quickPrefs.visible = false;
+        this._sidebar.add_child(this._quickPrefs);
+        gear.connect('clicked', () => {
+            this._quickPrefs.visible = !this._quickPrefs.visible;
+        });
+
+        // 1. Weather, 2. Date
+        this._adopt(dm._weatherItem, this._sidebar);
+        this._adopt(dm._date, this._sidebar);
+
+        // 3. Collapsible calendar + events
+        const expander = new St.Button({
+            style_class: 'sch-calendar-expander',
+            x_expand: true,
+            can_focus: true,
+        });
+        const row = new St.BoxLayout({x_expand: true});
+        row.add_child(new St.Label({
+            text: _('Calendar and events'),
+            style_class: 'sch-calendar-expander-label',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+        this._calendarArrow = new St.Icon({
+            icon_name: 'pan-end-symbolic',
+            icon_size: 16,
+            style_class: 'sch-calendar-expander-arrow',
+        });
+        row.add_child(this._calendarArrow);
+        expander.set_child(row);
+        this._sidebar.add_child(expander);
+
+        this._calendarBox = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'sch-calendar-box',
+            x_expand: true,
+            visible: false,
+        });
+        this._sidebar.add_child(this._calendarBox);
+        this._adopt(dm._calendar, this._calendarBox);
+        this._adopt(dm._eventsItem, this._calendarBox);
+
+        expander.connect('clicked', () => this._setCalendarExpanded(!this._calendarBox.visible));
+
+        this._connect(dm.menu, 'open-state-changed', (_m, isOpen) => {
+            if (isOpen) {
+                if (this._settings.get_boolean('calendar-collapsed'))
+                    this._setCalendarExpanded(false);
+                this._syncTray();
+                this._updateSidebarSize();
+            } else {
+                this._trayMenuManager?.activeMenu?.close();
+            }
+        });
+
+        // 4. Notifications
+        if (dm._messageList) {
+            dm._messageList.x_expand = true;
+            dm._messageList.y_expand = true;
+            this._adopt(dm._messageList, this._sidebar);
+        }
+
+        // 5. World clocks
+        this._adopt(dm._clocksItem, this._sidebar);
+
+        this._updateSidebarSize();
+    }
+
+    _setCalendarExpanded(expanded) {
+        if (!this._calendarBox)
+            return;
+        this._calendarBox.visible = expanded;
+        this._calendarArrow.icon_name = expanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
+        this._relayout();
+    }
+
+    _updateSidebarSize() {
+        if (!this._sidebar)
+            return;
+        const monitor = Main.layoutManager.findIndexForActor(this._dateMenu.container);
+        const workArea = Main.layoutManager.getWorkAreaForMonitor(monitor);
+        this._sidebar.width = this._settings.get_int('sidebar-width');
+        // Fill the work area, but never be taller than it
+        this._sidebar.height = Math.max(0, workArea.height - 28);
+    }
+
+    _buildQuickPrefs() {
+        const box = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'sch-quick-prefs',
+            x_expand: true,
+        });
+        this._quickButtons = [];
+
+        const addRow = (title, key, options) => {
+            box.add_child(new St.Label({text: title, style_class: 'sch-quick-prefs-label'}));
+            const row = new St.BoxLayout({style_class: 'sch-quick-prefs-row', x_expand: true});
+            for (const [value, label] of options) {
+                const btn = new St.Button({
+                    label,
+                    style_class: 'sch-pill',
+                    x_expand: true,
+                    can_focus: true,
+                });
+                btn.connect('clicked', () => this._settings.set_string(key, value));
+                this._quickButtons.push({btn, key, value});
+                row.add_child(btn);
+            }
+            box.add_child(row);
+        };
+
+        addRow(_('Panel side'), 'sidebar-side', [
+            ['right', _('Right')],
+            ['left', _('Left')],
+            ['button', _('Under the clock')],
+        ]);
+        addRow(_('Clock in the top bar'), 'top-bar-position', [
+            ['right-between-tray-and-menu', _('Before menus')],
+            ['right-before-tray', _('Before tray')],
+            ['left-after-menu', _('Left')],
+            ['center', _('Center')],
+        ]);
+        addRow(_('Icons inside the panel'), 'tray-mode', [
+            ['all-tray', _('Tray apps')],
+            ['all-right-icons', _('All icons')],
+            ['disabled', _('None')],
+        ]);
+
+        this._refreshQuickButtons();
+        return box;
+    }
+
+    _refreshQuickButtons() {
+        for (const {btn, key, value} of this._quickButtons ?? []) {
+            if (this._settings.get_string(key) === value)
+                btn.add_style_class_name('sch-pill-active');
+            else
+                btn.remove_style_class_name('sch-pill-active');
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Side panel position (patches the date menu BoxPointer)
+    // ------------------------------------------------------------------
+
+    _patchBoxPointer() {
+        const bp = this._dateMenu.menu._boxPointer;
+        if (!bp)
+            return;
+
+        bp.add_style_class_name('sch-sidebar');
+        const settings = this._settings;
+        const origReposition = bp._reposition;
+        const origUpdateFlip = bp._updateFlip;
+        this._bpOriginals = {_reposition: origReposition, _updateFlip: origUpdateFlip};
+
+        bp._updateFlip = function (allocationBox) {
+            if (settings.get_string('sidebar-side') === 'button')
+                return origUpdateFlip.call(this, allocationBox);
+            this._arrowSide = St.Side.TOP;
+            return undefined;
+        };
+
+        bp._reposition = function (allocationBox) {
+            const side = settings.get_string('sidebar-side');
+            if (side === 'button')
+                return origReposition.call(this, allocationBox);
+
+            const source = this._sourceActor ?? Main.panel;
+            const workArea = Main.layoutManager.getWorkAreaForMonitor(
+                Main.layoutManager.findIndexForActor(source));
+            this._workArea = workArea;
+            this._sourceExtents = source.get_transformed_extents();
+
+            const [, , natWidth] = this.get_preferred_size();
+            const stageX = side === 'left'
+                ? workArea.x + 6
+                : workArea.x + workArea.width - natWidth - 6;
+            const stageY = workArea.y + 4;
+            this.setArrowOrigin(0);
+
+            let parent = this.get_parent();
+            let ok = false;
+            let x = stageX, y = stageY;
+            while (parent && !ok) {
+                [ok, x, y] = parent.transform_stage_point(stageX, stageY);
+                parent = parent.get_parent();
+            }
+            allocationBox.set_origin(Math.floor(x), Math.floor(y));
+            return undefined;
+        };
+    }
+
+    _unpatchBoxPointer() {
+        const bp = this._dateMenu.menu._boxPointer;
+        if (!bp)
+            return;
+        bp.remove_style_class_name('sch-sidebar');
+        if (this._bpOriginals)
+            Object.assign(bp, this._bpOriginals);
+        this._bpOriginals = null;
+    }
+
+    // ------------------------------------------------------------------
+    // Tray icons inside the panel
+    // ------------------------------------------------------------------
+
+    _wantsInTray(role, indicator) {
+        const mode = this._settings.get_string('tray-mode');
+        if (mode === 'disabled' || !indicator?.container || ROLES_NEVER_IN_TRAY.has(role))
+            return false;
+
+        const r = (role ?? '').toLowerCase();
+        const c = (indicator.constructor?.name ?? '').toLowerCase();
+        const isTray = r.startsWith('appindicator') ||
+            ['kstatusnotifier', 'statusnotifier', 'status_icon', 'tray'].some(s => r.includes(s)) ||
+            ['appindicator', 'statusnotifier', 'tray'].some(s => c.includes(s));
+
+        if (mode === 'all-tray')
+            return isTray;
+        // 'all-right-icons'
+        return isTray || this._movedTrayItems.has(indicator) ||
+            indicator.container.get_parent() === Main.panel._rightBox;
+    }
+
+    _syncTray() {
+        if (!this._trayBox || this._syncingTray)
+            return;
+        this._syncingTray = true;
+        try {
+            for (const [indicator, info] of [...this._movedTrayItems]) {
+                if (!this._wantsInTray(info.role, indicator)) {
+                    this._restoreTrayItem(indicator, info);
+                    this._movedTrayItems.delete(indicator);
+                }
+            }
+            for (const [role, indicator] of Object.entries(Main.panel.statusArea)) {
+                if (!this._movedTrayItems.has(indicator) && this._wantsInTray(role, indicator))
+                    this._moveToTray(role, indicator);
+            }
+        } catch (e) {
+            console.error(`Smart Calendar Hub: tray sync failed: ${e}`);
+        } finally {
+            this._syncingTray = false;
+        }
+        this._traySection.visible = this._trayBox.get_n_children() > 0;
+    }
+
+    _moveToTray(role, indicator) {
+        const container = indicator.container;
+        const parent = container.get_parent();
+        if (!parent)
+            return;
+
+        const info = {
+            role,
+            container,
+            parent,
+            index: parent.get_children().indexOf(container),
+            hadPanelMenu: false,
+            yExpand: container.y_expand,
+            menuId: 0,
+            destroyId: 0,
+        };
+
+        const menu = indicator.menu;
+        if (menu && typeof menu.connect === 'function') {
+            // removeMenu() never fails, so check first whether the panel owns it
+            info.hadPanelMenu = Main.panel.menuManager._menus?.includes(menu) ?? false;
+            if (info.hadPanelMenu)
+                Main.panel.menuManager.removeMenu(menu);
+            this._trayMenuManager.addMenu(menu);
+            info.menuId = menu.connect('open-state-changed', (m, isOpen) => {
+                if (isOpen && m.actor)
+                    Main.uiGroup.set_child_above_sibling(m.actor, null);
+            });
+        }
+
+        parent.remove_child(container);
+        container.add_style_class_name('sch-tray-item');
+        container.y_expand = false;
+        this._trayBox.add_child(container);
+
+        info.destroyId = container.connect('destroy', () => {
+            this._movedTrayItems?.delete(indicator);
+            if (this._trayBox)
+                this._traySection.visible = this._trayBox.get_n_children() > 0;
+        });
+        this._movedTrayItems.set(indicator, info);
+    }
+
+    _restoreTrayItem(indicator, info) {
+        try {
+            info.container.disconnect(info.destroyId);
+            const menu = indicator.menu;
+            if (menu && info.menuId) {
+                menu.disconnect(info.menuId);
+                this._trayMenuManager?.removeMenu(menu);
+                if (info.hadPanelMenu)
+                    Main.panel.menuManager.addMenu(menu);
+            }
+            info.container.get_parent()?.remove_child(info.container);
+            info.container.remove_style_class_name('sch-tray-item');
+            info.container.y_expand = info.yExpand;
+            const n = info.parent.get_n_children();
+            info.parent.insert_child_at_index(info.container, Math.min(info.index, n));
+        } catch (e) {
+            console.error(`Smart Calendar Hub: cannot restore a tray icon: ${e}`);
+        }
+    }
+
+    _restoreAllTrayItems() {
+        // Reverse order, so saved indices are still valid.
+        for (const [indicator, info] of [...this._movedTrayItems].reverse())
+            this._restoreTrayItem(indicator, info);
+        this._movedTrayItems.clear();
+    }
+}

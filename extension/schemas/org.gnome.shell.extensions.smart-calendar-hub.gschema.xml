@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 bria-bria -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.smart-calendar-hub"
+          path="/org/gnome/shell/extensions/smart-calendar-hub/">
+
+    <key name="top-bar-position" type="s">
+      <choices>
+        <choice value="right-between-tray-and-menu"/>
+        <choice value="right-before-tray"/>
+        <choice value="left-after-menu"/>
+        <choice value="center"/>
+      </choices>
+      <default>'right-between-tray-and-menu'</default>
+      <summary>Position of the clock in the top bar</summary>
+    </key>
+
+    <key name="sidebar-side" type="s">
+      <choices>
+        <choice value="right"/>
+        <choice value="left"/>
+        <choice value="button"/>
+      </choices>
+      <default>'right'</default>
+      <summary>Where the side panel opens</summary>
+    </key>
+
+    <key name="tray-mode" type="s">
+      <choices>
+        <choice value="all-tray"/>
+        <choice value="all-right-icons"/>
+        <choice value="disabled"/>
+      </choices>
+      <default>'all-tray'</default>
+      <summary>Which top bar icons are moved inside the panel</summary>
+    </key>
+
+    <key name="calendar-collapsed" type="b">
+      <default>true</default>
+      <summary>Collapse the calendar every time the panel opens</summary>
+    </key>
+
+    <key name="sidebar-width" type="i">
+      <range min="320" max="520"/>
+      <default>380</default>
+      <summary>Width of the side panel in pixels</summary>
+    </key>
+
+    <key name="sync-top-bar-organizer" type="b">
+      <default>false</default>
+      <summary>Keep the Top Bar Organizer extension in sync</summary>
+      <description>When enabled, the clock position is also written into the settings of the Top Bar Organizer extension, so the two do not fight. The previous order is restored when this extension is disabled.</description>
+    </key>
+  </schema>
+</schemalist>

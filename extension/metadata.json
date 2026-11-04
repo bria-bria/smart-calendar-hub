@@ -1,0 +1,14 @@
+{
+  "uuid": "smart-calendar-hub@bria-bria.github.io",
+  "name": "Smart Calendar Hub",
+  "description": "Turns the clock menu into a side panel: weather on top, date, a collapsible calendar, notifications and world clocks. Shows the temperature next to the clock, lets you move the clock in the top bar and can gather tray icons inside the panel.",
+  "shell-version": [
+    "48",
+    "49",
+    "50",
+    "51"
+  ],
+  "settings-schema": "org.gnome.shell.extensions.smart-calendar-hub",
+  "gettext-domain": "smart-calendar-hub",
+  "version-name": "1.0"
+}

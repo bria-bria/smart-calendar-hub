@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.zip
+*.bak*
+dist/
+originale-raven-calendar/

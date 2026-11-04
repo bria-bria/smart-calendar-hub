@@ -1,0 +1,198 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2026 bria-bria */
+
+/* The date menu becomes a side panel: no arrow */
+.sch-sidebar {
+    -arrow-rise: 0px;
+    -arrow-base: 0px;
+    -boxpointer-gap: 0px;
+    -arrow-border-radius: 18px;
+}
+
+.sch-sidebar .popup-menu-content {
+    padding: 10px;
+}
+
+.sch-sidebar-box {
+    spacing: 8px;
+    padding: 2px;
+}
+
+/* 0. Tray icons */
+.sch-tray-section {
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 6px 10px;
+    margin: 2px 4px 0 4px;
+}
+
+.sch-tray-item {
+    border-radius: 8px;
+    padding: 2px;
+}
+
+.sch-tray-box .panel-button {
+    height: 30px;
+    min-width: 30px;
+    padding: 4px 6px;
+    border-radius: 8px;
+    margin: 1px;
+}
+
+.sch-tray-box .panel-button:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Title + quick options */
+.sch-header {
+    padding: 2px 6px;
+    spacing: 6px;
+}
+
+.sch-header-title {
+    font-size: 0.82em;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.sch-gear-button {
+    padding: 5px 8px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sch-gear-button:hover,
+.sch-gear-button:focus {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.sch-quick-prefs {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 8px;
+    margin: 2px 4px;
+    spacing: 6px;
+}
+
+.sch-quick-prefs-label {
+    font-size: 0.8em;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.sch-quick-prefs-row {
+    spacing: 4px;
+}
+
+.sch-pill {
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 0.78em;
+    font-weight: 600;
+    background-color: rgba(255, 255, 255, 0.09);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.sch-pill:hover,
+.sch-pill:focus {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.sch-pill.sch-pill-active {
+    background-color: -st-accent-color;
+    color: -st-accent-fg-color;
+}
+
+/* 1. Weather */
+.sch-sidebar-box .weather-button {
+    margin: 2px 4px;
+    border-radius: 14px;
+}
+
+/* 2. Date */
+.sch-sidebar-box .datemenu-today-button {
+    margin: 2px 4px 0 4px;
+    padding: 8px 12px;
+    border-radius: 14px;
+}
+
+/* 3. Collapsible calendar */
+.sch-calendar-expander {
+    margin: 2px 4px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sch-calendar-expander:hover,
+.sch-calendar-expander:focus {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.sch-calendar-expander:active {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.sch-calendar-expander-label {
+    font-weight: 700;
+    font-size: 0.92em;
+}
+
+.sch-calendar-expander-arrow {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.sch-calendar-box {
+    spacing: 6px;
+    margin: 2px 0;
+}
+
+.sch-calendar-box .calendar {
+    margin: 2px 4px;
+    padding: 6px;
+    border-radius: 14px;
+}
+
+.sch-calendar-box .events-button {
+    margin: 2px 4px;
+    border-radius: 14px;
+}
+
+/* 4. Notifications */
+.sch-sidebar-box .message-list {
+    width: 24.5em;
+    border-right-width: 0;
+    border-left-width: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    margin: 4px 2px;
+    padding: 6px 2px;
+}
+
+.sch-sidebar-box .message-list .message-list-placeholder > StIcon {
+    icon-size: 56px;
+    margin-bottom: 8px;
+}
+
+/* 5. World clocks */
+.sch-sidebar-box .world-clocks-button {
+    margin: 2px 4px;
+    border-radius: 14px;
+}
+
+/* Temperature next to the clock */
+.sch-panel-weather-box {
+    spacing: 4px;
+    margin-left: 6px;
+    margin-right: 2px;
+}
+
+.sch-panel-weather-icon {
+    icon-size: 15px;
+}
+
+.sch-panel-weather-temp {
+    font-weight: 600;
+}

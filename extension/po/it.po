@@ -1,0 +1,119 @@
+# Italian translation of Smart Calendar Hub.
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 bria-bria
+msgid ""
+msgstr ""
+"Project-Id-Version: Smart Calendar Hub\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Layout options"
+msgstr "Opzioni di posizione"
+
+msgid "Calendar and events"
+msgstr "Calendario ed eventi"
+
+msgid "Panel side"
+msgstr "Lato del pannello"
+
+msgid "Right"
+msgstr "Destra"
+
+msgid "Left"
+msgstr "Sinistra"
+
+msgid "Under the clock"
+msgstr "Sotto l'ora"
+
+msgid "Clock in the top bar"
+msgstr "Ora nella barra in alto"
+
+msgid "Before menus"
+msgstr "Prima dei menu"
+
+msgid "Before tray"
+msgstr "Prima del vassoio"
+
+msgid "Center"
+msgstr "Centro"
+
+msgid "Icons inside the panel"
+msgstr "Icone dentro il pannello"
+
+msgid "Tray apps"
+msgstr "Vassoio app"
+
+msgid "All icons"
+msgstr "Tutte le icone"
+
+msgid "None"
+msgstr "Nessuna"
+
+msgid "Position"
+msgstr "Posizione"
+
+msgid "Where the side panel opens, where the clock sits in the top bar and which icons are gathered inside the panel."
+msgstr "Dove si apre il pannello laterale, dove sta l'ora nella barra in alto e quali icone vengono raccolte dentro il pannello."
+
+msgid "Side of the screen where the panel appears when you click the clock"
+msgstr "Lato dello schermo in cui compare il pannello quando clicchi sull'ora"
+
+msgid "Right edge of the screen"
+msgstr "Bordo destro dello schermo"
+
+msgid "Left edge of the screen"
+msgstr "Bordo sinistro dello schermo"
+
+msgid "Under the clock button"
+msgstr "Sotto il pulsante dell'ora"
+
+msgid "Position of the clock and temperature in the GNOME top bar"
+msgstr "Posizione di ora e temperatura nella barra in alto di GNOME"
+
+msgid "Right, between tray icons and system menu"
+msgstr "A destra, tra le icone del vassoio e il menu di sistema"
+
+msgid "Right, before tray icons"
+msgstr "A destra, prima delle icone del vassoio"
+
+msgid "Left, after the menus"
+msgstr "A sinistra, dopo i menu"
+
+msgid "Center (GNOME default)"
+msgstr "Al centro (predefinito di GNOME)"
+
+msgid "Top bar icons moved to the top of the panel"
+msgstr "Icone della barra in alto spostate in cima al pannello"
+
+msgid "Tray icons of applications"
+msgstr "Icone del vassoio delle applicazioni"
+
+msgid "All icons on the right side"
+msgstr "Tutte le icone del lato destro"
+
+msgid "None, leave them in the top bar"
+msgstr "Nessuna, lasciale nella barra in alto"
+
+msgid "Keep Top Bar Organizer in sync"
+msgstr "Sincronizza con Top Bar Organizer"
+
+msgid "Also writes the clock position into the Top Bar Organizer extension settings; the previous order is restored when Smart Calendar Hub is turned off"
+msgstr "Scrive la posizione dell'ora anche nelle impostazioni dell'estensione Top Bar Organizer; l'ordine precedente viene ripristinato quando Smart Calendar Hub viene spenta"
+
+msgid "Panel"
+msgstr "Pannello"
+
+msgid "From top to bottom: tray icons, title, weather, date, calendar, notifications, world clocks."
+msgstr "Dall'alto in basso: icone del vassoio, titolo, meteo, data, calendario, notifiche, orologi mondiali."
+
+msgid "Calendar collapsed on opening"
+msgstr "Calendario chiuso all'apertura"
+
+msgid "Click “Calendar and events” to open it"
+msgstr "Clicca su «Calendario ed eventi» per aprirlo"
+
+msgid "Panel width (pixels)"
+msgstr "Larghezza del pannello (pixel)"
