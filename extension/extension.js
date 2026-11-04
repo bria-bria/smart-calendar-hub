@@ -45,6 +45,23 @@ let weatherExpanded = false;
 
 export default class SmartCalendarHubExtension extends Extension {
     enable() {
+        // If a step fails, undo everything done so far instead of leaving the
+        // date menu half rebuilt (GNOME does not call disable() after a failed
+        // enable(), and it removes our stylesheet).
+        try {
+            this._enable();
+        } catch (e) {
+            console.error(`Smart Calendar Hub: enable failed, restoring GNOME: ${e}`);
+            try {
+                this.disable();
+            } catch (e2) {
+                console.error(`Smart Calendar Hub: restore failed: ${e2}`);
+            }
+            throw e;
+        }
+    }
+
+    _enable() {
         this._dateMenu = Main.panel.statusArea.dateMenu;
         if (!this._dateMenu)
             return;
@@ -109,7 +126,7 @@ export default class SmartCalendarHubExtension extends Extension {
             this._idleId = 0;
         }
 
-        for (const [obj, id] of this._signals) {
+        for (const [obj, id] of this._signals ?? []) {
             try {
                 obj.disconnect(id);
             } catch (_e) {
@@ -147,7 +164,7 @@ export default class SmartCalendarHubExtension extends Extension {
 
         // Put the original widgets back in reverse order: every saved index
         // was taken after the previous widgets had already been removed.
-        for (const {actor, parent, index} of this._savedParents.reverse()) {
+        for (const {actor, parent, index} of (this._savedParents ?? []).reverse()) {
             try {
                 actor.get_parent()?.remove_child(actor);
                 parent.insert_child_at_index(actor, index);
@@ -514,8 +531,9 @@ export default class SmartCalendarHubExtension extends Extension {
     // Label under the clock, while the pointer is on it and the dot is on,
     // telling which apps the dot is about.
     _buildAlertTip() {
-        this._alertTip = new St.Label({style_class: 'sch-alert-tip', visible: false});
-        Main.layoutManager.addTopChrome(this._alertTip, {affectsInputRegion: false});
+        // Not reactive, on top of everything (raised again when shown)
+        this._alertTip = new St.Label({style_class: 'sch-alert-tip', visible: false, reactive: false});
+        Main.uiGroup.add_child(this._alertTip);
         this._connect(this._dateMenu, 'notify::hover', () => {
             if (this._dateMenu.hover && this._alertDot?.visible && !this._dateMenu.menu.isOpen)
                 this._showAlertTip();
@@ -532,6 +550,7 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         }
         this._alertTip.text = _('Notifications from: {apps}', {apps: apps.join(', ')});
+        Main.uiGroup.set_child_above_sibling(this._alertTip, null);
         this._alertTip.show();
         // Under the clock, kept inside its monitor
         const button = this._dateMenu;
@@ -1171,6 +1190,8 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     _restoreAllTrayItems() {
+        if (!this._movedTrayItems)
+            return;
         // Reverse order, so saved indices are still valid.
         for (const [indicator, info] of [...this._movedTrayItems].reverse())
             this._restoreTrayItem(indicator, info);
