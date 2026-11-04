@@ -92,6 +92,7 @@ export default class SmartCalendarHubExtension extends Extension {
 
         this._restoreAllTrayItems();
         this._movedTrayItems = null;
+        this._excludedTray = null;
         this._trayMenuManager = null;
 
         this._unpatchBoxPointer();
@@ -150,6 +151,7 @@ export default class SmartCalendarHubExtension extends Extension {
     _onSettingChanged(key) {
         switch (key) {
         case 'tray-mode':
+        case 'tray-excluded':
             this._syncTray();
             this._applyTopBarPosition();
             break;
@@ -661,7 +663,42 @@ export default class SmartCalendarHubExtension extends Extension {
     // Tray icons inside the panel
     // ------------------------------------------------------------------
 
+    // Stable identifier of an icon, kept across sessions: the app id for
+    // AppIndicator icons (the panel role of some apps changes every login),
+    // the window class for legacy tray icons, otherwise the panel role.
+    _trayKey(role, indicator) {
+        return indicator._indicator?.id || indicator._icon?.wm_class || role;
+    }
+
+    _trayLabel(role, indicator) {
+        const sni = indicator._indicator;
+        return sni?.accessibleName || sni?.title || sni?.id ||
+            indicator._icon?.title || indicator._icon?.wm_class ||
+            indicator.accessible_name || role;
+    }
+
     _wantsInTray(role, indicator) {
+        return this._isTrayCandidate(role, indicator) &&
+            !this._excludedTray.has(this._trayKey(role, indicator));
+    }
+
+    // Writes the icons that can be moved, for the preferences window
+    // (only when the list changed, to avoid needless dconf writes).
+    _publishTrayItems() {
+        const items = new Map();
+        for (const [role, indicator] of Object.entries(Main.panel.statusArea)) {
+            if (this._isTrayCandidate(role, indicator)) {
+                const label = this._trayLabel(role, indicator).replace(/[\t\n]/g, ' ');
+                items.set(this._trayKey(role, indicator), label);
+            }
+        }
+        const list = [...items].map(([k, l]) => `${k}\t${l}`).sort();
+        const old = this._settings.get_strv('tray-items-seen');
+        if (old.length !== list.length || old.some((x, i) => x !== list[i]))
+            this._settings.set_strv('tray-items-seen', list);
+    }
+
+    _isTrayCandidate(role, indicator) {
         const mode = this._settings.get_string('tray-mode');
         if (mode === 'disabled' || !indicator?.container || ROLES_NEVER_IN_TRAY.has(role))
             return false;
@@ -683,6 +720,7 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!this._trayBox || this._syncingTray)
             return;
         this._syncingTray = true;
+        this._excludedTray = new Set(this._settings.get_strv('tray-excluded'));
         try {
             for (const [indicator, info] of [...this._movedTrayItems]) {
                 if (info.container.get_parent()?.get_parent() !== this._trayBox) {
@@ -700,6 +738,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 if (!this._movedTrayItems.has(indicator) && this._wantsInTray(role, indicator))
                     this._moveToTray(role, indicator);
             }
+            this._publishTrayItems();
         } catch (e) {
             console.error(`Smart Calendar Hub: tray sync failed: ${e}`);
         } finally {

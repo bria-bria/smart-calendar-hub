@@ -38,6 +38,71 @@ function comboRow(settings, key, title, subtitle, options) {
 }
 
 export default class SmartCalendarHubPreferences extends ExtensionPreferences {
+    // One switch per icon currently in the top bar or in the panel:
+    // on = inside the panel, off = left in the top bar.
+    _buildTrayAppsGroup(window, settings) {
+        const group = new Adw.PreferencesGroup({
+            title: _('Apps inside the panel'),
+            description: _('Choose, among the icons present now, which ones move inside the panel and which stay in the top bar.'),
+        });
+        let rows = [];
+
+        const rebuild = () => {
+            rows.forEach(r => group.remove(r));
+            rows = [];
+
+            const items = settings.get_strv('tray-items-seen')
+                .map(line => {
+                    const tab = line.indexOf('\t');
+                    return tab === -1
+                        ? {key: line, label: line}
+                        : {key: line.slice(0, tab), label: line.slice(tab + 1)};
+                })
+                .sort((a, b) => a.label.localeCompare(b.label));
+            const excluded = new Set(settings.get_strv('tray-excluded'));
+            const disabled = settings.get_string('tray-mode') === 'disabled';
+
+            if (!items.length) {
+                const row = new Adw.ActionRow({
+                    title: _('No icons found yet'),
+                    subtitle: _('Open the panel once: the list fills in by itself'),
+                });
+                group.add(row);
+                rows.push(row);
+                return;
+            }
+
+            for (const {key, label} of items) {
+                const row = new Adw.SwitchRow({
+                    title: label,
+                    subtitle: key !== label ? key : '',
+                    active: !excluded.has(key),
+                    sensitive: !disabled,
+                });
+                row.connect('notify::active', () => {
+                    const list = settings.get_strv('tray-excluded').filter(k => k !== key);
+                    if (!row.active)
+                        list.push(key);
+                    settings.set_strv('tray-excluded', list);
+                });
+                group.add(row);
+                rows.push(row);
+            }
+        };
+        rebuild();
+
+        // New apps appear while the window is open; tray mode greys the list out.
+        const ids = [
+            settings.connect('changed::tray-items-seen', rebuild),
+            settings.connect('changed::tray-mode', rebuild),
+        ];
+        window.connect('close-request', () => {
+            ids.forEach(id => settings.disconnect(id));
+            return false;
+        });
+        return group;
+    }
+
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         window._settings = settings;
@@ -103,6 +168,8 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
                 ['all-right-icons', _('All icons on the right side')],
                 ['disabled', _('None, leave them in the top bar')],
             ]));
+
+        page.add(this._buildTrayAppsGroup(window, settings));
 
         const tboRow = new Adw.SwitchRow({
             title: _('Keep Top Bar Organizer in sync'),

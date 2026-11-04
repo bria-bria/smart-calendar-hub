@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Smart Calendar Hub\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-04 17:04+0100\n"
+"POT-Creation-Date: 2026-11-04 18:40+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,159 +17,177 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:456
+#: extension.js:452
 msgid "Layout options"
 msgstr ""
 
-#: extension.js:481
+#: extension.js:477
 msgid "Calendar and events"
 msgstr ""
 
-#: extension.js:574 prefs.js:80
+#: extension.js:570 prefs.js:145
 msgid "Panel side"
 msgstr ""
 
-#: extension.js:575
+#: extension.js:571
 msgid "Right"
 msgstr ""
 
-#: extension.js:576 extension.js:582
+#: extension.js:572 extension.js:578
 msgid "Left"
 msgstr ""
 
-#: extension.js:577
+#: extension.js:573
 msgid "Under the clock"
 msgstr ""
 
-#: extension.js:579 prefs.js:89
+#: extension.js:575 prefs.js:154
 msgid "Clock in the top bar"
 msgstr ""
 
-#: extension.js:580
+#: extension.js:576
 msgid "Before menus"
 msgstr ""
 
-#: extension.js:581
+#: extension.js:577
 msgid "Before tray"
 msgstr ""
 
-#: extension.js:583
+#: extension.js:579
 msgid "Center"
 msgstr ""
 
-#: extension.js:585 prefs.js:99
+#: extension.js:581 prefs.js:164
 msgid "Icons inside the panel"
 msgstr ""
 
-#: extension.js:586
+#: extension.js:582
 msgid "Tray apps"
 msgstr ""
 
-#: extension.js:587
+#: extension.js:583
 msgid "All icons"
 msgstr ""
 
-#: extension.js:588
+#: extension.js:584
 msgid "None"
 msgstr ""
 
-#: prefs.js:54
+#: prefs.js:45
+msgid "Apps inside the panel"
+msgstr ""
+
+#: prefs.js:46
+msgid ""
+"Choose, among the icons present now, which ones move inside the panel and "
+"which stay in the top bar."
+msgstr ""
+
+#: prefs.js:67
+msgid "No icons found yet"
+msgstr ""
+
+#: prefs.js:68
+msgid "Open the panel once: the list fills in by itself"
+msgstr ""
+
+#: prefs.js:119
 msgid ""
 "Tray icons need the “AppIndicator and KStatusNotifierItem Support” "
 "extension: turn it on"
 msgstr ""
 
-#: prefs.js:74
+#: prefs.js:139
 msgid "Position"
 msgstr ""
 
-#: prefs.js:75
+#: prefs.js:140
 msgid ""
 "Where the side panel opens, where the clock sits in the top bar and which "
 "icons are gathered inside the panel."
 msgstr ""
 
-#: prefs.js:81
+#: prefs.js:146
 msgid "Side of the screen where the panel appears when you click the clock"
 msgstr ""
 
-#: prefs.js:83
+#: prefs.js:148
 msgid "Right edge of the screen"
 msgstr ""
 
-#: prefs.js:84
+#: prefs.js:149
 msgid "Left edge of the screen"
 msgstr ""
 
-#: prefs.js:85
+#: prefs.js:150
 msgid "Under the clock button"
 msgstr ""
 
-#: prefs.js:90
+#: prefs.js:155
 msgid "Position of the clock and temperature in the GNOME top bar"
 msgstr ""
 
-#: prefs.js:92
+#: prefs.js:157
 msgid "Right, between tray icons and system menu"
 msgstr ""
 
-#: prefs.js:93
+#: prefs.js:158
 msgid "Right, before tray icons"
 msgstr ""
 
-#: prefs.js:94
+#: prefs.js:159
 msgid "Left, after the menus"
 msgstr ""
 
-#: prefs.js:95
+#: prefs.js:160
 msgid "Center (GNOME default)"
 msgstr ""
 
-#: prefs.js:100
+#: prefs.js:165
 msgid "Top bar icons moved to the top of the panel"
 msgstr ""
 
-#: prefs.js:102
+#: prefs.js:167
 msgid "Tray icons of applications"
 msgstr ""
 
-#: prefs.js:103
+#: prefs.js:168
 msgid "All icons on the right side"
 msgstr ""
 
-#: prefs.js:104
+#: prefs.js:169
 msgid "None, leave them in the top bar"
 msgstr ""
 
-#: prefs.js:108
+#: prefs.js:175
 msgid "Keep Top Bar Organizer in sync"
 msgstr ""
 
-#: prefs.js:109
+#: prefs.js:176
 msgid ""
 "Also writes the clock position into the Top Bar Organizer extension "
 "settings; the previous order is restored when Smart Calendar Hub is turned "
 "off"
 msgstr ""
 
-#: prefs.js:115
+#: prefs.js:182
 msgid "Panel"
 msgstr ""
 
-#: prefs.js:116
+#: prefs.js:183
 msgid ""
 "From top to bottom: tray icons, title, weather, date, calendar, "
 "notifications, world clocks."
 msgstr ""
 
-#: prefs.js:121
+#: prefs.js:188
 msgid "Calendar collapsed on opening"
 msgstr ""
 
-#: prefs.js:122
+#: prefs.js:189
 msgid "Click “Calendar and events” to open it"
 msgstr ""
 
-#: prefs.js:128
+#: prefs.js:195
 msgid "Panel width (pixels)"
 msgstr ""

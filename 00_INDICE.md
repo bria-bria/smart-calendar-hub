@@ -22,4 +22,5 @@
 - [ ] Prova dopo logout/login
 - [x] Revisione code-review: 8 correzioni su 9 (04/11/2026)
 - [x] Su GitHub, privato: `bria-bria/smart-calendar-hub` (04/11/2026)
+- [x] Scelta delle singole app dentro/fuori dal pannello nelle Preferenze (04/11/2026)
 - [ ] Caricamento zip di `dist/` su extensions.gnome.org (lo fa Michele)

@@ -36,6 +36,18 @@
       <summary>Which top bar icons are moved inside the panel</summary>
     </key>
 
+    <key name="tray-excluded" type="as">
+      <default>[]</default>
+      <summary>Icons left in the top bar</summary>
+      <description>Identifiers of the icons that stay in the top bar instead of moving inside the panel.</description>
+    </key>
+
+    <key name="tray-items-seen" type="as">
+      <default>[]</default>
+      <summary>Icons currently available (written by the extension)</summary>
+      <description>"identifier TAB name" of each icon that can be moved inside the panel; used by the preferences window.</description>
+    </key>
+
     <key name="calendar-collapsed" type="b">
       <default>true</default>
       <summary>Collapse the calendar every time the panel opens</summary>

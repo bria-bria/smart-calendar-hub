@@ -120,3 +120,15 @@ msgstr "Clicca su «Calendario ed eventi» per aprirlo"
 
 msgid "Panel width (pixels)"
 msgstr "Larghezza del pannello (pixel)"
+
+msgid "Apps inside the panel"
+msgstr "App dentro il pannello"
+
+msgid "Choose, among the icons present now, which ones move inside the panel and which stay in the top bar."
+msgstr "Scegli, tra le icone presenti adesso, quali vanno dentro il pannello e quali restano nella barra in alto."
+
+msgid "No icons found yet"
+msgstr "Nessuna icona trovata per ora"
+
+msgid "Open the panel once: the list fills in by itself"
+msgstr "Apri il pannello una volta: l'elenco si riempie da solo"
