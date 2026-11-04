@@ -685,6 +685,10 @@ export default class SmartCalendarHubExtension extends Extension {
     // Writes the icons that can be moved, for the preferences window
     // (only when the list changed, to avoid needless dconf writes).
     _publishTrayItems() {
+        // With the tray turned off nothing is a candidate: keep the last list,
+        // so the preferences show it greyed out instead of empty.
+        if (this._settings.get_string('tray-mode') === 'disabled')
+            return;
         const items = new Map();
         for (const [role, indicator] of Object.entries(Main.panel.statusArea)) {
             if (this._isTrayCandidate(role, indicator)) {
