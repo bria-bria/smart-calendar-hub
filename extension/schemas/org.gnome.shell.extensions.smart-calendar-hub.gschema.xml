@@ -59,6 +59,12 @@
       <description>"identifier TAB name" of each app seen in the notification list; used by the preferences window.</description>
     </key>
 
+    <key name="hidden-calendars" type="as">
+      <default>[]</default>
+      <summary>Calendars not shown in the panel</summary>
+      <description>Source identifiers (evolution-data-server) of the calendars switched off in the preferences.</description>
+    </key>
+
     <key name="calendar-collapsed" type="b">
       <default>true</default>
       <summary>Collapse the calendar every time the panel opens</summary>

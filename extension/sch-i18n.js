@@ -69,13 +69,31 @@ export const IT = {
     "(no title)":
         "(senza titolo)",
 
+    // --- Calendars shown (prefs.js) ---
+    "Tray":
+        "Vassoio",
+    "Calendars":
+        "Calendari",
+    "Notifications":
+        "Notifiche",
+    "Appearance":
+        "Aspetto",
+    "Calendars shown":
+        "Calendari visualizzati",
+    "Choose which calendars appear in the panel. This does not change your online accounts.":
+        "Scegli quali calendari compaiono nel pannello. Gli account online non vengono modificati.",
+    "No calendars found":
+        "Nessun calendario trovato",
+    "Calendars come from the online accounts in GNOME Settings":
+        "I calendari arrivano dagli account online nelle Impostazioni di GNOME",
+
     // --- Preferences window (prefs.js) ---
     "Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on":
         "Le icone del vassoio richiedono l'estensione «AppIndicator and KStatusNotifierItem Support»: attivala",
     "Position":
         "Posizione",
-    "Where the side panel opens, where the clock sits in the top bar and which icons are gathered inside the panel.":
-        "Dove si apre il pannello laterale, dove sta l'ora nella barra in alto e quali icone vengono raccolte dentro il pannello.",
+    "Where the side panel opens and where the clock sits in the top bar.":
+        "Dove si apre il pannello laterale e dove sta l'ora nella barra in alto.",
     "Panel side":
         "Lato del pannello",
     "Side of the screen where the panel appears when you click the clock":

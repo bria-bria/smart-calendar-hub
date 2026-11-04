@@ -43,6 +43,7 @@ gnome-extensions pack "$EXT_SRC" \
     --schema="schemas/org.gnome.shell.extensions.smart-calendar-hub.gschema.xml" \
     --extra-source="sch-i18n.js" \
     --extra-source="sch-calendar.js" \
+    --extra-source="sch-eds.js" \
     --extra-source="$PROJ_DIR/LICENSE"
 echo "Pacchetto creato: $ZIP"
 

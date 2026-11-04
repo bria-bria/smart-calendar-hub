@@ -8,6 +8,7 @@ import Gtk from 'gi://Gtk';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {_, loadUserTranslations} from './sch-i18n.js';
+import {loadCalendars} from './sch-eds.js';
 
 // Extensions that provide tray icons (upstream and Ubuntu's build).
 const APPINDICATOR_UUIDS = [
@@ -110,6 +111,59 @@ function appSwitchGroup(window, settings, opts) {
     return group;
 }
 
+// One switch per calendar of the online accounts (from evolution-data-server),
+// with its colour and account. Switched-off calendars go in hidden-calendars
+// and disappear from the panel only (Google is not touched).
+async function calendarsGroup(settings) {
+    const group = new Adw.PreferencesGroup({
+        title: _('Calendars shown'),
+        description: _('Choose which calendars appear in the panel. This does not change your online accounts.'),
+    });
+
+    let calendars = [];
+    try {
+        calendars = await loadCalendars();
+    } catch (e) {
+        console.error(`Smart Calendar Hub: cannot read the calendars: ${e}`);
+    }
+    if (!calendars.length) {
+        group.add(new Adw.ActionRow({
+            title: _('No calendars found'),
+            subtitle: _('Calendars come from the online accounts in GNOME Settings'),
+        }));
+        return group;
+    }
+
+    // Grouped by account, then by name; local calendars last
+    calendars.sort((a, b) =>
+        (a.account === '') - (b.account === '') ||
+        a.account.localeCompare(b.account) ||
+        a.name.localeCompare(b.name));
+
+    const hidden = new Set(settings.get_strv('hidden-calendars'));
+    for (const cal of calendars) {
+        const row = new Adw.SwitchRow({
+            title: cal.name,
+            subtitle: cal.account,
+            active: !hidden.has(cal.uid),
+        });
+        // coloured dot, the same colour as in the panel (safeColor-checked)
+        row.add_prefix(new Gtk.Label({
+            use_markup: true,
+            label: `<span foreground="${cal.color}" size="x-large">●</span>`,
+            valign: Gtk.Align.CENTER,
+        }));
+        row.connect('notify::active', () => {
+            const list = settings.get_strv('hidden-calendars').filter(u => u !== cal.uid);
+            if (!row.active)
+                list.push(cal.uid);
+            settings.set_strv('hidden-calendars', list);
+        });
+        group.add(row);
+    }
+    return group;
+}
+
 export default class SmartCalendarHubPreferences extends ExtensionPreferences {
     // async: GNOME 47+ waits for it, so the window is built already translated
     async fillPreferencesWindow(window) {
@@ -123,42 +177,35 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
 
         const settings = this.getSettings();
         window._settings = settings;
-        // wide enough for the longer descriptions
-        window.set_default_size(720, 900);
+        // Four tabs instead of one long page; the tab bar adapts to the width
+        window.set_default_size(640, 760);
+        window.search_enabled = true;
 
-        const page = new Adw.PreferencesPage({
-            title: 'Smart Calendar Hub',
+        const pagePanel = new Adw.PreferencesPage({
+            title: _('Panel'),
+            icon_name: 'view-dual-symbolic',
+        });
+        const pageTray = new Adw.PreferencesPage({
+            title: _('Tray'),
+            icon_name: 'view-app-grid-symbolic',
+        });
+        const pageCalendars = new Adw.PreferencesPage({
+            title: _('Calendars'),
             icon_name: 'x-office-calendar-symbolic',
         });
-        window.add(page);
-
-        // Tray icons are created by the AppIndicator extension: warn if it is off.
-        const shellSettings = new Gio.Settings({schema_id: 'org.gnome.shell'});
-        const banner = new Adw.Banner({
-            title: _('Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on'),
+        const pageNotifications = new Adw.PreferencesPage({
+            title: _('Notifications'),
+            icon_name: 'preferences-system-notifications-symbolic',
         });
-        const syncBanner = () => {
-            const enabled = shellSettings.get_strv('enabled-extensions')
-                .some(uuid => APPINDICATOR_UUIDS.includes(uuid));
-            banner.revealed = !enabled && settings.get_string('tray-mode') !== 'disabled';
-        };
-        syncBanner();
-        const shellId = shellSettings.connect('changed::enabled-extensions', syncBanner);
-        const trayId = settings.connect('changed::tray-mode', syncBanner);
-        window.connect('close-request', () => {
-            shellSettings.disconnect(shellId);
-            settings.disconnect(trayId);
-            return false;
-        });
-        const bannerGroup = new Adw.PreferencesGroup();
-        bannerGroup.add(banner);
-        page.add(bannerGroup);
+        for (const page of [pagePanel, pageTray, pageCalendars, pageNotifications])
+            window.add(page);
 
+        // ---------------- Panel ----------------
         const position = new Adw.PreferencesGroup({
             title: _('Position'),
-            description: _('Where the side panel opens, where the clock sits in the top bar and which icons are gathered inside the panel.'),
+            description: _('Where the side panel opens and where the clock sits in the top bar.'),
         });
-        page.add(position);
+        pagePanel.add(position);
 
         position.add(choiceRow(settings, 'sidebar-side',
             _('Panel side'),
@@ -179,27 +226,6 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
                 ['center', _('Center (GNOME default)')],
             ]));
 
-        position.add(choiceRow(settings, 'tray-mode',
-            _('Icons inside the panel'),
-            _('Top bar icons moved to the top of the panel'),
-            [
-                ['all-tray', _('Tray icons of applications')],
-                ['all-right-icons', _('All icons on the right side')],
-                ['disabled', _('None, leave them in the top bar')],
-            ]));
-
-        page.add(appSwitchGroup(window, settings, {
-            title: _('Apps inside the panel'),
-            description: _('Choose, among the icons present now, which ones move inside the panel and which stay in the top bar.'),
-            seenKey: 'tray-items-seen',
-            listKey: 'tray-excluded',
-            listMeansOn: false,
-            emptyTitle: _('No icons found yet'),
-            emptySubtitle: _('Open the panel once: the list fills in by itself'),
-            isDisabled: () => settings.get_string('tray-mode') === 'disabled',
-            watchKeys: ['tray-mode'],
-        }));
-
         const tboRow = new Adw.SwitchRow({
             title: _('Keep Top Bar Organizer in sync'),
             subtitle: _('Also writes the clock position into the Top Bar Organizer extension settings; the previous order is restored when Smart Calendar Hub is turned off'),
@@ -207,21 +233,11 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('sync-top-bar-organizer', tboRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         position.add(tboRow);
 
-        page.add(appSwitchGroup(window, settings, {
-            title: _('Red dot on the clock'),
-            description: _('A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon signals something new (only for apps that report it, e.g. Telegram).'),
-            seenKey: 'notify-apps-seen',
-            listKey: 'alert-apps',
-            listMeansOn: true,
-            emptyTitle: _('No notifications seen yet'),
-            emptySubtitle: _('Apps appear here after they send a notification'),
-        }));
-
         const look = new Adw.PreferencesGroup({
-            title: _('Panel'),
+            title: _('Appearance'),
             description: _('From top to bottom: tray icons, weather (collapsed at login, with the settings button), date, calendar, notifications, world clocks.'),
         });
-        page.add(look);
+        pagePanel.add(look);
 
         const collapseRow = new Adw.SwitchRow({
             title: _('Calendar collapsed on opening'),
@@ -241,5 +257,65 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('sidebar-width', widthRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         look.add(widthRow);
+
+        // ---------------- Tray ----------------
+        // Tray icons are created by the AppIndicator extension: warn if it is off.
+        const shellSettings = new Gio.Settings({schema_id: 'org.gnome.shell'});
+        const banner = new Adw.Banner({
+            title: _('Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on'),
+        });
+        const syncBanner = () => {
+            const enabled = shellSettings.get_strv('enabled-extensions')
+                .some(uuid => APPINDICATOR_UUIDS.includes(uuid));
+            banner.revealed = !enabled && settings.get_string('tray-mode') !== 'disabled';
+        };
+        syncBanner();
+        const shellId = shellSettings.connect('changed::enabled-extensions', syncBanner);
+        const trayId = settings.connect('changed::tray-mode', syncBanner);
+        window.connect('close-request', () => {
+            shellSettings.disconnect(shellId);
+            settings.disconnect(trayId);
+            return false;
+        });
+        const bannerGroup = new Adw.PreferencesGroup();
+        bannerGroup.add(banner);
+        pageTray.add(bannerGroup);
+
+        const trayGroup = new Adw.PreferencesGroup();
+        trayGroup.add(choiceRow(settings, 'tray-mode',
+            _('Icons inside the panel'),
+            _('Top bar icons moved to the top of the panel'),
+            [
+                ['all-tray', _('Tray icons of applications')],
+                ['all-right-icons', _('All icons on the right side')],
+                ['disabled', _('None, leave them in the top bar')],
+            ]));
+        pageTray.add(trayGroup);
+
+        pageTray.add(appSwitchGroup(window, settings, {
+            title: _('Apps inside the panel'),
+            description: _('Choose, among the icons present now, which ones move inside the panel and which stay in the top bar.'),
+            seenKey: 'tray-items-seen',
+            listKey: 'tray-excluded',
+            listMeansOn: false,
+            emptyTitle: _('No icons found yet'),
+            emptySubtitle: _('Open the panel once: the list fills in by itself'),
+            isDisabled: () => settings.get_string('tray-mode') === 'disabled',
+            watchKeys: ['tray-mode'],
+        }));
+
+        // ---------------- Calendars ----------------
+        pageCalendars.add(await calendarsGroup(settings));
+
+        // ---------------- Notifications ----------------
+        pageNotifications.add(appSwitchGroup(window, settings, {
+            title: _('Red dot on the clock'),
+            description: _('A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon signals something new (only for apps that report it, e.g. Telegram).'),
+            seenKey: 'notify-apps-seen',
+            listKey: 'alert-apps',
+            listMeansOn: true,
+            emptyTitle: _('No notifications seen yet'),
+            emptySubtitle: _('Apps appear here after they send a notification'),
+        }));
     }
 }

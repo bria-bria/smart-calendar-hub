@@ -19,10 +19,8 @@ import St from 'gi://St';
 import {formatDateWithCFormatString, formatTime} from 'resource:///org/gnome/shell/misc/dateUtils.js';
 
 import {_} from './sch-i18n.js';
+import {FALLBACK_COLOR, loadCalendars} from './sch-eds.js';
 
-const EDS_SOURCES = 'org.gnome.evolution.dataserver.Sources5';
-const EDS_PATH = '/org/gnome/evolution/dataserver/SourceManager';
-const FALLBACK_COLOR = '#62a0ea';
 const MAX_DOTS = 3;
 
 function dayBegin(date) {
@@ -40,11 +38,6 @@ function sameDay(a, b) {
 
 function capitalize(text) {
     return text ? text[0].toLocaleUpperCase() + text.slice(1) : text;
-}
-
-// Only #rgb / #rrggbb colours are used in inline styles
-function safeColor(color) {
-    return /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(color ?? '') ? color : FALLBACK_COLOR;
 }
 
 // The event id of GNOME's calendar server starts with the calendar's source UID
@@ -70,6 +63,12 @@ export class CalendarView {
         this._sourceSignal = null;
         this._refreshId = 0;
         this._cancellable = new Gio.Cancellable();
+        // Calendars switched off in the preferences (source UIDs)
+        this._hidden = new Set(settings.get_strv('hidden-calendars'));
+        this._connect(settings, 'changed::hidden-calendars', () => {
+            this._hidden = new Set(settings.get_strv('hidden-calendars'));
+            this._queueRefresh();
+        });
 
         this.actor = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
@@ -140,12 +139,17 @@ export class CalendarView {
             this._sourceSignal = this._connect(source, 'changed', () => this._queueRefresh());
     }
 
+    // Events in [begin, end) of the calendars not switched off
     _getEvents(begin, end) {
+        let events;
         try {
-            return this._dateMenu._eventSource?.getEvents(begin, end) ?? [];
+            events = this._dateMenu._eventSource?.getEvents(begin, end) ?? [];
         } catch (_e) {
             return [];
         }
+        return this._hidden.size
+            ? events.filter(ev => !this._hidden.has(sourceUid(ev)))
+            : events;
     }
 
     _calendarOf(event) {
@@ -154,37 +158,8 @@ export class CalendarView {
 
     // Names and colours of the calendars, from evolution-data-server
     async _loadCalendars() {
-        const reply = await Gio.DBus.session.call(EDS_SOURCES, EDS_PATH,
-            'org.freedesktop.DBus.ObjectManager', 'GetManagedObjects', null,
-            new GLib.VariantType('(a{oa{sa{sv}}})'), Gio.DBusCallFlags.NONE, -1,
-            this._cancellable);
-        const [objects] = reply.recursiveUnpack();
-        for (const ifaces of Object.values(objects)) {
-            const props = ifaces['org.gnome.evolution.dataserver.Source'];
-            if (!props?.UID || !props.Data)
-                continue;
-            const keyFile = new GLib.KeyFile();
-            try {
-                keyFile.load_from_data(props.Data, -1, GLib.KeyFileFlags.NONE);
-                if (!keyFile.has_group('Calendar'))
-                    continue;
-                let name = props.UID;
-                try {
-                    name = keyFile.get_locale_string('Data Source', 'DisplayName', null);
-                } catch (_e) {
-                    // no name: keep the UID
-                }
-                let color = null;
-                try {
-                    color = keyFile.get_string('Calendar', 'Color');
-                } catch (_e) {
-                    // no colour
-                }
-                this._calendars.set(props.UID, {name, color: safeColor(color)});
-            } catch (_e) {
-                // malformed source: skip it
-            }
-        }
+        for (const {uid, name, color} of await loadCalendars(this._cancellable))
+            this._calendars.set(uid, {name, color});
         this._queueRefresh();
     }
 
