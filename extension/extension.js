@@ -89,6 +89,9 @@ export default class SmartCalendarHubExtension extends Extension {
         for (const [source, id] of this._alertSources ?? [])
             source.disconnect(id);
         this._alertSources = null;
+        for (const [sni, ids] of this._alertTray ?? [])
+            ids.forEach(id => sni.disconnect(id));
+        this._alertTray = null;
         this._alertDot?.destroy();
         this._alertDot = null;
 
@@ -354,6 +357,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const clock = this._dateMenu._clockDisplay;
         const clockBox = clock?.get_parent();
         this._alertSources = new Map();
+        this._alertTray = new Map();
         if (!clockBox)
             return;
 
@@ -378,7 +382,7 @@ export default class SmartCalendarHubExtension extends Extension {
         });
         for (const source of Main.messageTray.getSources())
             this._watchSource(source);
-        this._updateAlertDot();
+        this._syncTrayAlerts();
     }
 
     // Stable identifier of the app behind a notification source.
@@ -400,9 +404,12 @@ export default class SmartCalendarHubExtension extends Extension {
     // Adds the app to the list shown in the preferences (kept across sessions).
     _rememberSource(source) {
         const key = this._sourceKey(source);
-        if (!key)
-            return;
-        const label = (source.title || key).replace(/[\t\n]/g, ' ');
+        if (key)
+            this._rememberApp(key, source.title || key);
+    }
+
+    _rememberApp(key, rawLabel) {
+        const label = rawLabel.replace(/[\t\n]/g, ' ');
         const line = `${key}\t${label}`;
         const seen = this._settings.get_strv('notify-apps-seen');
         if (seen.includes(line))
@@ -417,8 +424,43 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!this._alertDot)
             return;
         const wanted = new Set(this._settings.get_strv('alert-apps'));
-        this._alertDot.visible = [...this._alertSources.keys()]
-            .some(s => s.count > 0 && wanted.has(this._sourceKey(s)));
+        this._alertDot.visible =
+            [...this._alertSources.keys()]
+                .some(s => s.count > 0 && wanted.has(this._sourceKey(s))) ||
+            [...this._alertTray.keys()]
+                .some(sni => wanted.has(`tray:${sni.id}`) && this._trayIsAlerting(sni));
+    }
+
+    // Tray icons (AppIndicator) can also ask for attention: either with the
+    // NeedsAttention status, or, like Telegram, by switching to an icon whose
+    // name says so. Apps that only draw a badge inside the image cannot be read.
+    _trayIsAlerting(sni) {
+        return sni.status === 'NeedsAttention' ||
+            /attention|unread|updates-available/i.test(sni.icon?.name ?? '');
+    }
+
+    // Follows every AppIndicator icon (wherever it is) for the red dot.
+    _syncTrayAlerts() {
+        if (!this._alertTray)
+            return;
+        for (const indicator of Object.values(Main.panel.statusArea)) {
+            const sni = indicator?._indicator;
+            if (!sni?.id || this._alertTray.has(sni) || typeof sni.connect !== 'function')
+                continue;
+            const update = () => this._updateAlertDot();
+            const ids = [
+                sni.connect('icon', update),
+                sni.connect('status', update),
+                sni.connect('destroy', () => {
+                    this._alertTray?.delete(sni);
+                    this._updateAlertDot();
+                }),
+            ];
+            this._alertTray.set(sni, ids);
+            this._rememberApp(`tray:${sni.id}`,
+                _('%s (tray icon)').replace('%s', sni.title || sni.id));
+        }
+        this._updateAlertDot();
     }
 
     // ------------------------------------------------------------------
@@ -834,6 +876,7 @@ export default class SmartCalendarHubExtension extends Extension {
             this._syncingTray = false;
         }
         this._layoutTray();
+        this._syncTrayAlerts();
     }
 
     // Puts the moved icons in rows that fit the panel width.

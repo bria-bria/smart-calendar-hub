@@ -136,11 +136,14 @@ msgstr "Apri il pannello una volta: l'elenco si riempie da solo"
 msgid "Red dot on the clock"
 msgstr "Puntino rosso sull'ora"
 
-msgid "A red dot appears next to the clock while one of the apps switched on here has notifications."
-msgstr "Accanto all'ora compare un puntino rosso finché una delle app accese qui ha delle notifiche."
+msgid "A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon signals something new (only for apps that report it, e.g. Telegram)."
+msgstr "Accanto all'ora compare un puntino rosso finché una delle app accese qui ha delle notifiche, o la sua icona del vassoio segnala una novità (solo per le app che lo comunicano, per esempio Telegram)."
 
 msgid "No notifications seen yet"
 msgstr "Nessuna notifica vista per ora"
 
 msgid "Apps appear here after they send a notification"
 msgstr "Le app compaiono qui dopo aver inviato una notifica"
+
+msgid "%s (tray icon)"
+msgstr "%s (icona del vassoio)"

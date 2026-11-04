@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Smart Calendar Hub\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-04 19:35+0100\n"
+"POT-Creation-Date: 2026-11-04 19:42+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,59 +17,64 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:537
+#: extension.js:461
+#, javascript-format
+msgid "%s (tray icon)"
+msgstr ""
+
+#: extension.js:579
 msgid "Layout options"
 msgstr ""
 
-#: extension.js:562
+#: extension.js:604
 msgid "Calendar and events"
 msgstr ""
 
-#: extension.js:655 prefs.js:142
+#: extension.js:697 prefs.js:142
 msgid "Panel side"
 msgstr ""
 
-#: extension.js:656
+#: extension.js:698
 msgid "Right"
 msgstr ""
 
-#: extension.js:657 extension.js:663
+#: extension.js:699 extension.js:705
 msgid "Left"
 msgstr ""
 
-#: extension.js:658
+#: extension.js:700
 msgid "Under the clock"
 msgstr ""
 
-#: extension.js:660 prefs.js:151
+#: extension.js:702 prefs.js:151
 msgid "Clock in the top bar"
 msgstr ""
 
-#: extension.js:661
+#: extension.js:703
 msgid "Before menus"
 msgstr ""
 
-#: extension.js:662
+#: extension.js:704
 msgid "Before tray"
 msgstr ""
 
-#: extension.js:664
+#: extension.js:706
 msgid "Center"
 msgstr ""
 
-#: extension.js:666 prefs.js:161
+#: extension.js:708 prefs.js:161
 msgid "Icons inside the panel"
 msgstr ""
 
-#: extension.js:667
+#: extension.js:709
 msgid "Tray apps"
 msgstr ""
 
-#: extension.js:668
+#: extension.js:710
 msgid "All icons"
 msgstr ""
 
-#: extension.js:669
+#: extension.js:711
 msgid "None"
 msgstr ""
 
@@ -177,7 +182,8 @@ msgstr ""
 #: prefs.js:190
 msgid ""
 "A red dot appears next to the clock while one of the apps switched on here "
-"has notifications."
+"has notifications, or its tray icon signals something new (only for apps "
+"that report it, e.g. Telegram)."
 msgstr ""
 
 #: prefs.js:194
