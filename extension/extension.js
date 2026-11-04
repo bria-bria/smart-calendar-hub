@@ -437,6 +437,10 @@ export default class SmartCalendarHubExtension extends Extension {
         });
         this._traySection.add_child(this._trayBox);
         this._sidebar.add_child(this._traySection);
+        // Hide the section when icons leave it (closed apps, other extensions).
+        this._trayBox.connect('child-removed', () => {
+            this._traySection.visible = this._trayBox.get_n_children() > 0;
+        });
 
         // Title + quick settings button
         const header = new St.BoxLayout({style_class: 'sch-header', x_expand: true});
@@ -687,7 +691,13 @@ export default class SmartCalendarHubExtension extends Extension {
         this._syncingTray = true;
         try {
             for (const [indicator, info] of [...this._movedTrayItems]) {
-                if (!this._wantsInTray(info.role, indicator)) {
+                if (info.container.get_parent() !== this._trayBox) {
+                    // Another extension (e.g. Top Bar Organizer, which re-sorts
+                    // every icon whenever one is added) took it back to the
+                    // top bar: forget it, the loop below moves it in again.
+                    this._releaseTrayItem(indicator, info);
+                    this._movedTrayItems.delete(indicator);
+                } else if (!this._wantsInTray(info.role, indicator)) {
                     this._restoreTrayItem(indicator, info);
                     this._movedTrayItems.delete(indicator);
                 }
@@ -747,19 +757,24 @@ export default class SmartCalendarHubExtension extends Extension {
         this._movedTrayItems.set(indicator, info);
     }
 
+    // Undoes everything _moveToTray did except the position of the container.
+    _releaseTrayItem(indicator, info) {
+        info.container.disconnect(info.destroyId);
+        const menu = indicator.menu;
+        if (menu && info.menuId) {
+            menu.disconnect(info.menuId);
+            this._trayMenuManager?.removeMenu(menu);
+            if (info.hadPanelMenu)
+                Main.panel.menuManager.addMenu(menu);
+        }
+        info.container.remove_style_class_name('sch-tray-item');
+        info.container.y_expand = info.yExpand;
+    }
+
     _restoreTrayItem(indicator, info) {
         try {
-            info.container.disconnect(info.destroyId);
-            const menu = indicator.menu;
-            if (menu && info.menuId) {
-                menu.disconnect(info.menuId);
-                this._trayMenuManager?.removeMenu(menu);
-                if (info.hadPanelMenu)
-                    Main.panel.menuManager.addMenu(menu);
-            }
+            this._releaseTrayItem(indicator, info);
             info.container.get_parent()?.remove_child(info.container);
-            info.container.remove_style_class_name('sch-tray-item');
-            info.container.y_expand = info.yExpand;
             const n = info.parent.get_n_children();
             info.parent.insert_child_at_index(info.container, Math.min(info.index, n));
         } catch (e) {
