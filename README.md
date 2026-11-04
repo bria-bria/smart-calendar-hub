@@ -5,12 +5,12 @@ A GNOME Shell extension that turns the clock menu into a side panel.
 From top to bottom the panel shows:
 
 1. tray icons of applications (optional),
-2. a small header with a button that opens the settings,
-3. weather,
-4. today's date,
-5. the calendar and events, collapsed by default,
-6. notifications,
-7. world clocks.
+2. weather, collapsed at login (it stays as you leave it until you log out),
+   next to the button that opens the settings,
+3. today's date,
+4. the calendar and events, collapsed by default,
+5. notifications,
+6. world clocks, next to the button that clears the notifications.
 
 It also shows the current temperature next to the clock (unless another
 extension, such as Weather O'Clock, already does it) and lets you move the
@@ -29,7 +29,7 @@ the panel; the preferences window shows a warning when that extension is off.
 ## Settings
 
 Open the extension preferences (Extensions app → Smart Calendar Hub) or click
-the gear icon in the panel header.
+the gear icon next to the weather.
 
 - **Panel side**: right edge, left edge, or under the clock button.
 - **Clock in the top bar**: right before the system menu, right before the

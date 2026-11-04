@@ -197,7 +197,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
 
         const look = new Adw.PreferencesGroup({
             title: _('Panel'),
-            description: _('From top to bottom: tray icons, title, weather, date, calendar, notifications, world clocks.'),
+            description: _('From top to bottom: tray icons, weather (collapsed at login, with the settings button), date, calendar, notifications, world clocks.'),
         });
         page.add(look);
 

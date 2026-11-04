@@ -55,20 +55,14 @@
     background-color: rgba(255, 255, 255, 0.16);
 }
 
-/* Title + settings button */
-.sch-header {
-    padding: 2px 6px;
+/* Weather row: collapsible weather + settings button */
+.sch-weather-row {
     spacing: 6px;
 }
 
-.sch-header-title {
-    font-size: 0.82em;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.55);
-}
-
 .sch-gear-button {
-    padding: 5px 8px;
+    margin-right: 4px;
+    padding: 9px;
     border-radius: 999px;
     background-color: rgba(255, 255, 255, 0.08);
 }

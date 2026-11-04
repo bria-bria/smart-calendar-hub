@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Smart Calendar Hub\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-04 19:46+0100\n"
+"POT-Creation-Date: 2026-11-04 19:49+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,16 +17,20 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:459
+#: extension.js:479
 #, javascript-format
 msgid "%s (tray icon)"
 msgstr ""
 
-#: extension.js:577
+#: extension.js:599 extension.js:734
+msgid "Weather"
+msgstr ""
+
+#: extension.js:617
 msgid "Settings"
 msgstr ""
 
-#: extension.js:600
+#: extension.js:656
 msgid "Calendar and events"
 msgstr ""
 
@@ -164,8 +168,8 @@ msgstr ""
 
 #: prefs.js:200
 msgid ""
-"From top to bottom: tray icons, title, weather, date, calendar, "
-"notifications, world clocks."
+"From top to bottom: tray icons, weather (collapsed at login, with the "
+"settings button), date, calendar, notifications, world clocks."
 msgstr ""
 
 #: prefs.js:205

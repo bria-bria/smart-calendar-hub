@@ -37,6 +37,10 @@ const ROLES_NEVER_IN_TRAY = new Set([
 // Items of the right box that are "GNOME menus": the clock goes just before them.
 const MENU_TAIL_ROLES = ['EmojisMenu', 'clipboardIndicator', 'quickSettings'];
 
+// Weather section open or closed. Module-level on purpose: it survives
+// disable/enable (screen lock) and goes back to closed at the next login.
+let weatherExpanded = false;
+
 export default class SmartCalendarHubExtension extends Extension {
     enable() {
         this._dateMenu = Main.panel.statusArea.dateMenu;
@@ -138,6 +142,9 @@ export default class SmartCalendarHubExtension extends Extension {
         this._trayBox = null;
         this._calendarBox = null;
         this._calendarArrow = null;
+        this._weatherBody = null;
+        this._weatherArrow = null;
+        this._weatherSummary = null;
 
         this._origBin?.show();
         this._origBin = null;
@@ -576,30 +583,66 @@ export default class SmartCalendarHubExtension extends Extension {
         this._traySection.add_child(this._trayBox);
         this._sidebar.add_child(this._traySection);
 
-        // Title + button that opens the preferences window
-        const header = new St.BoxLayout({style_class: 'sch-header', x_expand: true});
-        header.add_child(new St.Label({
-            text: 'SMART CALENDAR HUB',
-            style_class: 'sch-header-title',
+        // 1. Weather, collapsible; the settings button sits on the same row
+        // (no title row, to save space).
+        const weatherRow = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true});
+        this._sidebar.add_child(weatherRow);
+
+        const weatherExpander = new St.Button({
+            style_class: 'sch-calendar-expander sch-weather-expander',
+            x_expand: true,
+            can_focus: true,
+            visible: !!dm._weatherItem,
+        });
+        const weatherLine = new St.BoxLayout({x_expand: true});
+        this._weatherSummary = new St.Label({
+            text: _('Weather'),
+            style_class: 'sch-calendar-expander-label',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
-        }));
+        });
+        weatherLine.add_child(this._weatherSummary);
+        this._weatherArrow = new St.Icon({
+            icon_name: 'pan-end-symbolic',
+            icon_size: 16,
+            style_class: 'sch-calendar-expander-arrow',
+        });
+        weatherLine.add_child(this._weatherArrow);
+        weatherExpander.set_child(weatherLine);
+        weatherRow.add_child(weatherExpander);
+
         const gear = new St.Button({
             style_class: 'sch-gear-button',
             can_focus: true,
             accessible_name: _('Settings'),
-            child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 14}),
+            y_align: Clutter.ActorAlign.CENTER,
+            child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 16}),
         });
-        header.add_child(gear);
-        this._sidebar.add_child(header);
-
+        weatherRow.add_child(gear);
         gear.connect('clicked', () => {
             dm.menu.close();
             this.openPreferences();
         });
 
-        // 1. Weather, 2. Date
-        this._adopt(dm._weatherItem, this._sidebar);
+        this._weatherBody = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+        });
+        this._sidebar.add_child(this._weatherBody);
+        this._adopt(dm._weatherItem, this._weatherBody);
+        weatherExpander.connect('clicked', () => {
+            weatherExpanded = !weatherExpanded;
+            this._syncWeatherExpanded();
+        });
+        this._syncWeatherExpanded();
+
+        const client = dm._weatherItem?._weatherClient;
+        if (client) {
+            this._connect(client, 'changed', () => this._updateWeatherSummary(client));
+            this._updateWeatherSummary(client);
+        }
+
+        // 2. Date
         this._adopt(dm._date, this._sidebar);
 
         // 3. Collapsible calendar + events
@@ -674,6 +717,29 @@ export default class SmartCalendarHubExtension extends Extension {
         }
 
         this._updateSidebarSize();
+    }
+
+    _syncWeatherExpanded() {
+        if (!this._weatherBody)
+            return;
+        this._weatherBody.visible = weatherExpanded;
+        this._weatherArrow.icon_name = weatherExpanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
+        this._relayout();
+    }
+
+    // "Weather · 10° Brescia" on the collapsed row.
+    _updateWeatherSummary(client) {
+        if (!this._weatherSummary)
+            return;
+        let text = _('Weather');
+        const info = client.info;
+        if (client.hasLocation && info?.is_valid()) {
+            const [ok, temp] = info.get_value_temp(GWeather.TemperatureUnit.DEFAULT);
+            const place = info.get_location_name() ?? '';
+            if (ok && Number.isFinite(temp))
+                text += ` · ${Math.round(temp)}° ${place}`.trimEnd();
+        }
+        this._weatherSummary.text = text;
     }
 
     _setCalendarExpanded(expanded) {
