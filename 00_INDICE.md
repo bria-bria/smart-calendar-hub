@@ -7,7 +7,8 @@
 | `extension/stylesheet.css` | Aspetto (classi `sch-*`) |
 | `extension/metadata.json` | Nome, UUID, versioni GNOME supportate |
 | `extension/schemas/…gschema.xml` | Impostazioni (GSettings) |
-| `extension/po/it.po` | Traduzione italiana (i testi nel codice sono in inglese) |
+| `extension/sch-i18n.js` | Traduzioni: funzione `_()`, tabella italiana `IT`, file utente per le altre lingue |
+| `strumenti/controlla-traduzioni.py` | Controlla che ogni frase del codice abbia la traduzione italiana |
 | `installa-smart-calendar-hub.sh` | Crea lo zip, toglie la vecchia Raven, installa e attiva |
 | `README.md` | Descrizione pubblica (inglese) |
 | `LICENSE` | GPL-2.0 |

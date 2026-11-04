@@ -4,7 +4,8 @@
 # ============================================================
 #  installa-smart-calendar-hub.sh  (installazione di sviluppo)
 #  1. Crea il pacchetto zip in dist/ (lo stesso da caricare su
-#     extensions.gnome.org), con traduzioni e schema delle impostazioni
+#     extensions.gnome.org), con schema delle impostazioni e traduzioni
+#     (prima controlla che ogni frase abbia la traduzione italiana)
 #  2. Disattiva e rimuove la vecchia "raven-calendar@michele.local"
 #  3. Installa e attiva Smart Calendar Hub
 #
@@ -32,13 +33,15 @@ fi
 ZIP="$DIST/$EXT_UUID.shell-extension.zip"
 
 # --- 1. Pacchetto ---
+# Ogni frase del codice deve avere la sua traduzione italiana (sch-i18n.js)
+python3 -I "$PROJ_DIR/strumenti/controlla-traduzioni.py"
 glib-compile-schemas --strict --dry-run "$EXT_SRC/schemas"
 mkdir -p "$DIST"
 gnome-extensions pack "$EXT_SRC" \
     --force \
     --out-dir="$DIST" \
-    --podir=po \
     --schema="schemas/org.gnome.shell.extensions.smart-calendar-hub.gschema.xml" \
+    --extra-source="sch-i18n.js" \
     --extra-source="$PROJ_DIR/LICENSE"
 echo "Pacchetto creato: $ZIP"
 

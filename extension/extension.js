@@ -13,7 +13,9 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
-import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+
+import {_, loadUserTranslations, unloadUserTranslations} from './sch-i18n.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
 const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
@@ -70,11 +72,37 @@ export default class SmartCalendarHubExtension extends Extension {
         this._watchPanelBoxes();
 
         this._connect(this._settings, 'changed', (_s, key) => this._onSettingChanged(key));
+
+        // Languages other than Italian/English: load the user's file, then
+        // translate again the texts already shown (only if still enabled).
+        const token = this._enableToken = {};
+        loadUserTranslations()
+            .then(() => {
+                if (this._enableToken === token)
+                    this._applyStaticTexts();
+            })
+            .catch(e => console.error(`Smart Calendar Hub: translations: ${e}`));
+    }
+
+    // Texts set once when the panel is built (translated again after loading
+    // the user's translation file).
+    _applyStaticTexts() {
+        if (this._calendarLabel)
+            this._calendarLabel.text = _('Calendar and events');
+        if (this._gearButton)
+            this._gearButton.accessible_name = _('Settings');
+        if (this._weatherClient)
+            this._updateWeatherSummary(this._weatherClient);
+        for (const sni of this._alertTray?.keys() ?? [])
+            this._rememberTrayApp(sni);
     }
 
     disable() {
         if (!this._dateMenu)
             return;
+
+        this._enableToken = null;
+        unloadUserTranslations();
 
         if (this._idleId) {
             GLib.source_remove(this._idleId);
@@ -146,6 +174,9 @@ export default class SmartCalendarHubExtension extends Extension {
         this._weatherBody = null;
         this._weatherArrow = null;
         this._weatherSummary = null;
+        this._weatherClient = null;
+        this._calendarLabel = null;
+        this._gearButton = null;
 
         this._origBin?.show();
         this._origBin = null;
@@ -486,10 +517,13 @@ export default class SmartCalendarHubExtension extends Extension {
                 }),
             ];
             this._alertTray.set(sni, ids);
-            this._rememberApp(`tray:${sni.id}`,
-                _('%s (tray icon)').replace('%s', sni.title || sni.id));
+            this._rememberTrayApp(sni);
         }
         this._updateAlertDot();
+    }
+
+    _rememberTrayApp(sni) {
+        this._rememberApp(`tray:${sni.id}`, _('{app} (tray icon)', {app: sni.title || sni.id}));
     }
 
     // ------------------------------------------------------------------
@@ -622,7 +656,7 @@ export default class SmartCalendarHubExtension extends Extension {
         weatherExpander.set_child(weatherLine);
         weatherRow.add_child(weatherExpander);
 
-        const gear = new St.Button({
+        const gear = this._gearButton = new St.Button({
             style_class: 'sch-gear-button',
             can_focus: true,
             accessible_name: _('Settings'),
@@ -647,7 +681,7 @@ export default class SmartCalendarHubExtension extends Extension {
         });
         this._syncWeatherExpanded();
 
-        const client = dm._weatherItem?._weatherClient;
+        const client = this._weatherClient = dm._weatherItem?._weatherClient;
         if (client) {
             this._connect(client, 'changed', () => this._updateWeatherSummary(client));
             this._updateWeatherSummary(client);
@@ -663,12 +697,13 @@ export default class SmartCalendarHubExtension extends Extension {
             can_focus: true,
         });
         const row = new St.BoxLayout({x_expand: true});
-        row.add_child(new St.Label({
+        this._calendarLabel = new St.Label({
             text: _('Calendar and events'),
             style_class: 'sch-calendar-expander-label',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
-        }));
+        });
+        row.add_child(this._calendarLabel);
         this._calendarArrow = new St.Icon({
             icon_name: 'pan-end-symbolic',
             icon_size: 16,
@@ -759,7 +794,7 @@ export default class SmartCalendarHubExtension extends Extension {
             const [ok, temp] = info.get_value_temp(GWeather.TemperatureUnit.DEFAULT);
             const place = info.get_location_name() ?? '';
             if (ok && Number.isFinite(temp))
-                text += ` · ${Math.round(temp)}° ${place}`.trimEnd();
+                text = _('Weather · {temp}° {place}', {temp: Math.round(temp), place}).trim();
         }
         this._weatherSummary.text = text;
     }

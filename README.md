@@ -54,8 +54,47 @@ installs it and enables it. On Wayland, log out and back in to load it.
 
 ## Translations
 
-Source strings are in English; `extension/po/it.po` contains the Italian
-translation.
+Smart Calendar Hub is written in **English** and includes **Italian**.
+Any other language can be translated by you, without programming:
+
+1. Open the Smart Calendar Hub settings once (Extensions app → Smart Calendar
+   Hub, or the gear icon in the panel). The extension creates the file
+   `~/.config/smart-calendar-hub/translations/<language>.json`
+   for your system language (for example `fr.json`, `de.json`, `es.json`).
+   The file lives outside the extension folder, so updates never remove it.
+2. Open the file with a text editor. Each line is
+   `"English sentence": "your translation"`. Write your translation between the
+   second pair of quotes:
+
+   ```json
+   "Weather": "Météo",
+   "Settings": "Paramètres",
+   "Calendar and events": ""
+   ```
+
+   - Sentences left empty (`""`) are shown in English.
+   - Keep the words in braces, such as `{app}` or `{temp}`, exactly as they are:
+     Smart Calendar Hub replaces them with real values.
+3. Save the file and open the settings again. The side panel picks up the new
+   texts at the next login.
+
+**Updates never delete your work.** When a new Smart Calendar Hub version adds
+new sentences, they are appended at the end of your file with an empty
+translation; everything you have already translated stays as it is.
+
+If the file contains a mistake (for example a missing comma), Smart Calendar Hub
+does not touch it, shows English and writes the error in the system log
+(`journalctl --user -f`).
+
+**Please share your translation**: open an
+[issue](https://github.com/bria-bria/smart-calendar-hub/issues) and attach your
+file, so it can be included for everyone in the next version.
+
+For developers: every sentence is passed in English to `_()` in
+`extension/sch-i18n.js`, with values as placeholders
+(`_('{app} (tray icon)', {app: name})`), and must have its Italian translation
+in the `IT` table of the same file. `strumenti/controlla-traduzioni.py` checks
+this (the install script runs it).
 
 ## License
 

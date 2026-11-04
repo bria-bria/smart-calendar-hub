@@ -5,7 +5,9 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
-import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+
+import {_, loadUserTranslations} from './sch-i18n.js';
 
 // Extensions that provide tray icons (upstream and Ubuntu's build).
 const APPINDICATOR_UUIDS = [
@@ -100,7 +102,16 @@ function appSwitchGroup(window, settings, opts) {
 }
 
 export default class SmartCalendarHubPreferences extends ExtensionPreferences {
-    fillPreferencesWindow(window) {
+    // async: GNOME 47+ waits for it, so the window is built already translated
+    async fillPreferencesWindow(window) {
+        // Languages other than Italian/English: create or complete the user's
+        // translation file (new sentences appended at the end), then load it.
+        try {
+            await loadUserTranslations({merge: true});
+        } catch (e) {
+            console.error(`Smart Calendar Hub: translations: ${e}`);
+        }
+
         const settings = this.getSettings();
         window._settings = settings;
 

@@ -34,6 +34,16 @@ I commit usano l'email anonima 301696067+bria-bria@users.noreply.github.com
 (configurata in questo repository). I primi 3 commit hanno ancora l'email
 personale.
 
+## Traduzioni (dal 04/11/2026, come BlueHub)
+Testi del codice in **inglese**, passati a `_()` di `extension/sch-i18n.js`, con i
+valori come segnaposto `{nome}` (mai pezzi di frase concatenati). L'italiano è
+nella tabella `IT` dello stesso file, che è anche l'elenco completo delle frasi:
+**ogni frase nuova va aggiunta a `IT`**. Controllo: `strumenti/controlla-traduzioni.py`
+(lo lancia anche `installa-smart-calendar-hub.sh`). Le altre lingue le traducono
+gli utenti in `~/.config/smart-calendar-hub/translations/<lingua>.json`: le
+Preferenze aggiungono in fondo le frasi nuove senza toccare quelle tradotte.
+Il vecchio gettext (`po/`) è stato tolto.
+
 **Alla fine di ogni modifica importante fare la revisione con la skill
 code-review.**
 
