@@ -119,6 +119,19 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         this._savedParents = null;
 
+        // Undo the bottom-row tweaks after the widgets are back in place.
+        if (this._clearButton) {
+            this._clearButton.remove_style_class_name('sch-clear-button');
+            Object.assign(this._clearButton, this._clearOrig);
+            this._clearButton = null;
+            this._clearOrig = null;
+        }
+        if (this._clocksOrig) {
+            Object.assign(this._dateMenu._clocksItem, this._clocksOrig);
+            this._clocksOrig = null;
+        }
+        this._bottomRow = null;
+
         this._sidebar?.destroy();
         this._sidebar = null;
         this._traySection = null;
@@ -641,8 +654,24 @@ export default class SmartCalendarHubExtension extends Extension {
             this._adopt(dm._messageList, this._sidebar);
         }
 
-        // 5. World clocks
-        this._adopt(dm._clocksItem, this._sidebar);
+        // 5. Bottom row: world clocks (3/5) + "Clear" of the notifications (2/5)
+        this._bottomRow = new St.BoxLayout({style_class: 'sch-bottom-row', x_expand: true});
+        this._sidebar.add_child(this._bottomRow);
+        if (dm._clocksItem) {
+            this._clocksOrig = {x_expand: dm._clocksItem.x_expand};
+            dm._clocksItem.x_expand = true;
+            this._adopt(dm._clocksItem, this._bottomRow);
+        }
+        const clear = dm._messageList?._clearButton;
+        if (clear) {
+            this._clearButton = clear;
+            // width -1 = back to its natural width
+            this._clearOrig = {x_expand: clear.x_expand, x_align: clear.x_align, width: -1};
+            clear.x_expand = false;
+            clear.x_align = Clutter.ActorAlign.FILL;
+            clear.add_style_class_name('sch-clear-button');
+            this._adopt(clear, this._bottomRow);
+        }
 
         this._updateSidebarSize();
     }
@@ -663,6 +692,10 @@ export default class SmartCalendarHubExtension extends Extension {
         this._sidebar.width = this._settings.get_int('sidebar-width');
         // Fill the work area, but never be taller than it
         this._sidebar.height = Math.max(0, workArea.height - 28);
+        // "Clear" takes 2/5 of the bottom row (sidebar padding ≈ 4 px,
+        // margins and spacing ≈ 14 px); the world clocks fill the rest.
+        if (this._clearButton)
+            this._clearButton.width = Math.round((this._sidebar.width - 18) * 2 / 5);
     }
 
     // ------------------------------------------------------------------

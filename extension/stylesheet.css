@@ -156,6 +156,16 @@
     border-radius: 14px;
 }
 
+/* Bottom row: world clocks (3/5) + Clear (2/5) */
+.sch-bottom-row {
+    spacing: 6px;
+}
+
+.sch-bottom-row .sch-clear-button {
+    margin: 2px 4px 2px 0;
+    border-radius: 14px;
+}
+
 /* Red dot on the left of the clock: notifications of the chosen apps */
 .sch-alert-dot {
     width: 8px;
