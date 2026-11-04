@@ -7,6 +7,12 @@ import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+// Extensions that provide tray icons (upstream and Ubuntu's build).
+const APPINDICATOR_UUIDS = [
+    'appindicatorsupport@rgcjonas.gmail.com',
+    'ubuntu-appindicators@ubuntu.com',
+];
+
 // A combo row bound to a string key with a fixed list of values.
 function comboRow(settings, key, title, subtitle, options) {
     const row = new Adw.ComboRow({
@@ -41,6 +47,28 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
             icon_name: 'x-office-calendar-symbolic',
         });
         window.add(page);
+
+        // Tray icons are created by the AppIndicator extension: warn if it is off.
+        const shellSettings = new Gio.Settings({schema_id: 'org.gnome.shell'});
+        const banner = new Adw.Banner({
+            title: _('Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on'),
+        });
+        const syncBanner = () => {
+            const enabled = shellSettings.get_strv('enabled-extensions')
+                .some(uuid => APPINDICATOR_UUIDS.includes(uuid));
+            banner.revealed = !enabled && settings.get_string('tray-mode') !== 'disabled';
+        };
+        syncBanner();
+        const shellId = shellSettings.connect('changed::enabled-extensions', syncBanner);
+        const trayId = settings.connect('changed::tray-mode', syncBanner);
+        window.connect('close-request', () => {
+            shellSettings.disconnect(shellId);
+            settings.disconnect(trayId);
+            return false;
+        });
+        const bannerGroup = new Adw.PreferencesGroup();
+        bannerGroup.add(banner);
+        page.add(bannerGroup);
 
         const position = new Adw.PreferencesGroup({
             title: _('Position'),

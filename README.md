@@ -21,6 +21,11 @@ clock to a different spot of the top bar.
 GNOME Shell 48, 49, 50 or 51. The weather comes from GNOME Weather: set a
 location there to see the temperature.
 
+Tray icons of applications are created by the
+[AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/)
+extension: keep it enabled. Smart Calendar Hub only moves those icons inside
+the panel; the preferences window shows a warning when that extension is off.
+
 ## Settings
 
 Open the extension preferences (Extensions app → Smart Calendar Hub) or click

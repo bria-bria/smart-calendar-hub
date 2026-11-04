@@ -22,6 +22,11 @@ toglie la vecchia, installa la nuova). Su Wayland serve logout/login.
 Sul PC di Michele è attiva l'opzione `sync-top-bar-organizer` (usa Top Bar
 Organizer; la vecchia estensione lo sincronizzava sempre).
 
+Le icone del vassoio le crea l'estensione AppIndicator
+(`appindicatorsupport@rgcjonas.gmail.com`): Smart Calendar Hub le sposta
+soltanto. Deciso da Michele il 04/11/2026: AppIndicator resta accesa, non va
+integrata né spenta; le Preferenze mostrano un avviso se è spenta.
+
 **Alla fine di ogni modifica importante fare la revisione con la skill
 code-review.**
 

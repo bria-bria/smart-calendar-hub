@@ -55,6 +55,9 @@ msgstr "Nessuna"
 msgid "Position"
 msgstr "Posizione"
 
+msgid "Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on"
+msgstr "Le icone del vassoio richiedono l'estensione «AppIndicator and KStatusNotifierItem Support»: attivala"
+
 msgid "Where the side panel opens, where the clock sits in the top bar and which icons are gathered inside the panel."
 msgstr "Dove si apre il pannello laterale, dove sta l'ora nella barra in alto e quali icone vengono raccolte dentro il pannello."
 
