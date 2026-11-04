@@ -8,6 +8,9 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
+// GNOME Shell already does this; the preferences process does not
+Gio._promisify(Gio.DBusConnection.prototype, 'call');
+
 const EDS_SOURCES = 'org.gnome.evolution.dataserver.Sources5';
 const EDS_PATH = '/org/gnome/evolution/dataserver/SourceManager';
 const SOURCE_IFACE = 'org.gnome.evolution.dataserver.Source';
@@ -47,7 +50,9 @@ export async function loadCalendars(cancellable = null) {
             continue;
         const keyFile = new GLib.KeyFile();
         try {
-            keyFile.load_from_data(props.Data, -1, GLib.KeyFileFlags.NONE);
+            // the length is in bytes (GJS refuses -1 for this gsize argument)
+            keyFile.load_from_data(props.Data, new TextEncoder().encode(props.Data).length,
+                GLib.KeyFileFlags.NONE);
         } catch (_e) {
             continue; // malformed source
         }
