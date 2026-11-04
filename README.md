@@ -16,6 +16,13 @@ It also shows the current temperature next to the clock (unless another
 extension, such as Weather O'Clock, already does it) and lets you move the
 clock to a different spot of the top bar.
 
+## Screenshots
+
+![The side panel](screenshots/1-overview.png)
+![The calendar open, with the agenda](screenshots/2-calendar.png)
+![At night: the moon in its phase](screenshots/3-night.png)
+![Preferences, in tabs](screenshots/4-prefs.png)
+
 ## Requirements
 
 GNOME Shell 48, 49, 50 or 51. The weather comes from GNOME Weather: set a

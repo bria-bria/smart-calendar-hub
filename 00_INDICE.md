@@ -10,6 +10,7 @@
 | `extension/sch-i18n.js` | Traduzioni: funzione `_()`, tabella italiana `IT`, file utente per le altre lingue |
 | `strumenti/controlla-traduzioni.py` | Controlla che ogni frase del codice abbia la traduzione italiana |
 | `installa-smart-calendar-hub.sh` | Crea lo zip, toglie la vecchia Raven, installa e attiva |
+| `screenshots/` | Immagini in inglese per extensions.gnome.org e README (`mockup.html` le genera, vedi CLAUDE.md) |
 | `README.md` | Descrizione pubblica (inglese) |
 | `LICENSE` | GPL-2.0 |
 | `originale-raven-calendar/` | Copia della vecchia estensione (non in git) |

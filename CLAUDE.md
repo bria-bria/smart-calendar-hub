@@ -47,6 +47,14 @@ Il vecchio gettext (`po/`) è stato tolto.
 **Alla fine di ogni modifica importante fare la revisione con la skill
 code-review.**
 
+## Immagini (screenshots/)
+`screenshots/mockup.html` ricostruisce il pannello in inglese (dati inventati,
+account example.com). Rigenerare i PNG con Firefox invisibile:
+`firefox --headless --no-remote --profile <cartella vuota> --window-size=1280,800
+--screenshot screenshots/2-calendar.png "file://…/screenshots/mockup.html#calendar"`
+(scene: overview, calendar, night, prefs). Se cambia l'aspetto del pannello,
+aggiornare anche il mockup.
+
 ## Pubblicazione
 - GitHub: `bria-bria/smart-calendar-hub`, **privato** (come BlueHub);
   niente campo `url` in `metadata.json` finché resta privato.
