@@ -13,6 +13,7 @@
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import GioUnix from 'gi://GioUnix';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
@@ -22,6 +23,28 @@ import {_} from './sch-i18n.js';
 import {FALLBACK_COLOR, loadCalendars} from './sch-eds.js';
 
 const MAX_DOTS = 3;
+const CALENDAR_APP = 'org.gnome.Calendar.desktop';
+
+// Command line of GNOME Calendar (package or Flatpak) without the
+// placeholders of the desktop file (%U, Flatpak's @@u ... @@).
+function calendarCommand() {
+    const app = GioUnix.DesktopAppInfo.new(CALENDAR_APP);
+    const line = app?.get_commandline();
+    if (!line)
+        return null;
+    try {
+        const [, argv] = GLib.shell_parse_argv(line);
+        return argv.filter(a => !/^%[a-zA-Z]$/.test(a) && a !== '@@' && a !== '@@u');
+    } catch (_e) {
+        return null;
+    }
+}
+
+// GNOME Calendar names events "source:uid[:recurrence]"; the calendar
+// server of GNOME Shell uses "source\nuid\nrecurrence".
+function calendarUuid(event) {
+    return event.id.split('\n').filter(Boolean).join(':');
+}
 
 function dayBegin(date) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -63,6 +86,8 @@ export class CalendarView {
         this._sourceSignal = null;
         this._refreshId = 0;
         this._cancellable = new Gio.Cancellable();
+        // GNOME Calendar, to open the events clicked in the agenda (null = none)
+        this._calendarCmd = calendarCommand();
         // Calendars switched off in the preferences (source UIDs)
         this._hidden = new Set(settings.get_strv('hidden-calendars'));
         this._connect(settings, 'changed::hidden-calendars', () => {
@@ -441,7 +466,7 @@ export class CalendarView {
     // calendar name only if there is room left.
     _eventRow(ev, day) {
         const cal = this._calendarOf(ev);
-        const row = new St.BoxLayout({style_class: 'sch-cal-event', x_expand: true});
+        const row = new St.BoxLayout({x_expand: true, style_class: 'sch-cal-event-line'});
         row.add_child(new St.Widget({
             style_class: 'sch-cal-event-bar',
             style: `background-color: ${cal.color};`,
@@ -476,7 +501,28 @@ export class CalendarView {
                 y_align: Clutter.ActorAlign.CENTER,
             }));
         }
-        return row;
+        // The whole line opens the event in GNOME Calendar, when installed
+        const button = new St.Button({
+            style_class: 'sch-cal-event',
+            x_expand: true,
+            can_focus: true,
+            reactive: this._calendarCmd !== null,
+            child: row,
+        });
+        button.connect('clicked', () => this._openInCalendar(ev));
+        return button;
+    }
+
+    _openInCalendar(ev) {
+        if (!this._calendarCmd)
+            return;
+        try {
+            Gio.Subprocess.new([...this._calendarCmd, `--uuid=${calendarUuid(ev)}`],
+                Gio.SubprocessFlags.NONE);
+            this._dateMenu.menu.close();
+        } catch (e) {
+            console.error(`Smart Calendar Hub: cannot open GNOME Calendar: ${e}`);
+        }
     }
 
 }

@@ -267,9 +267,18 @@
 }
 
 .sch-cal-event {
-    spacing: 8px;
-    padding: 5px 0;
+    padding: 5px 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0;
+}
+
+.sch-cal-event:hover,
+.sch-cal-event:focus {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sch-cal-event-line {
+    spacing: 8px;
 }
 
 .sch-cal-event-bar {
