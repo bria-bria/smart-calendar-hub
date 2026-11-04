@@ -82,8 +82,8 @@ export const IT = {
         "Aspetto",
     "Calendars shown":
         "Calendari visualizzati",
-    "Choose which calendars appear in the panel. This does not change your online accounts.":
-        "Scegli quali calendari compaiono nel pannello. Gli account online non vengono modificati.",
+    "Choose which calendars appear in the panel and in GNOME Calendar. This does not change your online accounts.":
+        "Scegli quali calendari compaiono nel pannello e in GNOME Calendar. Gli account online non vengono modificati.",
     "No calendars found":
         "Nessun calendario trovato",
     "Calendars come from the online accounts in GNOME Settings":

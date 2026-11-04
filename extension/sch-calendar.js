@@ -88,12 +88,8 @@ export class CalendarView {
         this._cancellable = new Gio.Cancellable();
         // GNOME Calendar, to open the events clicked in the agenda (null = none)
         this._calendarCmd = calendarCommand();
-        // Calendars switched off in the preferences (source UIDs)
-        this._hidden = new Set(settings.get_strv('hidden-calendars'));
-        this._connect(settings, 'changed::hidden-calendars', () => {
-            this._hidden = new Set(settings.get_strv('hidden-calendars'));
-            this._queueRefresh();
-        });
+        // Calendars switched off (here or in GNOME Calendar): source UIDs
+        this._hidden = new Set();
 
         this.actor = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
@@ -113,10 +109,7 @@ export class CalendarView {
             });
             this._selected = dayBegin(gnomeCal._selectedDate ?? new Date());
         }
-        this._loadCalendars().catch(e => {
-            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                console.error(`Smart Calendar Hub: cannot read calendar colours: ${e}`);
-        });
+        this.reloadCalendars();
         this.setWidth(settings.get_int('sidebar-width'));
     }
 
@@ -194,10 +187,20 @@ export class CalendarView {
         return this._calendars.get(sourceUid(event)) ?? {name: '', color: FALLBACK_COLOR};
     }
 
-    // Names and colours of the calendars, from evolution-data-server
+    // Names, colours and on/off of the calendars, from evolution-data-server.
+    // Called again every time the panel opens, so changes made in GNOME
+    // Calendar (colour, calendar switched off) show up.
+    reloadCalendars() {
+        this._loadCalendars().catch(e => {
+            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                console.error(`Smart Calendar Hub: cannot read the calendars: ${e}`);
+        });
+    }
+
     async _loadCalendars() {
-        for (const {uid, name, color} of await loadCalendars(this._cancellable))
-            this._calendars.set(uid, {name, color});
+        const calendars = await loadCalendars(this._cancellable);
+        this._calendars = new Map(calendars.map(c => [c.uid, {name: c.name, color: c.color}]));
+        this._hidden = new Set(calendars.filter(c => !c.selected).map(c => c.uid));
         this._queueRefresh();
     }
 

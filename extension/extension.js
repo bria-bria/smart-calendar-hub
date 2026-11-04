@@ -834,6 +834,7 @@ export default class SmartCalendarHubExtension extends Extension {
                     this._setCalendarExpanded(false);
                 this._syncTray();
                 this._updateSidebarSize();
+                this._calendarView?.reloadCalendars();
             } else {
                 this._trayMenuManager?.activeMenu?.close();
             }

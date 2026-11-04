@@ -8,7 +8,7 @@ import Gtk from 'gi://Gtk';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {_, loadUserTranslations} from './sch-i18n.js';
-import {loadCalendars} from './sch-eds.js';
+import {loadCalendars, setCalendarSelected} from './sch-eds.js';
 
 // Extensions that provide tray icons (upstream and Ubuntu's build).
 const APPINDICATOR_UUIDS = [
@@ -112,12 +112,13 @@ function appSwitchGroup(window, settings, opts) {
 }
 
 // One switch per calendar of the online accounts (from evolution-data-server),
-// with its colour and account. Switched-off calendars go in hidden-calendars
-// and disappear from the panel only (Google is not touched).
-async function calendarsGroup(settings) {
+// with its colour and account. The switch is the same one GNOME Calendar
+// uses ("Selected" of the source): turning a calendar off here turns it off
+// in GNOME Calendar too, and the other way round. Google is not touched.
+async function calendarsGroup() {
     const group = new Adw.PreferencesGroup({
         title: _('Calendars shown'),
-        description: _('Choose which calendars appear in the panel. This does not change your online accounts.'),
+        description: _('Choose which calendars appear in the panel and in GNOME Calendar. This does not change your online accounts.'),
     });
 
     let calendars = [];
@@ -139,8 +140,10 @@ async function calendarsGroup(settings) {
     const merged = new Map();
     for (const cal of calendars) {
         const key = `${cal.name}\n${cal.color}`;
-        const entry = merged.get(key) ?? {name: cal.name, color: cal.color, uids: [], accounts: []};
-        entry.uids.push(cal.uid);
+        const entry = merged.get(key) ?? {name: cal.name, color: cal.color, paths: [], selected: false, accounts: []};
+        if (cal.writable)
+            entry.paths.push(cal.path);
+        entry.selected ||= cal.selected;
         if (cal.account && !entry.accounts.includes(cal.account))
             entry.accounts.push(cal.account);
         merged.set(key, entry);
@@ -153,12 +156,12 @@ async function calendarsGroup(settings) {
         a.account.localeCompare(b.account) ||
         a.name.localeCompare(b.name));
 
-    const hidden = new Set(settings.get_strv('hidden-calendars'));
     for (const cal of rows) {
         const row = new Adw.SwitchRow({
             title: cal.name,
             subtitle: cal.account,
-            active: !cal.uids.every(uid => hidden.has(uid)),
+            active: cal.selected,
+            sensitive: cal.paths.length > 0,
         });
         // coloured dot, the same colour as in the panel (safeColor-checked)
         row.add_prefix(new Gtk.Label({
@@ -166,11 +169,22 @@ async function calendarsGroup(settings) {
             label: `<span foreground="${cal.color}" size="x-large">●</span>`,
             valign: Gtk.Align.CENTER,
         }));
+        // Writes run one after another (quick toggles keep their order); if a
+        // write fails the switch goes back, so it never lies.
+        let queue = Promise.resolve();
+        let reverting = false;
         row.connect('notify::active', () => {
-            const list = settings.get_strv('hidden-calendars').filter(u => !cal.uids.includes(u));
-            if (!row.active)
-                list.push(...cal.uids);
-            settings.set_strv('hidden-calendars', list);
+            if (reverting)
+                return;
+            const wanted = row.active;
+            queue = queue
+                .then(() => Promise.all(cal.paths.map(path => setCalendarSelected(path, wanted))))
+                .catch(e => {
+                    console.error(`Smart Calendar Hub: cannot change calendar ${cal.name}: ${e}`);
+                    reverting = true;
+                    row.active = !wanted;
+                    reverting = false;
+                });
         });
         group.add(row);
     }
@@ -318,7 +332,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         }));
 
         // ---------------- Calendars ----------------
-        pageCalendars.add(await calendarsGroup(settings));
+        pageCalendars.add(await calendarsGroup());
 
         // ---------------- Notifications ----------------
         pageNotifications.add(appSwitchGroup(window, settings, {

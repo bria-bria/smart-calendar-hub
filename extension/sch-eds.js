@@ -14,6 +14,7 @@ Gio._promisify(Gio.DBusConnection.prototype, 'call');
 const EDS_SOURCES = 'org.gnome.evolution.dataserver.Sources5';
 const EDS_PATH = '/org/gnome/evolution/dataserver/SourceManager';
 const SOURCE_IFACE = 'org.gnome.evolution.dataserver.Source';
+const WRITABLE_IFACE = 'org.gnome.evolution.dataserver.Source.Writable';
 
 export const FALLBACK_COLOR = '#62a0ea';
 
@@ -32,8 +33,9 @@ function readString(keyFile, group, key, localized = false) {
     }
 }
 
-// Returns [{uid, name, color, account}] for every calendar (sources with a
-// [Calendar] group). account = name of the parent source (e.g. the Google
+// Returns [{uid, path, name, color, selected, account}] for every calendar
+// (sources with a [Calendar] group). selected = shown, the same switch GNOME
+// Calendar uses. account = name of the parent source (e.g. the Google
 // address), or '' when there is none.
 export async function loadCalendars(cancellable = null) {
     const reply = await Gio.DBus.session.call(EDS_SOURCES, EDS_PATH,
@@ -44,7 +46,7 @@ export async function loadCalendars(cancellable = null) {
 
     const names = new Map(); // uid -> display name, for every source
     const calendars = [];
-    for (const ifaces of Object.values(objects)) {
+    for (const [path, ifaces] of Object.entries(objects)) {
         const props = ifaces[SOURCE_IFACE];
         if (!props?.UID || !props.Data)
             continue;
@@ -59,17 +61,43 @@ export async function loadCalendars(cancellable = null) {
         const name = readString(keyFile, 'Data Source', 'DisplayName', true) ?? props.UID;
         names.set(props.UID, name);
         if (keyFile.has_group('Calendar')) {
+            let selected = true;
+            try {
+                selected = keyFile.get_boolean('Calendar', 'Selected');
+            } catch (_e) {
+                // not set: shown
+            }
             calendars.push({
                 uid: props.UID,
+                path,
+                selected,
+                writable: WRITABLE_IFACE in ifaces,
                 name,
                 color: safeColor(readString(keyFile, 'Calendar', 'Color')),
                 parent: readString(keyFile, 'Data Source', 'Parent') ?? '',
             });
         }
     }
-    return calendars.map(({uid, name, color, parent}) => ({
-        uid, name, color,
+    return calendars.map(({uid, path, selected, writable, name, color, parent}) => ({
+        uid, path, selected, writable, name, color,
         // local "stubs" (On This Computer, Contacts, Weather) are not accounts
         account: parent.endsWith('-stub') ? '' : names.get(parent) ?? '',
     }));
+}
+
+// Shows or hides a calendar the way GNOME Calendar does: rewrites the
+// "Selected" key of its source. GNOME Calendar and GNOME Shell follow it.
+export async function setCalendarSelected(path, selected, cancellable = null) {
+    const reply = await Gio.DBus.session.call(EDS_SOURCES, path,
+        'org.freedesktop.DBus.Properties', 'Get',
+        new GLib.Variant('(ss)', [SOURCE_IFACE, 'Data']),
+        new GLib.VariantType('(v)'), Gio.DBusCallFlags.NONE, -1, cancellable);
+    const data = reply.recursiveUnpack()[0];
+    const keyFile = new GLib.KeyFile();
+    keyFile.load_from_data(data, new TextEncoder().encode(data).length,
+        GLib.KeyFileFlags.KEEP_COMMENTS | GLib.KeyFileFlags.KEEP_TRANSLATIONS);
+    keyFile.set_boolean('Calendar', 'Selected', selected);
+    const [newData] = keyFile.to_data();
+    await Gio.DBus.session.call(EDS_SOURCES, path, WRITABLE_IFACE, 'Write',
+        new GLib.Variant('(s)', [newData]), null, Gio.DBusCallFlags.NONE, -1, cancellable);
 }
