@@ -134,18 +134,31 @@ async function calendarsGroup(settings) {
         return group;
     }
 
+    // The same calendar shared with both accounts appears once per account:
+    // same name and colour = one row, switching all its copies together.
+    const merged = new Map();
+    for (const cal of calendars) {
+        const key = `${cal.name}\n${cal.color}`;
+        const entry = merged.get(key) ?? {name: cal.name, color: cal.color, uids: [], accounts: []};
+        entry.uids.push(cal.uid);
+        if (cal.account && !entry.accounts.includes(cal.account))
+            entry.accounts.push(cal.account);
+        merged.set(key, entry);
+    }
+
     // Grouped by account, then by name; local calendars last
-    calendars.sort((a, b) =>
+    const rows = [...merged.values()].map(e => ({...e, account: e.accounts.sort().join(', ')}));
+    rows.sort((a, b) =>
         (a.account === '') - (b.account === '') ||
         a.account.localeCompare(b.account) ||
         a.name.localeCompare(b.name));
 
     const hidden = new Set(settings.get_strv('hidden-calendars'));
-    for (const cal of calendars) {
+    for (const cal of rows) {
         const row = new Adw.SwitchRow({
             title: cal.name,
             subtitle: cal.account,
-            active: !hidden.has(cal.uid),
+            active: !cal.uids.every(uid => hidden.has(uid)),
         });
         // coloured dot, the same colour as in the panel (safeColor-checked)
         row.add_prefix(new Gtk.Label({
@@ -154,9 +167,9 @@ async function calendarsGroup(settings) {
             valign: Gtk.Align.CENTER,
         }));
         row.connect('notify::active', () => {
-            const list = settings.get_strv('hidden-calendars').filter(u => u !== cal.uid);
+            const list = settings.get_strv('hidden-calendars').filter(u => !cal.uids.includes(u));
             if (!row.active)
-                list.push(cal.uid);
+                list.push(...cal.uids);
             settings.set_strv('hidden-calendars', list);
         });
         group.add(row);

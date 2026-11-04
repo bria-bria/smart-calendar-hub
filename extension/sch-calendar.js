@@ -172,9 +172,18 @@ export class CalendarView {
         } catch (_e) {
             return [];
         }
-        return this._hidden.size
-            ? events.filter(ev => !this._hidden.has(sourceUid(ev)))
-            : events;
+        // Skip switched-off calendars, and show only once the same event that
+        // arrives from two copies of a calendar shared between accounts.
+        const seen = new Set();
+        return events.filter(ev => {
+            if (this._hidden.has(sourceUid(ev)))
+                return false;
+            const key = `${ev.summary}\n${ev.date.getTime()}\n${ev.end.getTime()}`;
+            if (seen.has(key))
+                return false;
+            seen.add(key);
+            return true;
+        });
     }
 
     _calendarOf(event) {
