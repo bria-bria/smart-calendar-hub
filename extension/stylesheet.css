@@ -27,17 +27,28 @@
     margin: 2px 4px 0 4px;
 }
 
+.sch-tray-box,
+.sch-tray-row {
+    spacing: 4px;
+}
+
 .sch-tray-item {
     border-radius: 8px;
     padding: 2px;
 }
 
 .sch-tray-box .panel-button {
-    height: 30px;
+    min-height: 30px;
     min-width: 30px;
     padding: 4px 6px;
     border-radius: 8px;
     margin: 1px;
+}
+
+/* Outside the top bar GNOME gives these icons no size: set it here */
+.sch-tray-box .system-status-icon,
+.sch-tray-box .appindicator-icon {
+    icon-size: 16px;
 }
 
 .sch-tray-box .panel-button:hover {

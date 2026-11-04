@@ -166,6 +166,7 @@ export default class SmartCalendarHubExtension extends Extension {
             break;
         case 'sidebar-width':
             this._updateSidebarSize();
+            this._layoutTray();
             break;
         }
         this._refreshQuickButtons();
@@ -425,22 +426,15 @@ export default class SmartCalendarHubExtension extends Extension {
             x_expand: true,
             visible: false,
         });
-        this._trayBox = new St.Widget({
+        // Rows of icons laid out by _layoutTray(). Clutter.FlowLayout is not
+        // used: on GNOME 51 it gives panel buttons a height of 0.
+        this._trayBox = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'sch-tray-box',
-            layout_manager: new Clutter.FlowLayout({
-                orientation: Clutter.Orientation.HORIZONTAL,
-                homogeneous: false,
-                column_spacing: 6,
-                row_spacing: 6,
-            }),
             x_expand: true,
         });
         this._traySection.add_child(this._trayBox);
         this._sidebar.add_child(this._traySection);
-        // Hide the section when icons leave it (closed apps, other extensions).
-        this._trayBox.connect('child-removed', () => {
-            this._traySection.visible = this._trayBox.get_n_children() > 0;
-        });
 
         // Title + quick settings button
         const header = new St.BoxLayout({style_class: 'sch-header', x_expand: true});
@@ -691,7 +685,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._syncingTray = true;
         try {
             for (const [indicator, info] of [...this._movedTrayItems]) {
-                if (info.container.get_parent() !== this._trayBox) {
+                if (info.container.get_parent()?.get_parent() !== this._trayBox) {
                     // Another extension (e.g. Top Bar Organizer, which re-sorts
                     // every icon whenever one is added) took it back to the
                     // top bar: forget it, the loop below moves it in again.
@@ -711,7 +705,45 @@ export default class SmartCalendarHubExtension extends Extension {
         } finally {
             this._syncingTray = false;
         }
-        this._traySection.visible = this._trayBox.get_n_children() > 0;
+        this._layoutTray();
+    }
+
+    // Puts the moved icons in rows that fit the panel width.
+    _layoutTray() {
+        if (!this._trayBox)
+            return;
+        // panel padding + section padding/margins ≈ 56 px; one icon ≈ 50 px
+        const perRow = Math.max(1,
+            Math.floor((this._settings.get_int('sidebar-width') - 56) / 50));
+        const containers = [...this._movedTrayItems.values()].map(i => i.container);
+        this._traySection.visible = containers.length > 0;
+
+        // Nothing to do if the rows already match (avoids re-mapping every icon,
+        // which makes AppIndicator reload them).
+        const rows = this._trayBox.get_children();
+        const current = rows.flatMap(r => r.get_children());
+        if (current.length === containers.length &&
+            current.every((c, i) => c === containers[i]) &&
+            rows.every((r, i) => r.get_n_children() ===
+                Math.min(perRow, containers.length - i * perRow)))
+            return;
+
+        for (const row of rows) {
+            for (const child of row.get_children())
+                row.remove_child(child);
+        }
+        this._trayBox.destroy_all_children();
+
+        let row = null;
+        containers.forEach((container, i) => {
+            if (i % perRow === 0) {
+                row = new St.BoxLayout({style_class: 'sch-tray-row'});
+                this._trayBox.add_child(row);
+            }
+            container.get_parent()?.remove_child(container);
+            row.add_child(container);
+        });
+        this._traySection.visible = containers.length > 0;
     }
 
     _moveToTray(role, indicator) {
@@ -744,15 +776,16 @@ export default class SmartCalendarHubExtension extends Extension {
             });
         }
 
+        // _layoutTray() puts it in a row
         parent.remove_child(container);
         container.add_style_class_name('sch-tray-item');
         container.y_expand = false;
-        this._trayBox.add_child(container);
 
+        // The empty slot is filled at the next layout (next time the panel opens).
         info.destroyId = container.connect('destroy', () => {
             this._movedTrayItems?.delete(indicator);
-            if (this._trayBox)
-                this._traySection.visible = this._trayBox.get_n_children() > 0;
+            if (this._traySection)
+                this._traySection.visible = this._movedTrayItems.size > 0;
         });
         this._movedTrayItems.set(indicator, info);
     }
