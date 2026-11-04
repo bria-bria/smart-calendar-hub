@@ -462,39 +462,39 @@ export class CalendarView {
         }
     }
 
+    // One line per event: colour bar, time column, title (cut with "…"),
+    // calendar name only if there is room left.
     _eventRow(ev, day) {
         const cal = this._calendarOf(ev);
         const row = new St.BoxLayout({style_class: 'sch-cal-event', x_expand: true});
         row.add_child(new St.Widget({
             style_class: 'sch-cal-event-bar',
             style: `background-color: ${cal.color};`,
-            y_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
         }));
 
-        const text = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         let when;
         if (isAllDay(ev)) {
             when = _('All day');
         } else {
-            // Times of the part of the event that falls on this day
-            const endOfDay = addDays(day, 1);
-            const startText = ev.date < day ? '…' : formatTime(ev.date, {timeOnly: true});
-            const endText = ev.end > endOfDay ? '…' : formatTime(ev.end, {timeOnly: true});
-            when = ev.end.getTime() === ev.date.getTime()
-                ? startText
-                : `${startText} – ${endText}`;
+            // Start of the part of the event that falls on this day
+            when = ev.date < day ? '…' : formatTime(ev.date, {timeOnly: true});
         }
-        text.add_child(new St.Label({text: when, style_class: 'sch-cal-event-time'}));
-        const summary = new St.Label({
+        row.add_child(new St.Label({
+            text: when,
+            style_class: isAllDay(ev) ? 'sch-cal-event-allday' : 'sch-cal-event-time',
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+
+        const title = new St.Label({
             text: ev.summary || _('(no title)'),
             style_class: 'sch-cal-event-title',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
         });
-        summary.clutter_text.ellipsize = 0; // Pango.EllipsizeMode.NONE
-        summary.clutter_text.line_wrap = true;
-        text.add_child(summary);
-        row.add_child(text);
+        row.add_child(title);
 
-        if (cal.name) {
+        if (cal.name && this._showWeeks) {
             row.add_child(new St.Label({
                 text: cal.name,
                 style_class: 'sch-cal-event-source',
@@ -503,4 +503,5 @@ export class CalendarView {
         }
         return row;
     }
+
 }
