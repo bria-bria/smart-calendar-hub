@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
 // Smart Calendar Hub: turns the date menu into a side panel.
-// Vertical order: tray icons → title → weather → date → collapsible
-// calendar → notifications → world clocks.
+// Vertical order: tray icons → weather (with the settings button) → date →
+// collapsible calendar → notifications → world clocks + Clear.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -141,6 +141,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._traySection = null;
         this._trayBox = null;
         this._calendarBox = null;
+        this._calendarScroll = null;
         this._calendarArrow = null;
         this._weatherBody = null;
         this._weatherArrow = null;
@@ -435,7 +436,17 @@ export default class SmartCalendarHubExtension extends Extension {
         const list = seen.filter(l => !l.startsWith(`${key}\t`));
         list.push(line);
         list.sort();
-        this._settings.set_strv('notify-apps-seen', list.slice(-100));
+        // Keep at most 150 entries, but never drop an app switched on for the dot.
+        const chosen = new Set(this._settings.get_strv('alert-apps'));
+        let extra = list.length - 150;
+        const kept = list.filter(l => {
+            if (extra > 0 && !chosen.has(l.slice(0, l.indexOf('\t')))) {
+                extra--;
+                return false;
+            }
+            return true;
+        });
+        this._settings.set_strv('notify-apps-seen', kept);
     }
 
     _updateAlertDot() {
@@ -673,7 +684,18 @@ export default class SmartCalendarHubExtension extends Extension {
             x_expand: true,
             visible: false,
         });
-        this._sidebar.add_child(this._calendarBox);
+        // In a scroll view: with weather open and many events the panel would
+        // otherwise grow past the screen and push the bottom row out of view.
+        this._calendarScroll = new St.ScrollView({
+            style_class: 'sch-calendar-scroll',
+            overlay_scrollbars: true,
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+            x_expand: true,
+            visible: false,
+            child: this._calendarBox,
+        });
+        this._sidebar.add_child(this._calendarScroll);
         this._adopt(dm._calendar, this._calendarBox);
         this._adopt(dm._eventsItem, this._calendarBox);
 
@@ -745,6 +767,7 @@ export default class SmartCalendarHubExtension extends Extension {
     _setCalendarExpanded(expanded) {
         if (!this._calendarBox)
             return;
+        this._calendarScroll.visible = expanded;
         this._calendarBox.visible = expanded;
         this._calendarArrow.icon_name = expanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
         this._relayout();
@@ -840,7 +863,9 @@ export default class SmartCalendarHubExtension extends Extension {
 
     _trayLabel(role, indicator) {
         const sni = indicator._indicator;
-        return sni?.accessibleName || sni?.title || sni?.id ||
+        // title first: the accessible name often contains unread counts,
+        // which would rewrite the list at every new message
+        return sni?.title || sni?.accessibleName || sni?.id ||
             indicator._icon?.title || indicator._icon?.wm_class ||
             indicator.accessible_name || role;
     }
@@ -924,9 +949,9 @@ export default class SmartCalendarHubExtension extends Extension {
     _layoutTray() {
         if (!this._trayBox)
             return;
-        // panel padding + section padding/margins ≈ 56 px; one icon ≈ 50 px
+        // panel padding + section padding/margins ≈ 48 px; one icon ≈ 34 px
         const perRow = Math.max(1,
-            Math.floor((this._settings.get_int('sidebar-width') - 56) / 50));
+            Math.floor((this._settings.get_int('sidebar-width') - 48) / 34));
         const containers = [...this._movedTrayItems.values()].map(i => i.container);
         this._traySection.visible = containers.length > 0;
 
@@ -949,7 +974,12 @@ export default class SmartCalendarHubExtension extends Extension {
         let row = null;
         containers.forEach((container, i) => {
             if (i % perRow === 0) {
-                row = new St.BoxLayout({style_class: 'sch-tray-row'});
+                // packed from the left, not spread over the row
+                row = new St.BoxLayout({
+                    style_class: 'sch-tray-row',
+                    x_expand: false,
+                    x_align: Clutter.ActorAlign.START,
+                });
                 this._trayBox.add_child(row);
             }
             container.get_parent()?.remove_child(container);
@@ -971,6 +1001,7 @@ export default class SmartCalendarHubExtension extends Extension {
             index: parent.get_children().indexOf(container),
             hadPanelMenu: false,
             yExpand: container.y_expand,
+            xExpand: container.x_expand,
             menuId: 0,
             destroyId: 0,
         };
@@ -992,6 +1023,7 @@ export default class SmartCalendarHubExtension extends Extension {
         parent.remove_child(container);
         container.add_style_class_name('sch-tray-item');
         container.y_expand = false;
+        container.x_expand = false;
 
         // The empty slot is filled at the next layout (next time the panel opens).
         info.destroyId = container.connect('destroy', () => {
@@ -1014,6 +1046,7 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         info.container.remove_style_class_name('sch-tray-item');
         info.container.y_expand = info.yExpand;
+        info.container.x_expand = info.xExpand;
     }
 
     _restoreTrayItem(indicator, info) {
