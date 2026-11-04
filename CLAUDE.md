@@ -27,6 +27,13 @@ Le icone del vassoio le crea l'estensione AppIndicator
 soltanto. Deciso da Michele il 04/11/2026: AppIndicator resta accesa, non va
 integrata né spenta; le Preferenze mostrano un avviso se è spenta.
 
+Le icone del vassoio sono in righe (`_layoutTray`): NON usare
+`Clutter.FlowLayout`, su GNOME 51 dà altezza 0 ai pulsanti del pannello.
+
+I commit usano l'email anonima 301696067+bria-bria@users.noreply.github.com
+(configurata in questo repository). I primi 3 commit hanno ancora l'email
+personale.
+
 **Alla fine di ogni modifica importante fare la revisione con la skill
 code-review.**
 
