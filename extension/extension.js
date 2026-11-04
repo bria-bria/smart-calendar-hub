@@ -17,6 +17,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {_, loadUserTranslations, unloadUserTranslations} from './sch-i18n.js';
 import {CalendarView} from './sch-calendar.js';
+import {SkyView} from './sch-sky.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
 const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
@@ -192,6 +193,8 @@ export default class SmartCalendarHubExtension extends Extension {
 
         // Before the panel goes: it is connected to GNOME's calendar and events
         this._calendarView?.destroy();
+        this._skyView?.destroy();
+        this._skyView = null;
         this._sidebar?.destroy();
         this._sidebar = null;
         this._traySection = null;
@@ -768,8 +771,12 @@ export default class SmartCalendarHubExtension extends Extension {
             this._updateWeatherSummary(client);
         }
 
-        // 2. Date, aligned on the right
-        this._adopt(dm._date, this._sidebar);
+        // 2. Sky (sun, moon, moon phase) on the left, date on the right
+        const dateRow = new St.BoxLayout({style_class: 'sch-date-row', x_expand: true});
+        this._sidebar.add_child(dateRow);
+        this._skyView = new SkyView(dm._weatherItem?._weatherClient ?? null, this._settings);
+        dateRow.add_child(this._skyView.actor);
+        this._adopt(dm._date, dateRow);
         this._dateAlignOrig = [dm._date?._dayLabel, dm._date?._dateLabel]
             .filter(Boolean)
             .map(label => {
@@ -835,8 +842,10 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._syncTray();
                 this._updateSidebarSize();
                 this._calendarView?.reloadCalendars();
+                this._skyView?.start();
             } else {
                 this._trayMenuManager?.activeMenu?.close();
+                this._skyView?.stop();
             }
         });
 

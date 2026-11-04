@@ -359,6 +359,15 @@
     spacing: 6px;
 }
 
+/* Sky (sun, moon, moon phase) on the left of the date */
+.sch-date-row {
+    spacing: 8px;
+}
+
+.sch-sky {
+    margin-left: 8px;
+}
+
 /* Red dot on the left of the clock: notifications of the chosen apps */
 .sch-alert-dot {
     width: 8px;

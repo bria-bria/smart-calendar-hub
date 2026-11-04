@@ -44,6 +44,7 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-i18n.js" \
     --extra-source="sch-calendar.js" \
     --extra-source="sch-eds.js" \
+    --extra-source="sch-sky.js" \
     --extra-source="$PROJ_DIR/LICENSE"
 echo "Pacchetto creato: $ZIP"
 

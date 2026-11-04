@@ -80,6 +80,18 @@ export const IT = {
         "Notifiche",
     "Appearance":
         "Aspetto",
+    "Sky":
+        "Cielo",
+    "Next to the date. The two options can be used separately or together.":
+        "Accanto alla data. Le due opzioni si possono usare da sole o insieme.",
+    "Sun and moon of the day":
+        "Sole e luna del giorno",
+    "The sun moves along an arc from sunrise to sunset, then the moon until the next sunrise":
+        "Il sole percorre un arco dall'alba al tramonto, poi la luna fino all'alba successiva",
+    "Moon phase":
+        "Fase lunare",
+    "The moon is drawn in its real phase; alone, it shows only the moon":
+        "La luna è disegnata nella sua fase reale; da sola mostra solo la luna",
     "Calendars shown":
         "Calendari visualizzati",
     "Choose which calendars appear in the panel and in GNOME Calendar. This does not change your online accounts.":

@@ -285,6 +285,24 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('sidebar-width', widthRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         look.add(widthRow);
 
+        const sky = new Adw.PreferencesGroup({
+            title: _('Sky'),
+            description: _('Next to the date. The two options can be used separately or together.'),
+        });
+        pagePanel.add(sky);
+        const sunMoonRow = new Adw.SwitchRow({
+            title: _('Sun and moon of the day'),
+            subtitle: _('The sun moves along an arc from sunrise to sunset, then the moon until the next sunrise'),
+        });
+        settings.bind('show-sun-moon', sunMoonRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        sky.add(sunMoonRow);
+        const phaseRow = new Adw.SwitchRow({
+            title: _('Moon phase'),
+            subtitle: _('The moon is drawn in its real phase; alone, it shows only the moon'),
+        });
+        settings.bind('show-moon-phase', phaseRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        sky.add(phaseRow);
+
         // ---------------- Tray ----------------
         // Tray icons are created by the AppIndicator extension: warn if it is off.
         const shellSettings = new Gio.Settings({schema_id: 'org.gnome.shell'});

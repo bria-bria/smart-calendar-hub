@@ -59,6 +59,16 @@
       <description>"identifier TAB name" of each app seen in the notification list; used by the preferences window.</description>
     </key>
 
+    <key name="show-sun-moon" type="b">
+      <default>true</default>
+      <summary>Show the sun and the moon moving along an arc next to the date</summary>
+    </key>
+
+    <key name="show-moon-phase" type="b">
+      <default>true</default>
+      <summary>Draw the moon in its real phase</summary>
+    </key>
+
     <key name="calendar-collapsed" type="b">
       <default>true</default>
       <summary>Collapse the calendar every time the panel opens</summary>
