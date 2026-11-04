@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Smart Calendar Hub\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-04 18:40+0100\n"
+"POT-Creation-Date: 2026-11-04 19:35+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,177 +17,195 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:452
+#: extension.js:537
 msgid "Layout options"
 msgstr ""
 
-#: extension.js:477
+#: extension.js:562
 msgid "Calendar and events"
 msgstr ""
 
-#: extension.js:570 prefs.js:145
+#: extension.js:655 prefs.js:142
 msgid "Panel side"
 msgstr ""
 
-#: extension.js:571
+#: extension.js:656
 msgid "Right"
 msgstr ""
 
-#: extension.js:572 extension.js:578
+#: extension.js:657 extension.js:663
 msgid "Left"
 msgstr ""
 
-#: extension.js:573
+#: extension.js:658
 msgid "Under the clock"
 msgstr ""
 
-#: extension.js:575 prefs.js:154
+#: extension.js:660 prefs.js:151
 msgid "Clock in the top bar"
 msgstr ""
 
-#: extension.js:576
+#: extension.js:661
 msgid "Before menus"
 msgstr ""
 
-#: extension.js:577
+#: extension.js:662
 msgid "Before tray"
 msgstr ""
 
-#: extension.js:579
+#: extension.js:664
 msgid "Center"
 msgstr ""
 
-#: extension.js:581 prefs.js:164
+#: extension.js:666 prefs.js:161
 msgid "Icons inside the panel"
 msgstr ""
 
-#: extension.js:582
+#: extension.js:667
 msgid "Tray apps"
 msgstr ""
 
-#: extension.js:583
+#: extension.js:668
 msgid "All icons"
 msgstr ""
 
-#: extension.js:584
+#: extension.js:669
 msgid "None"
 msgstr ""
 
-#: prefs.js:45
-msgid "Apps inside the panel"
-msgstr ""
-
-#: prefs.js:46
-msgid ""
-"Choose, among the icons present now, which ones move inside the panel and "
-"which stay in the top bar."
-msgstr ""
-
-#: prefs.js:67
-msgid "No icons found yet"
-msgstr ""
-
-#: prefs.js:68
-msgid "Open the panel once: the list fills in by itself"
-msgstr ""
-
-#: prefs.js:119
+#: prefs.js:116
 msgid ""
 "Tray icons need the “AppIndicator and KStatusNotifierItem Support” "
 "extension: turn it on"
 msgstr ""
 
-#: prefs.js:139
+#: prefs.js:136
 msgid "Position"
 msgstr ""
 
-#: prefs.js:140
+#: prefs.js:137
 msgid ""
 "Where the side panel opens, where the clock sits in the top bar and which "
 "icons are gathered inside the panel."
 msgstr ""
 
-#: prefs.js:146
+#: prefs.js:143
 msgid "Side of the screen where the panel appears when you click the clock"
 msgstr ""
 
-#: prefs.js:148
+#: prefs.js:145
 msgid "Right edge of the screen"
 msgstr ""
 
-#: prefs.js:149
+#: prefs.js:146
 msgid "Left edge of the screen"
 msgstr ""
 
-#: prefs.js:150
+#: prefs.js:147
 msgid "Under the clock button"
 msgstr ""
 
-#: prefs.js:155
+#: prefs.js:152
 msgid "Position of the clock and temperature in the GNOME top bar"
 msgstr ""
 
-#: prefs.js:157
+#: prefs.js:154
 msgid "Right, between tray icons and system menu"
 msgstr ""
 
-#: prefs.js:158
+#: prefs.js:155
 msgid "Right, before tray icons"
 msgstr ""
 
-#: prefs.js:159
+#: prefs.js:156
 msgid "Left, after the menus"
 msgstr ""
 
-#: prefs.js:160
+#: prefs.js:157
 msgid "Center (GNOME default)"
 msgstr ""
 
-#: prefs.js:165
+#: prefs.js:162
 msgid "Top bar icons moved to the top of the panel"
 msgstr ""
 
-#: prefs.js:167
+#: prefs.js:164
 msgid "Tray icons of applications"
 msgstr ""
 
-#: prefs.js:168
+#: prefs.js:165
 msgid "All icons on the right side"
 msgstr ""
 
-#: prefs.js:169
+#: prefs.js:166
 msgid "None, leave them in the top bar"
 msgstr ""
 
+#: prefs.js:170
+msgid "Apps inside the panel"
+msgstr ""
+
+#: prefs.js:171
+msgid ""
+"Choose, among the icons present now, which ones move inside the panel and "
+"which stay in the top bar."
+msgstr ""
+
 #: prefs.js:175
-msgid "Keep Top Bar Organizer in sync"
+msgid "No icons found yet"
 msgstr ""
 
 #: prefs.js:176
+msgid "Open the panel once: the list fills in by itself"
+msgstr ""
+
+#: prefs.js:182
+msgid "Keep Top Bar Organizer in sync"
+msgstr ""
+
+#: prefs.js:183
 msgid ""
 "Also writes the clock position into the Top Bar Organizer extension "
 "settings; the previous order is restored when Smart Calendar Hub is turned "
 "off"
 msgstr ""
 
-#: prefs.js:182
+#: prefs.js:189
+msgid "Red dot on the clock"
+msgstr ""
+
+#: prefs.js:190
+msgid ""
+"A red dot appears next to the clock while one of the apps switched on here "
+"has notifications."
+msgstr ""
+
+#: prefs.js:194
+msgid "No notifications seen yet"
+msgstr ""
+
+#: prefs.js:195
+msgid "Apps appear here after they send a notification"
+msgstr ""
+
+#: prefs.js:199
 msgid "Panel"
 msgstr ""
 
-#: prefs.js:183
+#: prefs.js:200
 msgid ""
 "From top to bottom: tray icons, title, weather, date, calendar, "
 "notifications, world clocks."
 msgstr ""
 
-#: prefs.js:188
+#: prefs.js:205
 msgid "Calendar collapsed on opening"
 msgstr ""
 
-#: prefs.js:189
+#: prefs.js:206
 msgid "Click “Calendar and events” to open it"
 msgstr ""
 
-#: prefs.js:195
+#: prefs.js:212
 msgid "Panel width (pixels)"
 msgstr ""

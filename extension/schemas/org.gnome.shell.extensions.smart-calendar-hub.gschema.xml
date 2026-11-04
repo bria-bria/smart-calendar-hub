@@ -48,6 +48,17 @@
       <description>"identifier TAB name" of each icon that can be moved inside the panel; used by the preferences window.</description>
     </key>
 
+    <key name="alert-apps" type="as">
+      <default>[]</default>
+      <summary>Apps whose notifications show a red dot next to the clock</summary>
+    </key>
+
+    <key name="notify-apps-seen" type="as">
+      <default>[]</default>
+      <summary>Apps that sent notifications (written by the extension)</summary>
+      <description>"identifier TAB name" of each app seen in the notification list; used by the preferences window.</description>
+    </key>
+
     <key name="calendar-collapsed" type="b">
       <default>true</default>
       <summary>Collapse the calendar every time the panel opens</summary>

@@ -37,72 +37,69 @@ function comboRow(settings, key, title, subtitle, options) {
     return row;
 }
 
+// A group with one switch per app, read from a list written by the extension
+// ("identifier TAB name" in seenKey). The chosen identifiers are stored in
+// listKey: with listMeansOn the list holds the apps switched on, otherwise
+// the apps switched off.
+function appSwitchGroup(window, settings, opts) {
+    const group = new Adw.PreferencesGroup({
+        title: opts.title,
+        description: opts.description,
+    });
+    let rows = [];
+
+    const rebuild = () => {
+        rows.forEach(r => group.remove(r));
+        rows = [];
+
+        const items = settings.get_strv(opts.seenKey)
+            .map(line => {
+                const tab = line.indexOf('\t');
+                return tab === -1
+                    ? {key: line, label: line}
+                    : {key: line.slice(0, tab), label: line.slice(tab + 1)};
+            })
+            .sort((a, b) => a.label.localeCompare(b.label));
+        const chosen = new Set(settings.get_strv(opts.listKey));
+        const sensitive = !opts.isDisabled?.();
+
+        if (!items.length) {
+            const row = new Adw.ActionRow({title: opts.emptyTitle, subtitle: opts.emptySubtitle});
+            group.add(row);
+            rows.push(row);
+            return;
+        }
+
+        for (const {key, label} of items) {
+            const row = new Adw.SwitchRow({
+                title: label,
+                subtitle: key !== label ? key : '',
+                active: chosen.has(key) === opts.listMeansOn,
+                sensitive,
+            });
+            row.connect('notify::active', () => {
+                const list = settings.get_strv(opts.listKey).filter(k => k !== key);
+                if (row.active === opts.listMeansOn)
+                    list.push(key);
+                settings.set_strv(opts.listKey, list);
+            });
+            group.add(row);
+            rows.push(row);
+        }
+    };
+    rebuild();
+
+    // New apps appear while the window is open.
+    const ids = [opts.seenKey, ...(opts.watchKeys ?? [])]
+        .map(k => settings.connect(`changed::${k}`, rebuild));
+    window.connect('close-request', () => {
+        ids.forEach(id => settings.disconnect(id));
+        return false;
+    });
+    return group;
+}
+
 export default class SmartCalendarHubPreferences extends ExtensionPreferences {
-    // One switch per icon currently in the top bar or in the panel:
-    // on = inside the panel, off = left in the top bar.
-    _buildTrayAppsGroup(window, settings) {
-        const group = new Adw.PreferencesGroup({
-            title: _('Apps inside the panel'),
-            description: _('Choose, among the icons present now, which ones move inside the panel and which stay in the top bar.'),
-        });
-        let rows = [];
-
-        const rebuild = () => {
-            rows.forEach(r => group.remove(r));
-            rows = [];
-
-            const items = settings.get_strv('tray-items-seen')
-                .map(line => {
-                    const tab = line.indexOf('\t');
-                    return tab === -1
-                        ? {key: line, label: line}
-                        : {key: line.slice(0, tab), label: line.slice(tab + 1)};
-                })
-                .sort((a, b) => a.label.localeCompare(b.label));
-            const excluded = new Set(settings.get_strv('tray-excluded'));
-            const disabled = settings.get_string('tray-mode') === 'disabled';
-
-            if (!items.length) {
-                const row = new Adw.ActionRow({
-                    title: _('No icons found yet'),
-                    subtitle: _('Open the panel once: the list fills in by itself'),
-                });
-                group.add(row);
-                rows.push(row);
-                return;
-            }
-
-            for (const {key, label} of items) {
-                const row = new Adw.SwitchRow({
-                    title: label,
-                    subtitle: key !== label ? key : '',
-                    active: !excluded.has(key),
-                    sensitive: !disabled,
-                });
-                row.connect('notify::active', () => {
-                    const list = settings.get_strv('tray-excluded').filter(k => k !== key);
-                    if (!row.active)
-                        list.push(key);
-                    settings.set_strv('tray-excluded', list);
-                });
-                group.add(row);
-                rows.push(row);
-            }
-        };
-        rebuild();
-
-        // New apps appear while the window is open; tray mode greys the list out.
-        const ids = [
-            settings.connect('changed::tray-items-seen', rebuild),
-            settings.connect('changed::tray-mode', rebuild),
-        ];
-        window.connect('close-request', () => {
-            ids.forEach(id => settings.disconnect(id));
-            return false;
-        });
-        return group;
-    }
-
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         window._settings = settings;
@@ -169,7 +166,17 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
                 ['disabled', _('None, leave them in the top bar')],
             ]));
 
-        page.add(this._buildTrayAppsGroup(window, settings));
+        page.add(appSwitchGroup(window, settings, {
+            title: _('Apps inside the panel'),
+            description: _('Choose, among the icons present now, which ones move inside the panel and which stay in the top bar.'),
+            seenKey: 'tray-items-seen',
+            listKey: 'tray-excluded',
+            listMeansOn: false,
+            emptyTitle: _('No icons found yet'),
+            emptySubtitle: _('Open the panel once: the list fills in by itself'),
+            isDisabled: () => settings.get_string('tray-mode') === 'disabled',
+            watchKeys: ['tray-mode'],
+        }));
 
         const tboRow = new Adw.SwitchRow({
             title: _('Keep Top Bar Organizer in sync'),
@@ -177,6 +184,16 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('sync-top-bar-organizer', tboRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         position.add(tboRow);
+
+        page.add(appSwitchGroup(window, settings, {
+            title: _('Red dot on the clock'),
+            description: _('A red dot appears next to the clock while one of the apps switched on here has notifications.'),
+            seenKey: 'notify-apps-seen',
+            listKey: 'alert-apps',
+            listMeansOn: true,
+            emptyTitle: _('No notifications seen yet'),
+            emptySubtitle: _('Apps appear here after they send a notification'),
+        }));
 
         const look = new Adw.PreferencesGroup({
             title: _('Panel'),

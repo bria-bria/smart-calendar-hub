@@ -61,6 +61,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._syncTray();
         this._patchBoxPointer();
         this._buildWeatherBadge();
+        this._buildAlertDot();
         this._applyTopBarPosition();
         this._watchPanelBoxes();
 
@@ -84,6 +85,12 @@ export default class SmartCalendarHubExtension extends Extension {
             }
         }
         this._signals = null;
+
+        for (const [source, id] of this._alertSources ?? [])
+            source.disconnect(id);
+        this._alertSources = null;
+        this._alertDot?.destroy();
+        this._alertDot = null;
 
         this._weatherBox?.destroy();
         this._weatherBox = null;
@@ -165,6 +172,9 @@ export default class SmartCalendarHubExtension extends Extension {
             else
                 this._restoreTopBarOrganizer();
             this._applyTopBarPosition();
+            break;
+        case 'alert-apps':
+            this._updateAlertDot();
             break;
         case 'sidebar-width':
             this._updateSidebarSize();
@@ -334,6 +344,81 @@ export default class SmartCalendarHubExtension extends Extension {
                 });
             });
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Red dot next to the clock for notifications of the chosen apps
+    // ------------------------------------------------------------------
+
+    _buildAlertDot() {
+        const clock = this._dateMenu._clockDisplay;
+        const clockBox = clock?.get_parent();
+        this._alertSources = new Map();
+        if (!clockBox)
+            return;
+
+        this._alertDot = new St.Widget({
+            style_class: 'sch-alert-dot',
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: false,
+        });
+        clockBox.insert_child_above(this._alertDot, clock);
+        // Another extension may destroy the box we live in (see the weather badge).
+        this._alertDot.connect('destroy', () => {
+            this._alertDot = null;
+        });
+
+        this._connect(Main.messageTray, 'source-added', (_t, source) => this._watchSource(source));
+        this._connect(Main.messageTray, 'source-removed', (_t, source) => {
+            const id = this._alertSources.get(source);
+            if (id)
+                source.disconnect(id);
+            this._alertSources.delete(source);
+            this._updateAlertDot();
+        });
+        for (const source of Main.messageTray.getSources())
+            this._watchSource(source);
+        this._updateAlertDot();
+    }
+
+    // Stable identifier of the app behind a notification source.
+    _sourceKey(source) {
+        return source.app?.get_id?.() || source.title || '';
+    }
+
+    _watchSource(source) {
+        if (this._alertSources.has(source))
+            return;
+        this._alertSources.set(source, source.connect('notify::count', () => {
+            this._rememberSource(source);
+            this._updateAlertDot();
+        }));
+        this._rememberSource(source);
+        this._updateAlertDot();
+    }
+
+    // Adds the app to the list shown in the preferences (kept across sessions).
+    _rememberSource(source) {
+        const key = this._sourceKey(source);
+        if (!key)
+            return;
+        const label = (source.title || key).replace(/[\t\n]/g, ' ');
+        const line = `${key}\t${label}`;
+        const seen = this._settings.get_strv('notify-apps-seen');
+        if (seen.includes(line))
+            return;
+        const list = seen.filter(l => !l.startsWith(`${key}\t`));
+        list.push(line);
+        list.sort();
+        this._settings.set_strv('notify-apps-seen', list.slice(-100));
+    }
+
+    _updateAlertDot() {
+        if (!this._alertDot)
+            return;
+        const wanted = new Set(this._settings.get_strv('alert-apps'));
+        this._alertDot.visible = [...this._alertSources.keys()]
+            .some(s => s.count > 0 && wanted.has(this._sourceKey(s)));
     }
 
     // ------------------------------------------------------------------
