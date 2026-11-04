@@ -137,6 +137,9 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.09);
     margin: 4px 2px;
     padding: 6px 2px;
+    /* never squeezed to nothing when the calendar or the weather is open:
+       it shrinks to this and scrolls */
+    min-height: 10em;
 }
 
 .sch-sidebar-box .message-list .message-list-placeholder > StIcon {

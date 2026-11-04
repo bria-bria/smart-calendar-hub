@@ -756,8 +756,9 @@ export default class SmartCalendarHubExtension extends Extension {
         const monitor = Main.layoutManager.findIndexForActor(this._dateMenu.container);
         const workArea = Main.layoutManager.getWorkAreaForMonitor(monitor);
         this._sidebar.width = this._settings.get_int('sidebar-width');
-        // Fill the work area, but never be taller than it
-        this._sidebar.height = Math.max(0, workArea.height - 28);
+        // Fill the work area, but never be taller than it: 4 px gap at the
+        // top plus the popup padding and border (about 24 px) and a margin.
+        this._sidebar.height = Math.max(0, workArea.height - 40);
         // "Clear" takes 2/5 of the bottom row (sidebar padding ≈ 4 px,
         // margins and spacing ≈ 14 px); the world clocks fill the rest.
         if (this._clearButton)
