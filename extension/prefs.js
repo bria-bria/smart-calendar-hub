@@ -15,25 +15,34 @@ const APPINDICATOR_UUIDS = [
     'ubuntu-appindicators@ubuntu.com',
 ];
 
-// A combo row bound to a string key with a fixed list of values.
-function comboRow(settings, key, title, subtitle, options) {
-    const row = new Adw.ComboRow({
-        title,
-        subtitle,
-        model: Gtk.StringList.new(options.map(([, label]) => label)),
+// A choice bound to a string key with a fixed list of values.
+// An expander row instead of a drop-down: the drop-down cut long choices
+// ("Right, between tray icons and ..."); here every choice is shown in full,
+// with a check mark on the current one, and the row subtitle tells it.
+function choiceRow(settings, key, title, description, options) {
+    const row = new Adw.ExpanderRow({title, tooltip_text: description});
+    let group = null;
+    const checks = options.map(([value, label]) => {
+        const check = new Gtk.CheckButton({group, valign: Gtk.Align.CENTER});
+        group ??= check;
+        const option = new Adw.ActionRow({title: label, activatable_widget: check});
+        option.add_prefix(check);
+        row.add_row(option);
+        check.connect('toggled', () => {
+            if (check.active && settings.get_string(key) !== value)
+                settings.set_string(key, value);
+        });
+        return check;
     });
     const sync = () => {
         const i = options.findIndex(([value]) => value === settings.get_string(key));
-        if (i !== -1 && row.selected !== i)
-            row.selected = i;
+        if (i === -1)
+            return;
+        row.subtitle = options[i][1];
+        if (!checks[i].active)
+            checks[i].active = true;
     };
     sync();
-    row.connect('notify::selected', () => {
-        const value = options[row.selected]?.[0];
-        if (value && value !== settings.get_string(key))
-            settings.set_string(key, value);
-    });
-    // keep in sync with the quick options inside the panel
     const id = settings.connect(`changed::${key}`, sync);
     row.connect('destroy', () => settings.disconnect(id));
     return row;
@@ -114,6 +123,8 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
 
         const settings = this.getSettings();
         window._settings = settings;
+        // wide enough for the longer descriptions
+        window.set_default_size(720, 900);
 
         const page = new Adw.PreferencesPage({
             title: 'Smart Calendar Hub',
@@ -149,7 +160,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         page.add(position);
 
-        position.add(comboRow(settings, 'sidebar-side',
+        position.add(choiceRow(settings, 'sidebar-side',
             _('Panel side'),
             _('Side of the screen where the panel appears when you click the clock'),
             [
@@ -158,7 +169,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
                 ['button', _('Under the clock button')],
             ]));
 
-        position.add(comboRow(settings, 'top-bar-position',
+        position.add(choiceRow(settings, 'top-bar-position',
             _('Clock in the top bar'),
             _('Position of the clock and temperature in the GNOME top bar'),
             [
@@ -168,7 +179,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
                 ['center', _('Center (GNOME default)')],
             ]));
 
-        position.add(comboRow(settings, 'tray-mode',
+        position.add(choiceRow(settings, 'tray-mode',
             _('Icons inside the panel'),
             _('Top bar icons moved to the top of the panel'),
             [
