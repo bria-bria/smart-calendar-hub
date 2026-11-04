@@ -366,7 +366,8 @@ export default class SmartCalendarHubExtension extends Extension {
             y_align: Clutter.ActorAlign.CENTER,
             visible: false,
         });
-        clockBox.insert_child_above(this._alertDot, clock);
+        // on the left of the time
+        clockBox.insert_child_below(this._alertDot, clock);
         // Another extension may destroy the box we live in (see the weather badge).
         this._alertDot.connect('destroy', () => {
             this._alertDot = null;

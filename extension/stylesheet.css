@@ -193,12 +193,12 @@
     border-radius: 14px;
 }
 
-/* Red dot next to the clock: notifications of the chosen apps */
+/* Red dot on the left of the clock: notifications of the chosen apps */
 .sch-alert-dot {
     width: 8px;
     height: 8px;
     border-radius: 4px;
-    margin-left: 5px;
+    margin-right: 5px;
     background-color: #e01b24;
 }
 
