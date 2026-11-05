@@ -25,6 +25,8 @@ import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
+// Tray arrows: how far one click moves the view (one icon cell + spacing)
+const TRAY_STEP = 36;
 // An icon counts as "normal" for an app only after being shown this long
 const NORMAL_ICON_MIN_SECONDS = 600;
 const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
@@ -257,6 +259,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._traySection = null;
         this._traySpacer = null;
         this._trayScroll = null;
+        this._trayLeft = null;
+        this._trayRight = null;
         this._ipPanelBin = null;
         this._trayBox = null;
         this._calendarBox = null;
@@ -1139,8 +1143,8 @@ export default class SmartCalendarHubExtension extends Extension {
         // tray). With no icons the row keeps only the button, on the right.
         const trayRow = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true});
         this._sidebar.add_child(trayRow);
+        // [◀] icons [▶]: the arrows appear only when the icons do not fit
         this._traySection = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'sch-tray-section',
             x_expand: true,
             visible: false,
@@ -1149,11 +1153,10 @@ export default class SmartCalendarHubExtension extends Extension {
         // One row of icons, each in a cell of ours of the same size
         // (sch-tray-cell) with the icon centred: the buttons of other
         // extensions have different widths. Packed on the right; with more
-        // icons than room a scrollbar appears under the row.
+        // icons than room, an arrow on each side moves the view.
         this._trayBox = new St.BoxLayout({style_class: 'sch-tray-box', x_expand: true});
         this._trayBox.add_child(new St.Widget({x_expand: true}));
-        // The scrollbar is switched on only when the icons are wider than
-        // the box (_syncTrayScrollbar): AUTOMATIC showed it even when they fit.
+        // No scrollbar: the arrows on the sides move the view
         const trayScroll = this._trayScroll = new St.ScrollView({
             style_class: 'sch-tray-scroll',
             x_expand: true,
@@ -1177,11 +1180,36 @@ export default class SmartCalendarHubExtension extends Extension {
             }
             if (!delta)
                 return Clutter.EVENT_PROPAGATE;
-            adj.value += delta * adj.step_increment;
+            adj.value += delta * TRAY_STEP;
             return Clutter.EVENT_STOP;
         });
+        const arrow = (icon, delta, name) => {
+            const btn = new St.Button({
+                style_class: 'sch-tray-arrow',
+                can_focus: true,
+                accessible_name: name,
+                y_align: Clutter.ActorAlign.CENTER,
+                visible: false,
+                child: new St.Icon({icon_name: icon, icon_size: 12}),
+            });
+            btn.connect('clicked', () => {
+                const adj = this._trayBox.hadjustment;
+                const target = Math.max(adj.lower,
+                    Math.min(adj.upper - adj.page_size, adj.value + delta * TRAY_STEP));
+                adj.ease(target, {duration: 150, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+            });
+            return btn;
+        };
+        this._trayLeft = arrow('pan-start-symbolic', -1, _('Previous icons'));
+        this._trayRight = arrow('pan-end-symbolic', 1, _('Next icons'));
+        this._traySection.add_child(this._trayLeft);
         this._traySection.add_child(trayScroll);
+        this._traySection.add_child(this._trayRight);
         trayScroll.connect('notify::width', () => this._queueTrayScrollbar());
+        // the arrow at the end of the row is dimmed
+        const adjustment = this._trayBox.hadjustment;
+        for (const prop of ['value', 'upper', 'page-size'])
+            adjustment.connect(`notify::${prop}`, () => this._syncTrayArrowEnds());
         trayRow.add_child(this._traySection);
         trayRow.add_child(this._traySpacer);
         const gear = this._gearButton = new St.Button({
@@ -1731,7 +1759,7 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     // Puts the moved icons in rows that fit the panel width.
-    // Scrollbar only when the icons do not fit (checked after the layout)
+    // Arrows only when the icons do not fit (checked after the layout)
     _queueTrayScrollbar() {
         if (this._trayScrollbarId)
             return;
@@ -1742,12 +1770,25 @@ export default class SmartCalendarHubExtension extends Extension {
                 return GLib.SOURCE_REMOVE;
             // natural width of the icons (the spacer in front has none)
             const [, natural] = this._trayBox.get_preferred_width(-1);
-            const overflow = natural > scroll.width + 1;
-            const policy = overflow ? St.PolicyType.AUTOMATIC : St.PolicyType.NEVER;
-            if (scroll.hscrollbar_policy !== policy)
-                scroll.hscrollbar_policy = policy;
+            // with the arrows shown the box is narrower: compare with the
+            // room the icons have without them
+            const arrows = this._trayLeft.visible ? this._trayLeft.width + this._trayRight.width + 8 : 0;
+            const overflow = natural > scroll.width + arrows + 1;
+            this._trayLeft.visible = overflow;
+            this._trayRight.visible = overflow;
+            if (!overflow)
+                this._trayBox.hadjustment.value = 0;
+            this._syncTrayArrowEnds();
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+    _syncTrayArrowEnds() {
+        const adj = this._trayBox?.hadjustment;
+        if (!adj || !this._trayLeft)
+            return;
+        this._trayLeft.opacity = adj.value > adj.lower + 1 ? 255 : 90;
+        this._trayRight.opacity = adj.value < adj.upper - adj.page_size - 1 ? 255 : 90;
     }
 
     // _layoutTray() once the current destruction is over

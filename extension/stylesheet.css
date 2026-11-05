@@ -38,9 +38,26 @@
     height: 32px;
 }
 
-/* scrollbar under the row, only when the icons do not fit */
+/* the icons that do not fit are hidden; the arrows move the view */
 .sch-tray-scroll {
     -st-hfade-offset: 0;
+}
+
+.sch-tray-section {
+    spacing: 4px;
+}
+
+.sch-tray-arrow {
+    width: 18px;
+    height: 26px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.09);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.sch-tray-arrow:hover,
+.sch-tray-arrow:focus {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 .sch-tray-item {

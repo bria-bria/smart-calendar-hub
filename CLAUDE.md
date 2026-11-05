@@ -28,7 +28,7 @@ soltanto. Deciso da Michele il 04/11/2026: AppIndicator resta accesa, non va
 integrata né spenta; le Preferenze mostrano un avviso se è spenta.
 
 Le icone del vassoio stanno su **una sola riga** (scelta di Michele, 05/11/2026)
-con barra di scorrimento sotto se non ci stanno; ogni icona è in una casella
+con una freccia per lato (◀ ▶) se non ci stanno, niente barra di scorrimento; ogni icona è in una casella
 nostra (`sch-tray-cell`, 32 px) con l'icona centrata, perché i pulsanti delle
 altre estensioni hanno larghezze diverse (con `set_size` sul contenitore non
 funzionava). NON usare `Clutter.FlowLayout`: su GNOME 51 dà altezza 0 ai

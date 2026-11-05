@@ -100,6 +100,10 @@ export const IT = {
         "Tutte quelle attive: VPN 1, 2, 3…",
     "Asks api.ipify.org, like the top bar":
         "Chiede ad api.ipify.org, come la barra in alto",
+    "Previous icons":
+        "Icone precedenti",
+    "Next icons":
+        "Icone successive",
     "Previous address":
         "Indirizzo precedente",
     "Next address":
