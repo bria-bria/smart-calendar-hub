@@ -1959,6 +1959,9 @@ export default class SmartCalendarHubExtension extends Extension {
         // which follow GNOME's menu)
         const cardBorder = calendarSide ? cardFrame ?? 22 : this._measureCardFrame();
         this._sidebar.height = Math.max(0, workArea.height - 18 - cardBorder) + frame;
+        // a side page of an extension (showExternalPage) as tall as the panel
+        if (this._insideMenu?.side && this._calendarCard)
+            this._calendarCard.height = this._sidebar.height;
         // "Clear" takes 2/5 of the bottom row (sidebar padding ≈ 4 px,
         // margins and spacing ≈ 14 px); the world clocks fill the rest.
         this._layoutBottomRow();
