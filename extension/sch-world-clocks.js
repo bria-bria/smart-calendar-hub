@@ -14,6 +14,7 @@
 import 'cairo'; // makes the Cairo context of St.DrawingArea usable
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import Pango from 'gi://Pango';
 import GLib from 'gi://GLib';
 import GWeather from 'gi://GWeather';
 import Shell from 'gi://Shell';
@@ -207,7 +208,11 @@ export class WorldClocksCard {
         const add = (icon, text, tip) => {
             const line = new St.BoxLayout({style_class: 'sch-clock-chip-line'});
             line.add_child(new St.Icon({icon_name: icon, icon_size: 14, y_align: Clutter.ActorAlign.CENTER}));
-            line.add_child(new St.Label({text, y_align: Clutter.ActorAlign.CENTER}));
+            // never shortened ("…"): when they do not fit, the row scrolls
+            // with the arrows instead
+            const label = new St.Label({text, y_align: Clutter.ActorAlign.CENTER});
+            label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+            line.add_child(label);
             const chip = new St.Button({
                 style_class: 'sch-clock-chip',
                 can_focus: true,
