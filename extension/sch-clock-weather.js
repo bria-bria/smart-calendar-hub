@@ -5,7 +5,9 @@
 // in the font of the clock, before or after it. GNOME draws the pill on the
 // clock label (style class "clock"): the class moves to a box of ours that
 // holds both the clock and the weather, so they are one indicator, not two.
-// While GNOME Weather loads a spinner is shown; after each update the description ("Cloudy") replaces
+// While GNOME Weather loads nothing changes (the last weather stays, or the
+// pill shows only the clock): a spinner made the pill change width and moved
+// the other icons. After each update the description ("Cloudy") replaces
 // the temperature for a few seconds; when the width changes, clock and
 // weather slide to their new place instead of jumping. Hidden while offline,
 // it tries again by itself and asks for fresh data every 10 minutes.
@@ -18,7 +20,6 @@ import GWeather from 'gi://GWeather';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {Spinner} from 'resource:///org/gnome/shell/ui/animation.js';
 
 const FADE_OUT = 250;
 const FADE_IN = 400;
@@ -52,24 +53,16 @@ export class ClockWeather {
             y_align: Clutter.ActorAlign.CENTER,
             visible: false,
         });
-        const iconStack = new St.Widget({
-            layout_manager: new Clutter.BinLayout(),
-            y_align: Clutter.ActorAlign.CENTER,
-        });
         this._icon = new St.Icon({
             style_class: 'system-status-icon sch-clock-weather-icon',
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._spinner = new Spinner(16, {animate: false, hideOnStop: true});
-        this._spinner.y_align = Clutter.ActorAlign.CENTER;
-        iconStack.add_child(this._icon);
-        iconStack.add_child(this._spinner);
         this._label = new St.Label({
             style_class: 'clock-label sch-clock-weather-label',
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._label.clutter_text.y_align = Clutter.ActorAlign.CENTER;
-        this.actor.add_child(iconStack);
+        this.actor.add_child(this._icon);
         this.actor.add_child(this._label);
         this._place();
 
@@ -269,13 +262,9 @@ export class ClockWeather {
         return null;
     }
 
+    // GNOME Weather is loading: nothing on screen changes
     _loading() {
         this._clearTimer('description');
-        this._change(this.actor, () => {
-            this._icon.hide();
-            this._label.hide();
-            this._spinner.play();
-        });
     }
 
     _show(icon, temp, description) {
@@ -288,7 +277,6 @@ export class ClockWeather {
             return;
         // only the text fades when the icon stays the same
         this._change(wasShown && !iconChanged ? this._label : this.actor, () => {
-            this._spinner.stop();
             this._icon.icon_name = icon;
             this._icon.visible = this._mode() !== 'temperature';
             this._label.text = temp;
@@ -335,7 +323,6 @@ export class ClockWeather {
 
     _hide(now = false) {
         this._stopTimers();
-        this._spinner.stop();
         this._shown = null;
         this._description = null;
         this._showingDescription = false;
