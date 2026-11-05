@@ -2479,7 +2479,8 @@ export default class SmartCalendarHubExtension extends Extension {
                 console.error(`Smart Calendar Hub: page of ${info.role}: ${e}`);
             }
         }
-        if (shown.page instanceof Clutter.Actor) {
+        // a page still inside something else cannot be shown: the menu instead
+        if (shown.page instanceof Clutter.Actor && !shown.page.get_parent()) {
             this._trayMenuContent.add_child(shown.page);
             shown.page.add_style_class_name?.('sch-hub-page');
             shown.pageDestroyId = shown.page.connect('destroy', () => {
