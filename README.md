@@ -48,7 +48,8 @@ icon next to the tray icons. They are in five tabs:
   on alone), calendar collapsed on opening, panel width (or "Align to GNOME's
   menu": as wide as the system menu, automatically), space between the
   top bar icons (12 = GNOME default, less brings them closer), texts and
-  icons of the top bar in GNOME's accent colour.
+  icons of the top bar in GNOME's accent colour, the battery as a circle that
+  empties with the charge (percentage inside optional).
 - **Tray**: which top bar icons move inside the panel, and a switch for each
   app.
 - **Calendars**: which calendars are shown. This is the same switch GNOME

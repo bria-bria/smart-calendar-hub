@@ -166,6 +166,16 @@ export const IT = {
         "Chiara",
     "Full":
         "Piena",
+    "Battery":
+        "Batteria",
+    "In the top bar, also on the lock screen and on the login screen.":
+        "Nella barra in alto, anche sul blocco schermo e sulla schermata di accesso.",
+    "Battery as a circle":
+        "Batteria circolare",
+    "A ring that empties with the charge, in the colour of the bar; yellow under 20%, red under 10%, a bolt while charging":
+        "Un anello che si svuota con la carica, nel colore della barra; giallo sotto il 20%, rosso sotto il 10%, un fulmine in carica",
+    "Percentage inside the circle":
+        "Percentuale dentro il cerchio",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

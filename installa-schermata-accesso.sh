@@ -3,7 +3,8 @@
 # SPDX-FileCopyrightText: 2026 bria-bria
 #
 # Smart Calendar Hub on the login screen (GDM): only the look of the top
-# bar (accent colour, space between the icons, clock position), the same as
+# bar (accent colour, space between the icons, clock position, battery as a
+# circle), the same as
 # in your session. Nothing else of the extension runs there.
 #
 #   sudo ./installa-schermata-accesso.sh            install / update
@@ -76,6 +77,8 @@ TONE=$(read_key "$S/accent-top-bar-tone" "'light'")
 SPACING=$(read_key "$S/top-bar-spacing" "12")
 POSITION=$(read_key "$S/top-bar-position" "'right-between-tray-and-menu'")
 ACCENT=$(read_key /org/gnome/desktop/interface/accent-color "'blue'")
+BATTERY=$(read_key "$S/battery-circle" "false")
+BATTERY_TEXT=$(read_key "$S/battery-circle-text" "true")
 
 # 3. a system database for the gdm user (the default profile has none)
 if [ ! -f "$PROFILE" ]; then
@@ -108,6 +111,8 @@ accent-top-bar=$ACCENT_BAR
 accent-top-bar-tone=$TONE
 top-bar-spacing=$SPACING
 top-bar-position=$POSITION
+battery-circle=$BATTERY
+battery-circle-text=$BATTERY_TEXT
 
 [org/gnome/desktop/interface]
 accent-color=$ACCENT
@@ -117,4 +122,5 @@ dconf update
 echo "Fatto. Impostazioni portate sulla schermata di accesso:"
 echo "  colore d'accento nella barra: $ACCENT_BAR (tonalità $TONE, accento $ACCENT)"
 echo "  spazio tra le icone: $SPACING   posizione dell'ora: $POSITION"
+echo "  batteria circolare: $BATTERY (percentuale dentro: $BATTERY_TEXT)"
 echo "Si vedono al prossimo avvio del PC (o al prossimo logout)."

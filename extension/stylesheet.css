@@ -643,6 +643,13 @@
     background-color: #b0bccb;
 }
 
+/* The battery as a circle (sch-battery.js): the size is set by the code,
+   as the other icons of the bar */
+.sch-battery-circle {
+    padding: 0;
+    margin: 0 2px;
+}
+
 /* IP addresses in the side panel, under the tray: the box takes the look
    of the weather row (sch-calendar-expander) */
 .sch-ip-panel {

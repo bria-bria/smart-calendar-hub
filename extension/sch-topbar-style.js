@@ -5,6 +5,7 @@
 // lock screen and on the login screen. Only styling, nothing personal:
 //  - texts and icons in GNOME's accent colour (light tint or full colour)
 //  - space between the icons (sch-spacing.js)
+//  - the battery as a circle (sch-battery.js)
 //  - on the lock and login screens, the clock where it is in the session
 //    (in the session the full extension places it)
 
@@ -12,6 +13,7 @@ import Gio from 'gi://Gio';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {CircleBattery} from './sch-battery.js';
 import {PanelSpacing} from './sch-spacing.js';
 
 // The clock goes right before GNOME's system menu: second from the right.
@@ -51,6 +53,7 @@ export class TopBarStyle {
             [settings, settings.connect('changed::top-bar-position', () => this._placeClock())],
         ];
         this._spacing = new PanelSpacing(settings);
+        this._battery = new CircleBattery(settings);
         this._clockOrigin = null;
         this._placingClock = false;
         this._loginScreen = false;
@@ -63,6 +66,8 @@ export class TopBarStyle {
         this._ids = [];
         this._spacing?.destroy();
         this._spacing = null;
+        this._battery?.destroy();
+        this._battery = null;
         this._removeAccent();
         this.setClockPlacement(false);
         this._interface = null;

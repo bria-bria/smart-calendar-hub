@@ -180,6 +180,16 @@
       <summary>Tone of the accent colour in the top bar: light tint (bright) or the full colour</summary>
     </key>
 
+    <key name="battery-circle" type="b">
+      <default>false</default>
+      <summary>The battery in the top bar as a circle that empties with the charge</summary>
+    </key>
+
+    <key name="battery-circle-text" type="b">
+      <default>true</default>
+      <summary>The percentage inside the battery circle</summary>
+    </key>
+
     <key name="top-bar-spacing" type="i">
       <range min="0" max="12"/>
       <default>12</default>

@@ -386,6 +386,26 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('accent-top-bar', toneRow, 'sensitive', Gio.SettingsBindFlags.GET);
         look.add(toneRow);
 
+        // The battery as a circle in the top bar (also on the lock and login
+        // screens)
+        const battery = new Adw.PreferencesGroup({
+            title: _('Battery'),
+            description: _('In the top bar, also on the lock screen and on the login screen.'),
+        });
+        pagePanel.add(battery);
+        const circleRow = new Adw.SwitchRow({
+            title: _('Battery as a circle'),
+            subtitle: _('A ring that empties with the charge, in the colour of the bar; yellow under 20%, red under 10%, a bolt while charging'),
+        });
+        settings.bind('battery-circle', circleRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        battery.add(circleRow);
+        const circleTextRow = new Adw.SwitchRow({
+            title: _('Percentage inside the circle'),
+        });
+        settings.bind('battery-circle-text', circleTextRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('battery-circle', circleTextRow, 'sensitive', Gio.SettingsBindFlags.GET);
+        battery.add(circleTextRow);
+
         // Everything about the weather in one group
         const weather = new Adw.PreferencesGroup({
             title: _('Weather'),
