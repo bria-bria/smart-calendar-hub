@@ -8,6 +8,7 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import GWeather from 'gi://GWeather';
 import St from 'gi://St';
 
@@ -533,7 +534,7 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     // ------------------------------------------------------------------
-    // Silencing apps: no banner, notifications kept in the list, no red dot.
+    // Silencing apps: no banner, notifications kept in the list, red dot instead.
     // muted-apps: "key TAB name TAB until" (until = Unix seconds, 0 = always)
     // ------------------------------------------------------------------
 
@@ -665,11 +666,22 @@ export default class SmartCalendarHubExtension extends Extension {
             delete message._schMuteBell;
         });
 
-        // Reactive and swallowing clicks: the notification itself is a button,
-        // a click in the gaps of the row must not open the app.
-        const row = new St.BoxLayout({style_class: 'sch-mute-row', visible: false, x_expand: true, reactive: true});
-        for (const signal of ['button-press-event', 'button-release-event', 'touch-event'])
-            row.connect(signal, () => Clutter.EVENT_STOP);
+        // The notification itself is a button: a click in the gaps of the row
+        // must not open the app. The row must NOT swallow press/release events:
+        // on GNOME 51 St.Button recognizes clicks with a Clutter.ClickGesture,
+        // and stopping those events kept the duration buttons from working.
+        // The message's own "clicked" is stopped instead when the pointer is
+        // on the row (it runs before GNOME's default handler, vfunc_clicked).
+        const row = new St.BoxLayout({style_class: 'sch-mute-row', visible: false, x_expand: true});
+        message.connect('clicked', () => {
+            if (!row.visible || !row.mapped)
+                return;
+            const [x, y] = global.get_pointer();
+            const box = row.get_transformed_extents();
+            if (x >= box.get_x() && x < box.get_x() + box.get_width() &&
+                y >= box.get_y() && y < box.get_y() + box.get_height())
+                GObject.signal_stop_emission_by_name(message, 'clicked');
+        });
         const hour = 3600;
         const choices = [
             [_('1 hour'), () => Date.now() / 1000 + hour],
