@@ -218,6 +218,8 @@ export class CircleBattery {
         const rgb = [fg.red / 255, fg.green / 255, fg.blue / 255];
         const level = this._target;
         const power = this._power();
+        // plugged in but not charging: drawn as on battery, without the
+        // yellow/red warnings (it is not running down)
         const onBattery = power === 'battery';
         const ring = onBattery && level <= CRITICAL ? RED
             : onBattery && level <= LOW ? YELLOW : rgb;

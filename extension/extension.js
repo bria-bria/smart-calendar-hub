@@ -1637,9 +1637,12 @@ export default class SmartCalendarHubExtension extends Extension {
         const host = this._dateMenu?.menu?.box;
         if (!host || !this._sidebar || !this._calendarCard || !this._calendarView)
             return;
-        // before the change (afterwards the box has no padding or border)
-        if (on && !host.has_style_class_name('sch-cards-host'))
+        // before the change (afterwards the box has no padding or border),
+        // with GNOME's padding already applied (first opening after login)
+        if (on && !host.has_style_class_name('sch-cards-host')) {
+            this._applyCardShape();
             cardFrame = this._measureCardFrame();
+        }
         calendarSide = on;
         const view = this._calendarView.actor;
         if (on) {
@@ -1853,15 +1856,20 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         const shape = this._gnomeCardShape();
         const card = pad => shape ? `padding: ${pad}px; border-radius: ${shape.radius}px` : null;
+        // only when it changes: a new style restyles the whole panel
+        const setStyle = (actor, style) => {
+            if (actor && (actor.get_style() ?? null) !== style)
+                actor.set_style(style);
+        };
         if (calendarSide) {
             const gap = this._gnomeCardGap();
-            host.set_style(gap === null ? null : `spacing: ${gap}px`);
-            this._sidebar.set_style(card(shape?.padding + 2));
-            this._calendarCard?.set_style(card(shape?.padding));
+            setStyle(host, gap === null ? null : `spacing: ${gap}px`);
+            setStyle(this._sidebar, card(shape?.padding + 2));
+            setStyle(this._calendarCard, card(shape?.padding));
         } else {
-            host.set_style(card(shape?.padding));
-            this._sidebar.set_style(null);
-            this._calendarCard?.set_style(null);
+            setStyle(host, card(shape?.padding));
+            setStyle(this._sidebar, null);
+            setStyle(this._calendarCard, null);
         }
     }
 
