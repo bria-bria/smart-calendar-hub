@@ -1,7 +1,7 @@
 {
   "uuid": "smart-calendar-hub@bria-bria.github.io",
   "name": "Smart Calendar Hub",
-  "description": "Turns the clock menu into a side panel: weather on top, date, a collapsible calendar, notifications and world clocks. Shows the temperature next to the clock, lets you move the clock in the top bar and can gather tray icons inside the panel.",
+  "description": "Turns the clock menu into a side panel: tray icons, weather, date with a sky showing the sun or the moon in its phase, a calendar sized to the panel with your accounts' colours and the day's agenda, notifications and world clocks. A red dot on the clock for the apps you choose, a bell to silence an app, and the IP addresses in the top bar.\n\nNetwork use: only if you switch on \"Public address\" (off by default), the extension asks https://api.ipify.org for your public IP when the network changes and every 30 minutes. Nothing else is sent anywhere.\n\nTray icons need the \"AppIndicator and KStatusNotifierItem Support\" extension. Events come from GNOME's online accounts (evolution-data-server); GNOME Calendar is used, if installed, to open events and create new ones.",
   "shell-version": [
     "48",
     "49",

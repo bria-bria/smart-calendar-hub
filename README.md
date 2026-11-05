@@ -35,20 +35,33 @@ the panel; the preferences window shows a warning when that extension is off.
 
 ## Settings
 
-Open the extension preferences (Extensions app → Smart Calendar Hub) or click
-the gear icon next to the weather.
+Open the preferences (Extensions app → Smart Calendar Hub) or click the gear
+icon next to the weather. They are in five tabs:
 
-- **Panel side**: right edge, left edge, or under the clock button.
-- **Clock in the top bar**: right before the system menu, right before the
-  tray icons, left after the menus, or center.
-- **Icons inside the panel**: tray icons of applications, all right-side
-  icons, or none.
-- **Keep Top Bar Organizer in sync** (off by default): if you use the Top Bar
-  Organizer extension, the clock position is also written into its settings;
-  the previous order is restored when Smart Calendar Hub is turned off.
-  If you use Top Bar Organizer, turn this on: otherwise both extensions try
-  to place the clock.
-- **Calendar collapsed on opening** and **panel width**.
+- **Panel**: panel side (right, left, under the clock), clock position in the
+  top bar, Top Bar Organizer sync (off by default; turn it on if you use Top
+  Bar Organizer, otherwise both extensions try to place the clock), the sky
+  next to the date (sun and moon of the day, moon phase: each can be switched
+  on alone), calendar collapsed on opening, panel width.
+- **Tray**: which top bar icons move inside the panel, and a switch for each
+  app.
+- **Calendars**: which calendars are shown. This is the same switch GNOME
+  Calendar uses, so a calendar turned off here is off there too (your online
+  accounts are not changed). Calendars shared between two accounts appear once.
+- **Notifications**: apps silenced with the bell of a notification (1 hour,
+  8 hours, until tomorrow morning, always; "Unmute" to undo) and the apps that
+  light the red dot on the clock — for notifications, or when their tray icon
+  changes from the usual one (e.g. an unread badge).
+- **Network**: IP addresses in the top bar (left, center or right), local
+  network address, public address.
+
+### Privacy and network use
+
+Smart Calendar Hub makes **one** kind of network request, and only if you
+switch on **Public address** (off by default): it asks
+`https://api.ipify.org` for your public IP address when the network changes
+and every 30 minutes. That service sees the request. Nothing else is sent
+anywhere; calendars, notifications and settings stay on your computer.
 
 ## Install from source
 

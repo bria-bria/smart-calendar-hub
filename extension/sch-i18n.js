@@ -50,6 +50,8 @@ export const IT = {
         "Notifiche da: {apps}",
     "New event":
         "Nuovo impegno",
+    "World clocks":
+        "Orologi mondiali",
 
     // --- IP addresses (sch-net.js, prefs.js) ---
     "IP addresses":

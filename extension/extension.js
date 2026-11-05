@@ -132,6 +132,14 @@ export default class SmartCalendarHubExtension extends Extension {
         this._enableToken = null;
         unloadUserTranslations();
 
+        // First, so its panel role is freed even if a later step fails
+        try {
+            this._ipView?.destroy();
+        } catch (e) {
+            console.error(`Smart Calendar Hub: cannot remove the IP indicator: ${e}`);
+        }
+        this._ipView = null;
+
         if (this._idleId) {
             GLib.source_remove(this._idleId);
             this._idleId = 0;
@@ -146,13 +154,20 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         this._signals = null;
 
+        const safeDisconnect = (obj, id) => {
+            try {
+                obj.disconnect(id);
+            } catch (_e) {
+                // already destroyed
+            }
+        };
         for (const [source, ids] of this._alertSources ?? [])
-            ids.forEach(id => source.disconnect(id));
+            ids.forEach(id => safeDisconnect(source, id));
         this._alertSources = null;
         this._unpatchNotificationMessages();
         for (const [sni, ids] of this._alertTray ?? []) {
             this._accountTrayIcon(sni); // last stretch of time of its icon
-            ids.forEach(id => sni.disconnect(id));
+            ids.forEach(id => safeDisconnect(sni, id));
         }
         if (this._iconSaveId) {
             GLib.source_remove(this._iconSaveId);
@@ -196,6 +211,11 @@ export default class SmartCalendarHubExtension extends Extension {
         this._savedParents = null;
 
         // Undo the bottom-row tweaks after the widgets are back in place.
+        try {
+            this._setBottomCompact(false); // texts back on GNOME's buttons
+        } catch (e) {
+            console.error(`Smart Calendar Hub: cannot restore the bottom buttons: ${e}`);
+        }
         if (this._clearButton) {
             this._clearButton.remove_style_class_name('sch-clear-button');
             this._clearButton.remove_style_class_name('sch-bottom-btn');
@@ -210,10 +230,10 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         this._bottomRow = null;
         this._clearBox = null;
+        this._clearLabel = null;
+        this._clocksGrid = null;
 
         // Before the panel goes: it is connected to GNOME's calendar and events
-        this._ipView?.destroy();
-        this._ipView = null;
         this._calendarView?.destroy();
         this._skyView?.destroy();
         this._skyView = null;
@@ -1208,6 +1228,37 @@ export default class SmartCalendarHubExtension extends Extension {
         const width = Math.floor((inner - 6 * (items.length - 1)) / items.length);
         for (const item of items)
             item.width = width;
+        // Too narrow for the text: icons instead (the text stays as accessible name)
+        this._setBottomCompact(width < 130);
+    }
+
+    _setBottomCompact(compact) {
+        const clear = this._clearButton;
+        if (clear) {
+            if (compact && !this._clearLabel) {
+                this._clearLabel = clear.label;
+                clear.child = new St.Icon({icon_name: 'edit-clear-all-symbolic', icon_size: 16});
+            } else if (!compact && this._clearLabel) {
+                clear.label = this._clearLabel;
+                this._clearLabel = null;
+            }
+        }
+        const clocks = this._clocksOrig ? this._dateMenu._clocksItem : null;
+        if (clocks) {
+            // only the "Add world clocks…" title becomes an icon; a list of
+            // clocks stays as GNOME shows it
+            const iconify = compact && (clocks._locations?.length ?? 0) === 0;
+            if (iconify && !this._clocksGrid) {
+                this._clocksGrid = clocks.child;
+                this._clocksAccessible = clocks.accessible_name;
+                clocks.child = new St.Icon({icon_name: 'preferences-system-time-symbolic', icon_size: 16});
+                clocks.accessible_name = _('World clocks');
+            } else if (!iconify && this._clocksGrid) {
+                clocks.child = this._clocksGrid;
+                clocks.accessible_name = this._clocksAccessible;
+                this._clocksGrid = null;
+            }
+        }
     }
 
     // Same rule GNOME uses for the notification list (DateMenuButton._sessionUpdated)

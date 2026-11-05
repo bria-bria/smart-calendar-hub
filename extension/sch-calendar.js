@@ -538,8 +538,9 @@ export class CalendarView {
     // D-Bus (up to 10 s: a Flatpak cold start is slow), then activate
     // win.new-event on the newest one.
     async openNewEvent() {
-        if (!this._calendarCmd)
-            return;
+        if (!this._calendarCmd || this._openingNewEvent)
+            return; // a second click while waiting is ignored
+        this._openingNewEvent = true;
         try {
             Gio.Subprocess.new(this._calendarCmd, Gio.SubprocessFlags.NONE);
             for (let i = 0; i < 40; i++) {
@@ -556,6 +557,8 @@ export class CalendarView {
         } catch (e) {
             if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
                 console.error(`Smart Calendar Hub: cannot open a new event: ${e}`);
+        } finally {
+            this._openingNewEvent = false;
         }
     }
 
