@@ -2,6 +2,8 @@
 
 A GNOME Shell extension that turns the clock menu into a side panel.
 
+**Website: https://bria-bria.github.io/smart-calendar-hub/**
+
 From top to bottom the panel shows:
 
 1. tray icons of applications (optional), with the button that opens the
