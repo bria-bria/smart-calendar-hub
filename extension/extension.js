@@ -53,7 +53,10 @@ const ROLES_NEVER_IN_TRAY = new Set([
 ]);
 
 // Items of the right box that are "GNOME menus": the clock goes just before them.
-const MENU_TAIL_ROLES = ['EmojisMenu', 'clipboardIndicator', 'quickSettings'];
+// The clock goes right before GNOME's system menu: second from the right.
+// Every icon left in the top bar (clipboard, emoji, usage meters…) stays on
+// its left.
+const MENU_TAIL_ROLES = ['quickSettings'];
 
 // Weather section open or closed. Module-level on purpose: it survives
 // disable/enable (screen lock) and goes back to closed at the next login.
@@ -271,6 +274,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._sidebar = null;
         this._traySection = null;
         this._traySpacer = null;
+        this._trayEndSpacer = null;
         this._trayScroll = null;
         this._trayLeft = null;
         this._trayRight = null;
@@ -1114,10 +1118,13 @@ export default class SmartCalendarHubExtension extends Extension {
         this._traySpacer = new St.Widget({x_expand: true});
         // One row of icons, each in a cell of ours of the same size
         // (sch-tray-cell) with the icon centred: the buttons of other
-        // extensions have different widths. Packed on the right; with more
-        // icons than room, an arrow on each side moves the view.
+        // extensions have different widths. In the centre; with more icons
+        // than room, an arrow on each side moves the view.
         this._trayBox = new St.BoxLayout({style_class: 'sch-tray-box', x_expand: true});
+        // a spacer on each side: the icons stay in the centre
         this._trayBox.add_child(new St.Widget({x_expand: true}));
+        this._trayEndSpacer = new St.Widget({x_expand: true});
+        this._trayBox.add_child(this._trayEndSpacer);
         // No scrollbar: the arrows on the sides move the view
         const trayScroll = this._trayScroll = new St.ScrollView({
             style_class: 'sch-tray-scroll',
@@ -1770,8 +1777,8 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         const cells = [...this._movedTrayItems.values()].map(i => i.cell);
         this._showTraySection(cells.length > 0);
-        // first child: the spacer that packs the icons on the right
-        const current = this._trayBox.get_children().slice(1);
+        // first and last children: the spacers that centre the icons
+        const current = this._trayBox.get_children().slice(1, -1);
         // cells left empty by icons that were destroyed
         const wanted = new Set(cells);
         for (const cell of current.filter(c => !wanted.has(c)))
@@ -1787,7 +1794,7 @@ export default class SmartCalendarHubExtension extends Extension {
             this._trayBox.remove_child(cell);
         for (const cell of cells) {
             cell.get_parent()?.remove_child(cell);
-            this._trayBox.add_child(cell);
+            this._trayBox.insert_child_below(cell, this._trayEndSpacer);
         }
         this._queueTrayScrollbar();
     }

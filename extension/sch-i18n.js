@@ -132,6 +132,8 @@ export const IT = {
         "Icone precedenti",
     "Next icons":
         "Icone successive",
+    "All the addresses":
+        "Tutti gli indirizzi",
     "Previous address":
         "Indirizzo precedente",
     "Next address":
@@ -262,8 +264,8 @@ export const IT = {
         "Ora nella barra in alto",
     "Position of the clock and temperature in the GNOME top bar":
         "Posizione di ora e temperatura nella barra in alto di GNOME",
-    "Right, between tray icons and system menu":
-        "A destra, tra le icone del vassoio e il menu di sistema",
+    "Right, next to the system menu":
+        "A destra, accanto al menu di sistema",
     "Right, before tray icons":
         "A destra, prima delle icone del vassoio",
     "Left, after the menus":

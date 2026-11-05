@@ -387,6 +387,10 @@ export class IpView {
 // The chosen addresses in the side panel, under the tray: icon and address,
 // one at a time; with two or more, up/down arrows go through them.
 // Clicking the address copies it.
+// IP box open or closed: survives disable/enable (screen lock), closed at
+// the next login, like the weather
+let ipExpanded = false;
+
 export class PanelIpBox {
     constructor(ipView, settings) {
         this._ipView = ipView;
@@ -396,7 +400,13 @@ export class PanelIpBox {
 
         // Same shape as the weather row: a box with icon and address, the
         // up/down arrows outside it on the right (only with two or more)
-        this.actor = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true, visible: false});
+        // Under the row, when opened with the arrow: every chosen address
+        this.actor = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+            visible: false,
+        });
+        const row = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true});
         const card = new St.BoxLayout({style_class: 'sch-calendar-expander sch-ip-panel', x_expand: true});
         this._icon = new St.Icon({icon_size: 16, y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-panel-icon'});
         this._tag = new St.Label({style_class: 'sch-ip-panel-tag', y_align: Clutter.ActorAlign.CENTER, visible: false});
@@ -413,7 +423,19 @@ export class PanelIpBox {
             if (item?.copy)
                 this._ipView.copy(item.copy);
         });
-        for (const child of [this._icon, this._tag, this._address])
+        // › / ⌄ at the end of the box, as in the weather row
+        this._expander = new St.Button({
+            style_class: 'sch-ip-panel-expander',
+            can_focus: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            accessible_name: _('All the addresses'),
+            child: new St.Icon({icon_size: 16, style_class: 'sch-calendar-expander-arrow'}),
+        });
+        this._expander.connect('clicked', () => {
+            ipExpanded = !ipExpanded;
+            this._show();
+        });
+        for (const child of [this._icon, this._tag, this._address, this._expander])
             card.add_child(child);
         this._arrows = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
@@ -431,8 +453,15 @@ export class PanelIpBox {
             btn.connect('clicked', () => this._move(delta));
             this._arrows.add_child(btn);
         }
-        this.actor.add_child(card);
-        this.actor.add_child(this._arrows);
+        row.add_child(card);
+        row.add_child(this._arrows);
+        this.actor.add_child(row);
+        this._list = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'sch-city-card sch-ip-list',
+            visible: false,
+        });
+        this.actor.add_child(this._list);
 
         this._items = [];
         this._listener = ipView.addListener(() => this._update());
@@ -519,5 +548,38 @@ export class PanelIpBox {
         this._address.label = item.text;
         this._address.accessible_name = _('{name}: {ip} (click to copy)', {name: item.name, ip: item.text});
         this._arrows.visible = items.length > 1;
+        this._expander.child.icon_name = ipExpanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
+        this._list.visible = ipExpanded;
+        this._list.destroy_all_children();
+        if (!ipExpanded)
+            return;
+        for (const entry of items) {
+            const line = new St.BoxLayout({style_class: 'sch-ip-list-line', x_expand: true});
+            const icon = new St.Icon({icon_size: 16, y_align: Clutter.ActorAlign.CENTER});
+            if (entry.gicon)
+                icon.gicon = entry.gicon;
+            else
+                icon.icon_name = entry.icon;
+            line.add_child(icon);
+            line.add_child(new St.Label({
+                text: entry.tag ? `${entry.tag} · ${entry.name}` : entry.name,
+                style_class: 'sch-ip-list-name',
+                x_expand: true,
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
+            const copy = new St.Button({
+                style_class: 'sch-ip-panel-address',
+                label: entry.text,
+                can_focus: true,
+                y_align: Clutter.ActorAlign.CENTER,
+                accessible_name: _('{name}: {ip} (click to copy)', {name: entry.name, ip: entry.text}),
+            });
+            copy.connect('clicked', () => {
+                if (entry.copy)
+                    this._ipView?.copy(entry.copy);
+            });
+            line.add_child(copy);
+            this._list.add_child(line);
+        }
     }
 }

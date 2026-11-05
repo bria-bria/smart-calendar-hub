@@ -303,7 +303,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
             _('Clock in the top bar'),
             _('Position of the clock and temperature in the GNOME top bar'),
             [
-                ['right-between-tray-and-menu', _('Right, between tray icons and system menu')],
+                ['right-between-tray-and-menu', _('Right, next to the system menu')],
                 ['right-before-tray', _('Right, before tray icons')],
                 ['left-after-menu', _('Left, after the menus')],
                 ['center', _('Center (GNOME default)')],

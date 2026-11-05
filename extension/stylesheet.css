@@ -523,6 +523,30 @@
     background-color: rgba(255, 255, 255, 0.12);
 }
 
+/* › / ⌄ at the end of the IP box */
+.sch-ip-panel-expander {
+    padding: 0 2px;
+    border-radius: 6px;
+}
+
+.sch-ip-panel-expander:hover,
+.sch-ip-panel-expander:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* every chosen address, under the IP row */
+.sch-ip-list {
+    spacing: 6px;
+}
+
+.sch-ip-list-line {
+    spacing: 8px;
+}
+
+.sch-ip-list-name {
+    color: rgba(255, 255, 255, 0.7);
+}
+
 /* Red dot on the left of the clock: notifications of the chosen apps */
 .sch-alert-dot {
     width: 8px;
