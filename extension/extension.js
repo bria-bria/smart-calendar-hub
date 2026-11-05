@@ -279,6 +279,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._traySection = null;
         this._traySpacer = null;
         this._trayEndSpacer = null;
+        this._unwatchGnomeCard();
         this._trayScroll = null;
         this._trayLeft = null;
         this._trayRight = null;
@@ -1590,23 +1591,70 @@ export default class SmartCalendarHubExtension extends Extension {
         return this._gnomeWidth ?? this._settings.get_int('sidebar-width');
     }
 
-    // Outer width of GNOME's system menu minus the frame of our popup
+    // The card of GNOME's system menu with the buttons (Wi-Fi, Bluetooth…):
+    // the one holding the grid of the quick settings. Other cards that
+    // extensions put next to it (e.g. Quick Settings Audio Panel) are not
+    // counted. Plain GNOME: the grid sits in the menu box ("quick-settings");
+    // with LibPanel the grid itself is the card.
+    _gnomeMenuCard() {
+        const menu = Main.panel.statusArea.quickSettings?.menu;
+        let actor = menu?._grid ?? null;
+        while (actor && !actor.has_style_class_name?.('quick-settings'))
+            actor = actor.get_parent();
+        return actor ?? menu?.box ?? null;
+    }
+
+    // Width of that card minus the frame of our popup content
     _measureGnomeMenu() {
         try {
-            const theirs = Main.panel.statusArea.quickSettings?.menu?._boxPointer;
-            const ours = this._dateMenu?.menu?._boxPointer;
-            if (!theirs || !ours || !this._sidebar)
+            const card = this._gnomeMenuCard();
+            const ours = this._dateMenu?.menu?.box;
+            if (!card || !ours || !this._sidebar)
                 return null;
-            const [, theirWidth] = theirs.get_preferred_width(-1);
-            const [, ourWidth] = ours.get_preferred_width(-1);
-            const frame = ourWidth - this._sidebar.width;
-            const width = Math.round(theirWidth - frame);
-            // a menu not drawn yet measures nothing useful
+            this._watchGnomeCard(card);
+            // the width it has on screen, or the one it asks for
+            const [, preferred] = card.get_preferred_width(-1);
+            const cardWidth = card.mapped && card.width > 0 ? card.width : preferred;
+            const [, ourPreferred] = ours.get_preferred_width(-1);
+            const frame = ourPreferred - this._sidebar.width;
+            const width = Math.round(cardWidth - frame);
+            // a card not drawn yet measures nothing useful
             return width >= 280 && width <= 900 ? width : null;
         } catch (e) {
             console.warn(`Smart Calendar Hub: cannot measure GNOME's menu: ${e.message}`);
             return null;
         }
+    }
+
+    // When that card changes width (its buttons, another extension), the
+    // panel follows at once
+    _watchGnomeCard(card) {
+        if (this._gnomeCard === card)
+            return;
+        this._unwatchGnomeCard();
+        this._gnomeCard = card;
+        this._gnomeCardIds = [
+            card.connect('notify::width', () => {
+                if (this._settings?.get_boolean('sidebar-width-gnome') && card.mapped)
+                    this._updateSidebarSize();
+            }),
+            card.connect('destroy', () => {
+                this._gnomeCard = null;
+                this._gnomeCardIds = [];
+            }),
+        ];
+    }
+
+    _unwatchGnomeCard() {
+        for (const id of this._gnomeCardIds ?? []) {
+            try {
+                this._gnomeCard?.disconnect(id);
+            } catch (_e) {
+                // already gone
+            }
+        }
+        this._gnomeCard = null;
+        this._gnomeCardIds = [];
     }
 
     _updateSidebarSize() {
