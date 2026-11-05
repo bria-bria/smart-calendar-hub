@@ -64,6 +64,8 @@ let weatherExpanded = false;
 // Calendar in its own card next to the panel (click on the "Today" card):
 // like the weather, kept until the next login.
 let calendarSide = false;
+// Frame of the menu's content box, measured on screen (see _measureCardFrame)
+let cardFrame = null;
 
 export default class SmartCalendarHubExtension extends Extension {
     enable() {
@@ -1598,8 +1600,10 @@ export default class SmartCalendarHubExtension extends Extension {
         const host = this._dateMenu?.menu?.box;
         if (!host || !this._sidebar || !this._calendarCard || !this._calendarView)
             return;
-        if (on && !host.has_style_class_name('sch-cards-host'))
-            this._cardFrame = this._measureCardFrame(); // before the change
+        // before the change, and only when it is on screen: otherwise the
+        // last good measure is kept
+        if (on && !host.has_style_class_name('sch-cards-host') && host.mapped)
+            cardFrame = this._measureCardFrame();
         calendarSide = on;
         const view = this._calendarView.actor;
         if (on) {
@@ -1644,11 +1648,17 @@ export default class SmartCalendarHubExtension extends Extension {
         this._hostOrientation = undefined;
     }
 
-    // Padding and border of the menu's content box around the panel
+    // Padding and border of the menu's content box around the panel: from
+    // the real sizes on screen when it is shown (the preferred size was a
+    // few pixels off and the panel shrank when the calendar card opened)
     _measureCardFrame() {
         try {
-            const [, hostWidth] = this._dateMenu.menu.box.get_preferred_width(-1);
-            const frame = hostWidth - this._sidebar.width;
+            const host = this._dateMenu.menu.box;
+            const hostWidth = host.mapped && host.width > 0
+                ? host.width : host.get_preferred_width(-1)[1];
+            const panelWidth = this._sidebar.mapped && this._sidebar.width > 0
+                ? this._sidebar.width : this._sidebar.get_preferred_width(-1)[1];
+            const frame = Math.round(hostWidth - panelWidth);
             return frame >= 0 && frame < 80 ? frame : 22;
         } catch (_e) {
             return 22;
@@ -1726,7 +1736,7 @@ export default class SmartCalendarHubExtension extends Extension {
             const cardWidth = card.mapped && card.width > 0 ? card.width : preferred;
             // the frame of our content box (with the calendar beside the
             // panel the box is transparent: the frame measured before)
-            const frame = calendarSide ? this._cardFrame ?? 22 : this._measureCardFrame();
+            const frame = calendarSide ? cardFrame ?? 22 : this._measureCardFrame();
             const width = Math.round(cardWidth - frame);
             // a card not drawn yet measures nothing useful
             return width >= 280 && width <= 900 ? width : null;
@@ -1775,7 +1785,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const width = this._sidebarWidth(true);
         // with the calendar beside it the panel is a card of its own: its
         // padding and border are inside its width
-        const frame = calendarSide ? this._cardFrame ?? 22 : 0;
+        const frame = calendarSide ? cardFrame ?? 22 : 0;
         this._sidebar.width = width + frame;
         // the calendar cells follow the width (only when it changed)
         if (this._calendarWidth !== width) {
