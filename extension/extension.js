@@ -14,7 +14,6 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageList from 'resource:///org/gnome/shell/ui/messageList.js';
-import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
@@ -166,11 +165,9 @@ export default class SmartCalendarHubExtension extends Extension {
         for (const [source, ids] of this._alertSources ?? [])
             ids.forEach(id => safeDisconnect(source, id));
         this._alertSources = null;
-        for (const notification of this._urgencyHolds ?? []) {
-            safeDisconnect(notification, notification._schUrgencyId);
-            delete notification._schUrgencyId;
-        }
-        this._urgencyHolds = null;
+        for (const policy of this._bannerPolicies ?? [])
+            delete policy.showBanners; // back to the getter of its class
+        this._bannerPolicies = null;
         this._unpatchNotificationMessages();
         for (const [sni, ids] of this._alertTray ?? []) {
             this._accountTrayIcon(sni); // last stretch of time of its icon
@@ -567,29 +564,31 @@ export default class SmartCalendarHubExtension extends Extension {
             list.push(`${key}\t${label}\t${Math.round(until)}\t${choice}`);
         this._settings.set_strv('muted-apps', list);
         this._mutedCache = null;
-        // notifications already there: no banner when they get updated
-        for (const notification of source.notifications ?? [])
-            this._holdLowUrgency(source, notification);
     }
 
-    // Keeps a notification of a silenced app at low urgency. Some apps (and
-    // GSConnect, when a phone notification is updated) set the urgency back
-    // and ask for the banner again: the urgency is lowered again at once,
-    // before the banner request.
-    _holdLowUrgency(source, notification) {
-        const lower = () => {
-            if (this._settings && this._isMuted(this._sourceKey(source)) &&
-                notification.urgency !== MessageTray.Urgency.CRITICAL &&
-                notification.urgency !== MessageTray.Urgency.LOW)
-                notification.urgency = MessageTray.Urgency.LOW;
-        };
-        lower();
-        if (notification._schUrgencyId)
+    // No banner for a silenced app. GNOME shows a banner only if
+    // source.policy.showBanners is true (or the notification is critical): the
+    // policy of the source answers false while the app is silenced. The
+    // urgency of the notifications is NOT changed: GNOME's message group
+    // counts urgent messages on every urgency change and, lowered from normal
+    // to low, it moved the message to a wrong place and the message vanished.
+    _holdBanners(source) {
+        const policy = source.policy;
+        if (!policy || Object.prototype.hasOwnProperty.call(policy, 'showBanners'))
             return;
-        notification._schUrgencyId = notification.connect('notify::urgency', lower);
-        this._urgencyHolds ??= new Set();
-        this._urgencyHolds.add(notification);
-        notification.connect('destroy', () => this._urgencyHolds?.delete(notification));
+        let proto = Object.getPrototypeOf(policy);
+        while (proto && !Object.getOwnPropertyDescriptor(proto, 'showBanners'))
+            proto = Object.getPrototypeOf(proto);
+        const original = proto && Object.getOwnPropertyDescriptor(proto, 'showBanners').get;
+        if (!original)
+            return;
+        Object.defineProperty(policy, 'showBanners', {
+            configurable: true,
+            get: () => (!this._settings || !this._isMuted(this._sourceKey(source))) &&
+                original.call(policy),
+        });
+        this._bannerPolicies ??= new Set();
+        this._bannerPolicies.add(policy);
     }
 
     _mutedEntry(key) {
@@ -771,13 +770,10 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._rememberSource(source);
                 this._updateAlertDot();
             }),
-            // Silenced app: no banner (low urgency), the notification still
-            // goes to the list. Emitted before GNOME decides about the banner.
-            source.connect('notification-added', (_s, notification) =>
-                this._holdLowUrgency(source, notification)),
+            // the policy can be replaced: silence the new one too
+            source.connect('notify::policy', () => this._holdBanners(source)),
         ]);
-        for (const notification of source.notifications ?? [])
-            this._holdLowUrgency(source, notification);
+        this._holdBanners(source);
         this._rememberSource(source);
         this._updateAlertDot();
     }
