@@ -2515,6 +2515,60 @@ export default class SmartCalendarHubExtension extends Extension {
             });
         }
         menu.actor.hide();
+        // "Nothing Phone 2a Indicator" → "Nothing Phone 2a"
+        const title = typeof hub?.title === 'string' && hub.title
+            ? hub.title
+            : this._trayLabel(info.role, indicator).replace(/\s+indicator$/i, '');
+        this._enterTrayPage(shown, title);
+        info.cell.add_style_class_name('sch-tray-cell-open');
+    }
+
+    // Public, for other extensions: show a page of theirs in the panel, with
+    // no icon in the tray (see README, "For extension developers"). The panel
+    // opens on it, in the same card as the tray menus: title, back arrow, Esc.
+    // The page is built now and destroyed when the visit ends. Returns false
+    // when the panel is not available (extension switched off, lock screen)
+    // or the page cannot be shown, so the caller can use its own fallback.
+    showExternalPage({id = null, title = '', buildPage, keepStyle = false} = {}) {
+        const dm = this._dateMenu;
+        if (!dm?.menu || this._disabling || !this._trayMenuHost || typeof buildPage !== 'function')
+            return false;
+        // the same page already on screen: nothing to do
+        if (id !== null && this._insideMenu?.externalId === id && dm.menu.isOpen)
+            return true;
+        let page;
+        try {
+            page = buildPage();
+        } catch (e) {
+            console.error(`Smart Calendar Hub: external page ${id}: ${e}`);
+            return false;
+        }
+        // a page still inside something else cannot be shown
+        if (!(page instanceof Clutter.Actor) || page.get_parent())
+            return false;
+        if (!dm.menu.isOpen)
+            dm.menu.open();
+        this._closeTrayMenu();
+        const shown = {
+            externalId: id, menu: null, info: null, page,
+            hub: {keepStyle: !!keepStyle},
+            hidden: [], cleared: new Map(), ornaments: new Set(),
+        };
+        this._trayMenuContent.add_child(page);
+        page.add_style_class_name?.('sch-hub-page');
+        shown.pageDestroyId = page.connect('destroy', () => {
+            if (this._insideMenu === shown) {
+                shown.page = null;
+                this._closeTrayMenu();
+            }
+        });
+        this._enterTrayPage(shown, typeof title === 'string' && title ? title : String(id ?? ''));
+        return true;
+    }
+
+    // The card takes the place of every other card of the panel (they stay
+    // hidden even if something shows them meanwhile), with the title on top
+    _enterTrayPage(shown, title) {
         for (const child of this._sidebar.get_children()) {
             if (child === this._trayMenuHost || child === this._traySection?.get_parent())
                 continue;
@@ -2529,11 +2583,7 @@ export default class SmartCalendarHubExtension extends Extension {
             shown.hidden.push(entry);
         }
         this._insideMenu = shown;
-        // "Nothing Phone 2a Indicator" → "Nothing Phone 2a"
-        this._trayMenuTitle.text = typeof hub?.title === 'string' && hub.title
-            ? hub.title
-            : this._trayLabel(info.role, indicator).replace(/\s+indicator$/i, '');
-        info.cell.add_style_class_name('sch-tray-cell-open');
+        this._trayMenuTitle.text = title;
         this._trayMenuScroll.vadjustment.value = 0;
         this._trayMenuHost.show();
         this._tidyTrayMenu();
@@ -2671,7 +2721,7 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!shown)
             return;
         try {
-            shown.menu.close();
+            shown.menu?.close();
         } catch (e) {
             console.error(`Smart Calendar Hub: tray menu: ${e}`);
         }
@@ -2707,7 +2757,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 shown.page.disconnect(shown.pageDestroyId);
                 shown.page.destroy();
             } catch (e) {
-                console.error(`Smart Calendar Hub: page of ${shown.info.role}: ${e}`);
+                console.error(`Smart Calendar Hub: page of ${shown.info?.role ?? shown.externalId}: ${e}`);
             }
         }
         try {
@@ -2734,7 +2784,7 @@ export default class SmartCalendarHubExtension extends Extension {
             }
         }
         try {
-            shown.info.cell.remove_style_class_name('sch-tray-cell-open');
+            shown.info?.cell.remove_style_class_name('sch-tray-cell-open');
         } catch (_e) {
             // the icon is gone
         }

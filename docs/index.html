@@ -457,6 +457,7 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
           <li>Keep your normal menu, with at least one item: it is what users without the hub see, and what the hub shows when there is no custom page.</li>
           <li>Inside the hub your content carries the style class <code>sch-hub-page</code>.</li>
         </ul>
+        <p><strong>No top bar icon?</strong> Call <code>showExternalPage({id, title, buildPage, keepStyle})</code> on the hub (<code>Main.extensionManager.lookup('smart-calendar-hub@bria-bria.github.io')?.stateObj</code>): the panel opens on your page. It returns <code>false</code> when the hub isn't available, so you can fall back to your own window. <a href="https://github.com/bria-bria/smart-calendar-hub#open-a-page-without-a-tray-icon">Details →</a></p>
         <p><a href="https://github.com/bria-bria/smart-calendar-hub/tree/main/examples/hello-hub@bria-bria.github.io">See the complete example →</a></p>
       </div>
 <pre><code>// Optional integration metadata on your PanelMenu.Button

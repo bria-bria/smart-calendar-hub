@@ -213,6 +213,31 @@ this._button.smartCalendarHub = {
   `sch-hub-page`, for styles that apply only there.
 - A complete example is in [examples/hello-hub@bria-bria.github.io](examples/hello-hub@bria-bria.github.io).
 
+### Open a page without a tray icon
+
+An extension with no top bar icon (for example one that lives in the Quick
+Settings menu) can open a page of its own in the hub's panel:
+
+```js
+const hub = Main.extensionManager.lookup('smart-calendar-hub@bria-bria.github.io');
+const shown = hub?.stateObj?.showExternalPage?.({
+    id: 'my-extension',          // the same id while open: nothing changes
+    title: 'My extension',       // title above the page
+    buildPage: () => new St.Label({text: 'Hello'}),
+    keepStyle: false,            // true: the hub leaves your backgrounds alone
+}) ?? false;
+if (!shown)
+    this.openPreferences();      // your own fallback
+```
+
+- The panel opens on your page, in the same card as the tray menus: back
+  arrow, Esc, or closing the panel end the visit, and the page is destroyed
+  then (free timers and signals on its `destroy`).
+- It returns `false` when the hub is not installed, switched off, on the lock
+  screen, or when `buildPage` throws or returns an actor that already has a
+  parent: keep a fallback of your own.
+- Nothing to register: one call, the hub owns the page while it is shown.
+
 ## License
 
 GPL-2.0-or-later. See [LICENSE](LICENSE).
