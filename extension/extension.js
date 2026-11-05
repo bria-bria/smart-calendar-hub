@@ -1137,11 +1137,13 @@ export default class SmartCalendarHubExtension extends Extension {
         this._trayBox.add_child(new St.Widget({x_expand: true}));
         this._trayEndSpacer = new St.Widget({x_expand: true});
         this._trayBox.add_child(this._trayEndSpacer);
-        // No scrollbar: the arrows on the sides move the view
+        // No scrollbar: the arrows on the sides move the view. EXTERNAL, not
+        // NEVER: with NEVER the view asks for the whole width of the icons
+        // and pushed the settings button out of the panel.
         const trayScroll = this._trayScroll = new St.ScrollView({
             style_class: 'sch-tray-scroll',
             x_expand: true,
-            hscrollbar_policy: St.PolicyType.NEVER,
+            hscrollbar_policy: St.PolicyType.EXTERNAL,
             vscrollbar_policy: St.PolicyType.NEVER,
             overlay_scrollbars: false,
             child: this._trayBox,
