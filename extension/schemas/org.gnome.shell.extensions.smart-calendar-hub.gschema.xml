@@ -101,6 +101,11 @@
       <summary>Show the local network address</summary>
     </key>
 
+    <key name="ip-show-vpn" type="b">
+      <default>true</default>
+      <summary>Show the VPN address while a VPN is active</summary>
+    </key>
+
     <key name="ip-show-public" type="b">
       <default>false</default>
       <summary>Show the public address (asks api.ipify.org)</summary>

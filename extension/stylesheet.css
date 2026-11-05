@@ -449,6 +449,33 @@
     background-color: rgba(255, 255, 255, 0.2);
 }
 
+/* chosen duration, and the bell of a silenced app */
+.sch-mute-choice.sch-mute-choice-on {
+    background-color: -st-accent-color;
+    color: -st-accent-fg-color;
+    font-weight: 700;
+}
+
+.message-close-button.sch-mute-on {
+    background-color: -st-accent-color;
+    color: -st-accent-fg-color;
+}
+
+.sch-mute-note {
+    font-size: 0.85em;
+    color: rgba(153, 193, 241, 1);
+    padding: 4px 0 2px 2px;
+}
+
+/* IP addresses in the top bar: [Wi-Fi/cable] local  [globe] public */
+.sch-ip-box {
+    spacing: 12px;
+}
+
+.sch-ip-part {
+    spacing: 4px;
+}
+
 /* Red dot on the left of the clock: notifications of the chosen apps */
 .sch-alert-dot {
     width: 8px;

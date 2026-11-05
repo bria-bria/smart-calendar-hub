@@ -32,15 +32,33 @@ const IpIndicator = GObject.registerClass(
 class IpIndicator extends PanelMenu.Button {
     _init(owner) {
         super._init(0.5, _('IP addresses'));
+        // [Wi-Fi or cable icon] local IP   [globe] public IP
         const box = new St.BoxLayout({style_class: 'panel-status-indicators-box sch-ip-box'});
-        box.add_child(new St.Icon({icon_name: 'network-workgroup-symbolic', style_class: 'system-status-icon'}));
-        this.label = new St.Label({y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-label'});
-        box.add_child(this.label);
+        this._lanBox = new St.BoxLayout({style_class: 'sch-ip-part'});
+        this._lanIcon = new St.Icon({icon_name: 'network-workgroup-symbolic', style_class: 'system-status-icon'});
+        this._lanLabel = new St.Label({y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-label'});
+        this._lanBox.add_child(this._lanIcon);
+        this._lanBox.add_child(this._lanLabel);
+        this._pubBox = new St.BoxLayout({style_class: 'sch-ip-part'});
+        this._pubBox.add_child(new St.Icon({icon_name: 'web-browser-symbolic', style_class: 'system-status-icon'}));
+        this._pubLabel = new St.Label({y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-label'});
+        this._pubBox.add_child(this._pubLabel);
+        // [shield] VPN address, only while a VPN (e.g. Tailscale) is active
+        this._vpnBox = new St.BoxLayout({style_class: 'sch-ip-part', visible: false});
+        this._vpnBox.add_child(new St.Icon({icon_name: 'network-vpn-symbolic', style_class: 'system-status-icon'}));
+        this._vpnLabel = new St.Label({y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-label'});
+        this._vpnBox.add_child(this._vpnLabel);
+        box.add_child(this._lanBox);
+        box.add_child(this._vpnBox);
+        box.add_child(this._pubBox);
         this.add_child(box);
 
         this._lanItem = new PopupMenu.PopupMenuItem('');
         this._lanItem.connect('activate', () => owner.copy(owner.lanIp));
         this.menu.addMenuItem(this._lanItem);
+        this._vpnItem = new PopupMenu.PopupMenuItem('');
+        this._vpnItem.connect('activate', () => owner.copy(owner.vpnIp));
+        this.menu.addMenuItem(this._vpnItem);
         this._publicItem = new PopupMenu.PopupMenuItem('');
         this._publicItem.connect('activate', () => owner.copy(owner.publicIp));
         this.menu.addMenuItem(this._publicItem);
@@ -50,13 +68,21 @@ class IpIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(refresh);
     }
 
-    sync(lanIp, publicIp, showLan, showPublic) {
-        const parts = [];
-        if (showLan)
-            parts.push(lanIp ?? _('offline'));
-        if (showPublic)
-            parts.push(publicIp ?? '…');
-        this.label.text = parts.join(' · ');
+    sync(lanIp, publicIp, showLan, showPublic, kind, vpn, showVpn) {
+        this._vpnBox.visible = showVpn && !!vpn?.ip;
+        this._vpnLabel.text = vpn?.ip ?? '';
+        this._vpnItem.visible = !!vpn?.ip;
+        this._vpnItem.label.text = vpn?.ip
+            ? _('VPN ({name}): {ip}', {name: vpn.name, ip: vpn.ip})
+            : '';
+        this._lanBox.visible = showLan;
+        this._lanLabel.text = lanIp ?? _('offline');
+        // the connection the traffic is going through right now
+        this._lanIcon.icon_name = kind === 'wifi' ? 'network-wireless-symbolic'
+            : kind === 'wired' ? 'network-wired-symbolic'
+                : lanIp ? 'network-workgroup-symbolic' : 'network-offline-symbolic';
+        this._pubBox.visible = showPublic;
+        this._pubLabel.text = publicIp ?? '…';
         this._lanItem.label.text = _('Local network: {ip}', {ip: lanIp ?? _('offline')});
         this._publicItem.label.text = showPublic
             ? _('Public: {ip}', {ip: publicIp ?? '…'})
@@ -81,7 +107,7 @@ export class IpView {
         this._settingsIds = [
             ...['show-ip', 'ip-position'].map(key =>
                 settings.connect(`changed::${key}`, () => this._place())),
-            ...['ip-show-lan', 'ip-show-public'].map(key =>
+            ...['ip-show-lan', 'ip-show-public', 'ip-show-vpn'].map(key =>
                 settings.connect(`changed::${key}`, () => {
                     this._sync();
                     this._schedulePublic();
@@ -132,7 +158,9 @@ export class IpView {
     _sync() {
         this._indicator?.sync(this.lanIp, this.publicIp,
             this._settings.get_boolean('ip-show-lan'),
-            this._settings.get_boolean('ip-show-public'));
+            this._settings.get_boolean('ip-show-public'),
+            this.lanKind, this.vpn,
+            this._settings.get_boolean('ip-show-vpn'));
     }
 
     copy(text) {
@@ -147,6 +175,7 @@ export class IpView {
         const watch = (obj, signal) =>
             this._signals.push([obj, obj.connect(signal, () => this.refresh(true))]);
         watch(this._client, 'notify::primary-connection');
+        watch(this._client, 'notify::active-connections');
         watch(this._client, 'notify::state');
         this.refresh(true);
     }
@@ -174,27 +203,56 @@ export class IpView {
         }
     }
 
-    // The address in the local network: the primary connection, unless it
-    // is a VPN (then the Wi-Fi or cable one under it). IPv4 first, else a
-    // global IPv6 address.
-    _lanAddress() {
+    // The address in the local network and its kind ('wifi', 'wired',
+    // 'other'), of the connection the traffic goes through now: the primary
+    // connection (default route), unless it is a VPN; then the Wi-Fi or
+    // cable connection holding the default route under it. IPv4 first,
+    // else a global IPv6 address.
+    _lanConnection() {
         // VPN tunnels and the loopback (127.0.0.1) are not the local network
         const isVpn = c => c.get_vpn?.() ||
             ['wireguard', 'tun', 'vpn', 'loopback'].includes(c.get_connection_type?.());
-        const actives = this._client?.get_active_connections() ?? [];
+        const actives = (this._client?.get_active_connections() ?? []).filter(c => !isVpn(c));
         const primary = this._client?.get_primary_connection();
-        const candidates = [primary, ...actives].filter(c => c && !isVpn(c));
+        const candidates = [
+            ...(primary && !isVpn(primary) ? [primary] : []),
+            ...actives.filter(c => c.get_default?.()),
+            ...actives.filter(c => c.get_default6?.()),
+            ...actives,
+        ];
+        const kindOf = c => {
+            const type = c.get_connection_type?.();
+            if (type === '802-11-wireless')
+                return 'wifi';
+            if (type === '802-3-ethernet')
+                return 'wired';
+            return 'other';
+        };
         for (const conn of candidates) {
             const v4 = conn.get_ip4_config()?.get_addresses()?.[0]?.get_address();
             if (v4)
-                return v4;
+                return {ip: v4, kind: kindOf(conn)};
         }
         for (const conn of candidates) {
             const v6 = (conn.get_ip6_config()?.get_addresses() ?? [])
                 .map(a => a.get_address())
                 .find(a => a && !a.toLowerCase().startsWith('fe80'));
             if (v6)
-                return v6;
+                return {ip: v6, kind: kindOf(conn)};
+        }
+        return {ip: null, kind: null};
+    }
+
+    // The first active VPN (Tailscale, WireGuard, OpenVPN…) with an address
+    _vpnConnection() {
+        const isVpn = c => c.get_vpn?.() ||
+            ['wireguard', 'tun', 'vpn'].includes(c.get_connection_type?.());
+        for (const conn of (this._client?.get_active_connections() ?? []).filter(isVpn)) {
+            const ip = conn.get_ip4_config()?.get_addresses()?.[0]?.get_address() ??
+                (conn.get_ip6_config()?.get_addresses() ?? []).map(a => a.get_address())
+                    .find(a => a && !a.toLowerCase().startsWith('fe80'));
+            if (ip)
+                return {ip, name: conn.get_id?.() || 'VPN'};
         }
         return null;
     }
@@ -203,7 +261,10 @@ export class IpView {
     refresh(networkChanged) {
         if (networkChanged)
             this._watchPrimary();
-        this.lanIp = this._lanAddress();
+        const lan = this._lanConnection();
+        this.lanIp = lan.ip;
+        this.lanKind = lan.kind;
+        this.vpn = this._vpnConnection();
         if (networkChanged)
             this.publicIp = null;
         this._sync();

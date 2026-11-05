@@ -432,13 +432,19 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('ip-show-lan', lanRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         ip.add(lanRow);
+        const vpnRow = new Adw.SwitchRow({
+            title: _('VPN address'),
+            subtitle: _('Shown with a shield while a VPN such as Tailscale is active'),
+        });
+        settings.bind('ip-show-vpn', vpnRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        ip.add(vpnRow);
         const publicRow = new Adw.SwitchRow({
             title: _('Public address'),
             subtitle: _('The address seen on the Internet. To know it, the extension asks api.ipify.org (when the network changes and every 30 minutes); that service sees the request.'),
         });
         settings.bind('ip-show-public', publicRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         ip.add(publicRow);
-        for (const row of [ipPosition, lanRow, publicRow])
+        for (const row of [ipPosition, lanRow, vpnRow, publicRow])
             settings.bind('show-ip', row, 'sensitive', Gio.SettingsBindFlags.GET);
 
         // ---------------- Notifications ----------------

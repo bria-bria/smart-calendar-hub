@@ -538,8 +538,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._mutedCache ??= this._settings.get_strv('muted-apps');
         return this._mutedCache
             .map(line => {
-                const [key, label = key, until = '0'] = line.split('\t');
-                return {key, label, until: Number(until) || 0};
+                const [key, label = key, until = '0', choice = ''] = line.split('\t');
+                return {key, label, until: Number(until) || 0, choice: choice === '' ? -1 : Number(choice)};
             })
             .filter(e => e.key && (e.until === 0 || e.until > now));
     }
@@ -549,15 +549,21 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     // until: Unix seconds when the silence ends, 0 = always
-    _mute(source, until) {
+    // choice: index of the duration button (shown highlighted); until null = unmute
+    _mute(source, until, choice = -1) {
         const key = this._sourceKey(source);
         if (!key)
             return;
         const label = (source.title || key).replace(/[\t\n]/g, ' ');
         const list = this._mutedEntries().filter(e => e.key !== key)
-            .map(e => `${e.key}\t${e.label}\t${e.until}`);
-        list.push(`${key}\t${label}\t${Math.round(until)}`);
+            .map(e => `${e.key}\t${e.label}\t${e.until}\t${e.choice}`);
+        if (until !== null)
+            list.push(`${key}\t${label}\t${Math.round(until)}\t${choice}`);
         this._settings.set_strv('muted-apps', list);
+    }
+
+    _mutedEntry(key) {
+        return this._mutedEntries().find(e => e.key === key) ?? null;
     }
 
     // A bell next to the X of every notification in the panel: it opens a
@@ -644,22 +650,65 @@ export default class SmartCalendarHubExtension extends Extension {
             }],
             [_('Always'), () => 0],
         ];
-        for (const [label, until] of choices) {
+        const buttons = [];
+        // "Silenced until 12:40", under the durations
+        const note = new St.Label({style_class: 'sch-mute-note', visible: false});
+        // Shows the current state: chosen duration in colour, note, bell in colour
+        const sync = () => {
+            const source = notification.source;
+            const entry = source ? this._mutedEntry(this._sourceKey(source)) : null;
+            buttons.forEach((b, i) => {
+                if (entry && entry.choice === i)
+                    b.add_style_class_name('sch-mute-choice-on');
+                else
+                    b.remove_style_class_name('sch-mute-choice-on');
+            });
+            if (entry)
+                bell.add_style_class_name('sch-mute-on');
+            else
+                bell.remove_style_class_name('sch-mute-on');
+            note.visible = !!entry && row.visible;
+            if (entry) {
+                if (entry.until === 0) {
+                    note.text = _('Silenced always (turn it back on in the settings)');
+                } else {
+                    const end = GLib.DateTime.new_from_unix_local(entry.until);
+                    const sameDay = end.format('%F') === GLib.DateTime.new_now_local().format('%F');
+                    note.text = _('Silenced until {time}', {time: end.format(sameDay ? '%H:%M' : '%a %H:%M')});
+                }
+            }
+        };
+        choices.forEach(([label, until], i) => {
             const btn = new St.Button({label, style_class: 'sch-mute-choice', x_expand: true, can_focus: true});
             btn.connect('clicked', () => {
                 const source = notification.source;
-                if (source)
-                    this._mute(source, until());
-                row.hide();
+                if (!source)
+                    return;
+                // clicking the chosen duration again turns the silence off
+                const entry = this._mutedEntry(this._sourceKey(source));
+                this._mute(source, entry?.choice === i ? null : until(), i);
+                sync();
             });
+            buttons.push(btn);
             row.add_child(btn);
-        }
+        });
         vbox.add_child(row);
+        vbox.add_child(note);
         bell.connect('clicked', () => {
             row.visible = !row.visible;
+            sync();
         });
+        // other notifications of the same app, and expired silences, follow
+        // the setting (the bell is also re-checked when the panel opens)
+        const settingsId = this._settings.connect('changed::muted-apps', sync);
+        bell.connect('destroy', () => this._settings?.disconnect(settingsId));
+        message.connect('notify::mapped', () => {
+            if (message.mapped)
+                sync();
+        });
+        sync();
 
-        for (const actor of [bell, row]) {
+        for (const actor of [bell, row, note]) {
             this._muteButtons?.add(actor);
             actor.connect('destroy', () => this._muteButtons?.delete(actor));
         }

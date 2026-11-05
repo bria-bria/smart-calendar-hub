@@ -68,6 +68,12 @@ export const IT = {
         "Rete locale: {ip}",
     "Public: {ip}":
         "Pubblico: {ip}",
+    "VPN ({name}): {ip}":
+        "VPN ({name}): {ip}",
+    "VPN address":
+        "Indirizzo della VPN",
+    "Shown with a shield while a VPN such as Tailscale is active":
+        "Compare con uno scudo quando è attiva una VPN come Tailscale",
     "Public: switched off in the settings":
         "Pubblico: spento nelle impostazioni",
     "Network":
@@ -118,6 +124,10 @@ export const IT = {
         "Fino a {time}",
     "Unmute":
         "Riattiva",
+    "Silenced until {time}":
+        "Silenziata fino a: {time}",
+    "Silenced always (turn it back on in the settings)":
+        "Silenziata sempre (si riattiva dalle Impostazioni)",
 
     // --- Calendar (sch-calendar.js) ---
     "Today":
