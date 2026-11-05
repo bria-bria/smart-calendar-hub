@@ -2514,7 +2514,14 @@ export default class SmartCalendarHubExtension extends Extension {
                 }
             });
         }
+        // the floating box stays hidden for the whole visit: GNOME may show
+        // it again while it finishes opening (with a page of the extension
+        // its menu is still in there and would float next to the panel)
         menu.actor.hide();
+        shown.actorShowId = menu.actor.connect('notify::visible', () => {
+            if (menu.actor.visible && this._insideMenu === shown)
+                menu.actor.hide();
+        });
         // "Nothing Phone 2a Indicator" → "Nothing Phone 2a"
         const title = typeof hub?.title === 'string' && hub.title
             ? hub.title
@@ -2747,6 +2754,13 @@ export default class SmartCalendarHubExtension extends Extension {
         this._insideMenu = null;
         if (shown.cardsId)
             GLib.source_remove(shown.cardsId);
+        if (shown.actorShowId) {
+            try {
+                shown.menu.actor.disconnect(shown.actorShowId);
+            } catch (_e) {
+                // the menu is gone
+            }
+        }
         for (const [widget, style] of shown.cleared) {
             try {
                 widget.set_style(style);
