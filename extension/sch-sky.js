@@ -3,8 +3,8 @@
 //
 // A small sky next to the date: the sun moves along an arc from sunrise to
 // sunset, the moon from sunset to the next sunrise, drawn in its real phase.
-// When the panel opens the sun or the moon rises from the horizon to its
-// place (short animation), then it moves on every minute while the panel is
+// When the panel opens the sun or the moon travels along the arc from the
+// rising point to its place (short animation), then it moves on every minute while the panel is
 // open. Two settings: show-sun-moon (arc with sun and moon) and
 // show-moon-phase (moon drawn in its phase; alone, it shows only the moon).
 
@@ -199,11 +199,10 @@ export class SkyView {
         cr.stroke();
         cr.setDash([], 0);
 
-        // opening animation: rise from the horizon to its place
-        const angle = Math.PI * (1 + along);
+        // opening animation: from the rising point along the arc to its place
+        const angle = Math.PI * (1 + along * this._progress);
         const x = cx + r * Math.cos(angle);
-        const fullY = base + r * Math.sin(angle);
-        const y = base - (base - fullY) * this._progress;
+        const y = base + r * Math.sin(angle);
 
         if (isDay)
             this._drawSun(cr, x, y, 8);
