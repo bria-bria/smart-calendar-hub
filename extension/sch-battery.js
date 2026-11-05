@@ -2,7 +2,9 @@
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
 // The battery in the top bar as a circle: a ring that empties with the
-// charge, the percentage inside (optional) and a bolt while charging. It
+// charge, the percentage inside (optional), a filled bolt while it is really
+// charging and an outlined bolt while plugged in but not charging (full, or
+// held by a charge threshold). It
 // takes the place of GNOME's battery icon in the system indicator, has the
 // size of the other icons of the bar (it follows the screen scale) and the
 // colour of their text (also GNOME's accent colour, see sch-topbar-style.js):
@@ -198,10 +200,15 @@ export class CircleBattery {
         });
     }
 
-    _charging() {
-        const proxy = this._proxy();
-        return proxy?.State === UPower.DeviceState.CHARGING ||
-            proxy?.State === UPower.DeviceState.FULLY_CHARGED;
+    // 'charging': really charging; 'plugged': on the power supply but not
+    // charging (full, or held by a charge threshold); 'battery'
+    _power() {
+        const state = this._proxy()?.State;
+        if (state === UPower.DeviceState.CHARGING)
+            return 'charging';
+        if (state === UPower.DeviceState.FULLY_CHARGED || state === UPower.DeviceState.PENDING_CHARGE)
+            return 'plugged';
+        return 'battery';
     }
 
     _repaint(area) {
@@ -210,9 +217,10 @@ export class CircleBattery {
         const fg = area.get_theme_node().get_foreground_color();
         const rgb = [fg.red / 255, fg.green / 255, fg.blue / 255];
         const level = this._target;
-        const charging = this._charging();
-        const ring = !charging && level <= CRITICAL ? RED
-            : !charging && level <= LOW ? YELLOW : rgb;
+        const power = this._power();
+        const onBattery = power === 'battery';
+        const ring = onBattery && level <= CRITICAL ? RED
+            : onBattery && level <= LOW ? YELLOW : rgb;
 
         const size = Math.min(w, h);
         const line = Math.max(1.5, size * 0.13);
@@ -232,8 +240,8 @@ export class CircleBattery {
         cr.arc(cx, cy, radius, start, start + 2 * Math.PI * (this._shown / 100));
         cr.stroke();
 
-        if (charging) {
-            this._drawBolt(cr, cx, cy, size, rgb);
+        if (!onBattery) {
+            this._drawBolt(cr, cx, cy, size, rgb, power === 'charging');
         } else if (this._settings.get_boolean('battery-circle-text')) {
             const layout = PangoCairo.create_layout(cr);
             const text = `${Math.round(level)}`;
@@ -259,8 +267,9 @@ export class CircleBattery {
         return this._fontDesc;
     }
 
-    // a small lightning bolt in the middle
-    _drawBolt(cr, cx, cy, size, rgb) {
+    // a small lightning bolt in the middle: filled while charging, only its
+    // outline while plugged in without charging
+    _drawBolt(cr, cx, cy, size, rgb, filled) {
         const s = size * 0.26;
         cr.setSourceRGBA(...rgb, 1);
         cr.moveTo(cx + s * 0.15, cy - s);
@@ -270,6 +279,12 @@ export class CircleBattery {
         cr.lineTo(cx + s * 0.55, cy - s * 0.12);
         cr.lineTo(cx + s * 0.02, cy - s * 0.12);
         cr.closePath();
-        cr.fill();
+        if (filled) {
+            cr.fill();
+        } else {
+            cr.setLineWidth(Math.max(1, size * 0.07));
+            cr.setLineJoin(1); // round
+            cr.stroke();
+        }
     }
 }

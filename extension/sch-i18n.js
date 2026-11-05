@@ -172,8 +172,8 @@ export const IT = {
         "Nella barra in alto, anche sul blocco schermo e sulla schermata di accesso.",
     "Battery as a circle":
         "Batteria circolare",
-    "A ring that empties with the charge, in the colour of the bar; yellow under 20%, red under 10%, a bolt while charging":
-        "Un anello che si svuota con la carica, nel colore della barra; giallo sotto il 20%, rosso sotto il 10%, un fulmine in carica",
+    "A ring that empties with the charge, in the colour of the bar; yellow under 20%, red under 10%. Filled bolt: charging; outlined bolt: plugged in but not charging":
+        "Un anello che si svuota con la carica, nel colore della barra; giallo sotto il 20%, rosso sotto il 10%. Fulmine pieno: in carica; fulmine vuoto: alimentatore collegato ma non carica",
     "Percentage inside the circle":
         "Percentuale dentro il cerchio",
     "Previous icons":

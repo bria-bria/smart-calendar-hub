@@ -395,7 +395,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         pagePanel.add(battery);
         const circleRow = new Adw.SwitchRow({
             title: _('Battery as a circle'),
-            subtitle: _('A ring that empties with the charge, in the colour of the bar; yellow under 20%, red under 10%, a bolt while charging'),
+            subtitle: _('A ring that empties with the charge, in the colour of the bar; yellow under 20%, red under 10%. Filled bolt: charging; outlined bolt: plugged in but not charging'),
         });
         settings.bind('battery-circle', circleRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         battery.add(circleRow);
