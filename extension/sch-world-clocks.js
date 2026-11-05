@@ -315,7 +315,8 @@ export class WorldClocksCard {
         this._timerChips = [];
         const first = this._clocks[0]?.button ?? this._endSpacer;
         // tip: a function, the text of a timer changes while it runs
-        const add = (icon, text, tip, onClick = () => this._openClocks()) => {
+        // onClick(button): given for timers (also the right click)
+        const add = (icon, text, tip, onClick = null) => {
             const line = new St.BoxLayout({style_class: 'sch-clock-chip-line'});
             const image = new St.Icon({icon_name: icon, icon_size: 14, y_align: Clutter.ActorAlign.CENTER});
             line.add_child(image);
@@ -330,13 +331,13 @@ export class WorldClocksCard {
                 y_align: Clutter.ActorAlign.CENTER,
                 child: line,
                 accessible_name: tip(),
-                button_mask: St.ButtonMask.ONE | St.ButtonMask.THREE,
+                button_mask: onClick ? St.ButtonMask.ONE | St.ButtonMask.THREE : St.ButtonMask.ONE,
             });
             const item = {name: ''};
             chip.connect('notify::hover', () => this._showTip(chip, item, chip.hover, tip()));
             chip.connect('key-focus-in', () => this._showTip(chip, item, true, tip()));
             chip.connect('key-focus-out', () => this._showTip(chip, item, false, tip()));
-            chip.connect('clicked', (_chip, button) => onClick(button));
+            chip.connect('clicked', (_chip, button) => (onClick ?? (() => this._openClocks()))(button));
             this._box.insert_child_below(chip, first);
             this._chips.push(chip);
             return {chip, image, label};
@@ -371,11 +372,16 @@ export class WorldClocksCard {
                 add(PAUSE_ICON, time, () => tip).chip.add_style_class_name('sch-clock-chip-off');
             }
             const timers = this._clocksApp?.get_value('timers').recursiveUnpack() ?? [];
+            // by duration and name (the n-th timer equal to it), not by
+            // position: adding or deleting another timer keeps the countdown
             const keys = new Set();
-            timers.forEach((timer, i) => {
+            timers.forEach(timer => {
                 const seconds = timer.duration ?? 0;
                 const name = timer.name ?? '';
-                const key = `${i}|${seconds}|${name}`;
+                let n = 0;
+                while (keys.has(`${seconds}|${name}|${n}`))
+                    n++;
+                const key = `${seconds}|${name}|${n}`;
                 keys.add(key);
                 const tc = {key, seconds, name};
                 Object.assign(tc, add(IDLE_ICON, '', () => this._timerTip(tc),
@@ -407,7 +413,6 @@ export class WorldClocksCard {
             area.queue_repaint();
     }
 
-    // GNOME Clocks, if installed (else a click does nothing)
     // click: start, pause, resume (a finished one: back to the start);
     // right click: reset
     _toggleTimer(tc, button) {
@@ -484,6 +489,7 @@ export class WorldClocksCard {
         }
     }
 
+    // GNOME Clocks, if installed (else a click does nothing)
     _openClocks() {
         const app = Shell.AppSystem.get_default().lookup_app('org.gnome.clocks.desktop');
         if (!app)
