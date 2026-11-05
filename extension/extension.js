@@ -1647,6 +1647,10 @@ export default class SmartCalendarHubExtension extends Extension {
             this._hostOrientation ??= host.orientation;
             host.orientation = Clutter.Orientation.HORIZONTAL;
             host.add_style_class_name('sch-cards-host');
+            // the space between the two cards: the one of GNOME's menu when
+            // another extension (LibPanel) splits it into cards, else ours
+            const gap = this._gnomeCardGap();
+            host.set_style(gap === null ? null : `spacing: ${gap}px`);
             this._sidebar.add_style_class_name('popup-menu-content');
             if (view.get_parent() !== this._calendarCard) {
                 view.get_parent()?.remove_child(view);
@@ -1679,9 +1683,26 @@ export default class SmartCalendarHubExtension extends Extension {
         this._calendarCard?.get_parent()?.remove_child(this._calendarCard);
         this._sidebar?.remove_style_class_name('popup-menu-content');
         host?.remove_style_class_name('sch-cards-host');
+        host?.set_style(null);
         if (host && this._hostOrientation !== undefined)
             host.orientation = this._hostOrientation;
         this._hostOrientation = undefined;
+    }
+
+    // Space between the cards of GNOME's system menu when LibPanel (used by
+    // Quick Settings Audio Panel) splits it into cards: it puts them in a box
+    // of its own with the spacing set on it. null: GNOME's menu is one card,
+    // our stylesheet decides (.sch-cards-host)
+    _gnomeCardGap() {
+        try {
+            const menu = Main.panel.statusArea.quickSettings?.menu;
+            if (!menu?.actor?.has_style_class_name?.('QSAP-panel-grid') || !menu.box)
+                return null;
+            const gap = Math.round(menu.box.get_theme_node().get_length('spacing'));
+            return gap >= 0 && gap <= 40 ? gap : null;
+        } catch (_e) {
+            return null;
+        }
     }
 
     // Padding and border of the menu's content box around the panel, from
