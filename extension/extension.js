@@ -94,12 +94,19 @@ export default class SmartCalendarHubExtension extends Extension {
     // returns the error if the panel could not be built
     _syncSessionMode() {
         const session = !Main.sessionMode.isLocked && !Main.sessionMode.isGreeter;
+        // Back in the session: the clock first goes back where GNOME had it,
+        // then the full extension places it (the other order would move it
+        // back after the extension placed it). Lock and login screen: the
+        // full extension leaves first, then the clock is placed.
+        if (session)
+            this._topBarStyle?.setClockPlacement(false);
         let error = null;
         if (session && !this._dateMenu)
             error = this._enableFull();
         else if (!session && this._dateMenu)
             this._disableFull();
-        this._topBarStyle?.setLoginScreen(Main.sessionMode.isGreeter);
+        if (!session)
+            this._topBarStyle?.setClockPlacement(true);
         return error;
     }
 

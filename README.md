@@ -83,8 +83,8 @@ anywhere; calendars, notifications and settings stay on your computer.
 
 ## Lock screen and login screen
 
-The look of the top bar (accent colour, space between the icons) stays the
-same on the lock screen. Nothing else of the extension runs there: the side
+The look of the top bar (accent colour, space between the icons, clock
+position) stays the same on the lock screen. Nothing else of the extension runs there: the side
 panel, notifications, calendar and tray are taken down while the screen is
 locked and built again when you unlock.
 

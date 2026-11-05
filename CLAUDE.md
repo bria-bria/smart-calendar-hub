@@ -50,8 +50,9 @@ tolta anche dai primi 3 commit (storia riscritta prima di renderlo pubblico).
 
 ## Schermate di blocco e di accesso (dal 05/11/2026)
 `session-modes`: user, unlock-dialog, gdm. Due livelli in `extension.js`:
-`TopBarStyle` (`sch-topbar-style.js`: colore d'accento, spazio icone, sulla
-schermata di accesso anche la posizione dell'ora) è sempre attivo; tutto il
+`TopBarStyle` (`sch-topbar-style.js`: colore d'accento, spazio icone, su
+blocco schermo e schermata di accesso anche la posizione dell'ora) è sempre
+attivo (allo sblocco l'ora torna prima al suo posto, poi la sistema il resto); tutto il
 resto (`_enableFull`/`_disableFull`) solo nella sessione, spento al blocco
 schermo. Schermata di accesso: `sudo ./installa-schermata-accesso.sh` (copia
 l'estensione in /usr/share e le impostazioni di Michele nel dconf di gdm,

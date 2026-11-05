@@ -5,8 +5,8 @@
 // lock screen and on the login screen. Only styling, nothing personal:
 //  - texts and icons in GNOME's accent colour (light tint or full colour)
 //  - space between the icons (sch-spacing.js)
-//  - on the login screen only, the clock where it is in the session (in the
-//    session the full extension places it; the lock screen shows no clock)
+//  - on the lock and login screens, the clock where it is in the session
+//    (in the session the full extension places it)
 
 import Gio from 'gi://Gio';
 
@@ -64,7 +64,7 @@ export class TopBarStyle {
         this._spacing?.destroy();
         this._spacing = null;
         this._removeAccent();
-        this.setLoginScreen(false);
+        this.setClockPlacement(false);
         this._interface = null;
     }
 
@@ -91,10 +91,10 @@ export class TopBarStyle {
         Main.panel.add_style_class_name(`sch-accent-light-${accent}`);
     }
 
-    // Login screen: the clock where it is in the session. Elsewhere the
-    // clock goes back where GNOME had it (in the session the full extension
+    // Lock and login screens: the clock where it is in the session. In the
+    // session the clock goes back where GNOME had it (the full extension
     // places it itself).
-    setLoginScreen(on) {
+    setClockPlacement(on) {
         if (on === this._loginScreen)
             return;
         this._loginScreen = on;
