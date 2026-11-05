@@ -59,6 +59,10 @@
 }
 
 /* Weather row: collapsible weather + settings button */
+.sch-weather-line {
+    spacing: 8px;
+}
+
 .sch-weather-row {
     spacing: 6px;
 }

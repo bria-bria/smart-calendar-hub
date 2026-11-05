@@ -250,6 +250,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._weatherBody = null;
         this._weatherArrow = null;
         this._weatherSummary = null;
+        this._weatherSummaryIcon = null;
         this._weatherClient = null;
         this._calendarLabel = null;
         this._gearButton = null;
@@ -1028,14 +1029,22 @@ export default class SmartCalendarHubExtension extends Extension {
             can_focus: true,
             visible: !!dm._weatherItem,
         });
-        const weatherLine = new St.BoxLayout({x_expand: true});
+        // "Weather · 12° Brescia [icon of today's weather]"   >
+        const weatherLine = new St.BoxLayout({x_expand: true, style_class: 'sch-weather-line'});
         this._weatherSummary = new St.Label({
             text: _('Weather'),
             style_class: 'sch-calendar-expander-label',
-            x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
         weatherLine.add_child(this._weatherSummary);
+        this._weatherSummaryIcon = new St.Icon({
+            icon_size: 16,
+            style_class: 'sch-weather-summary-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: false,
+        });
+        weatherLine.add_child(this._weatherSummaryIcon);
+        weatherLine.add_child(new St.Widget({x_expand: true}));
         this._weatherArrow = new St.Icon({
             icon_name: 'pan-end-symbolic',
             icon_size: 16,
@@ -1285,14 +1294,20 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!this._weatherSummary)
             return;
         let text = _('Weather');
+        let icon = null;
         const info = client.info;
         if (client.hasLocation && info?.is_valid()) {
             const [ok, temp] = info.get_value_temp(GWeather.TemperatureUnit.DEFAULT);
             const place = info.get_location_name() ?? '';
             if (ok && Number.isFinite(temp))
                 text = _('Weather · {temp}° {place}', {temp: Math.round(temp), place}).trim();
+            icon = info.get_symbolic_icon_name() || null;
         }
         this._weatherSummary.text = text;
+        if (this._weatherSummaryIcon) {
+            this._weatherSummaryIcon.icon_name = icon ?? 'weather-clear-symbolic';
+            this._weatherSummaryIcon.visible = !!icon;
+        }
     }
 
     _setCalendarExpanded(expanded) {
