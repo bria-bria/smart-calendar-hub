@@ -2470,7 +2470,10 @@ export default class SmartCalendarHubExtension extends Extension {
         info.cell.add_style_class_name('sch-tray-cell-open');
         this._trayMenuScroll.vadjustment.value = 0;
         this._trayMenuHost.show();
-        box.navigate_focus(null, St.DirectionType.TAB_FORWARD, false);
+        // the keys go to the menu (Esc: back); with nothing to focus, to
+        // the card itself, so Esc does not close the whole panel
+        if (!box.navigate_focus(null, St.DirectionType.TAB_FORWARD, false))
+            this._trayMenuHost.grab_key_focus();
     }
 
     // Close the menu shown inside (its 'open-state-changed' puts it back)
