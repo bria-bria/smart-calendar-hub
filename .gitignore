@@ -4,3 +4,4 @@ __pycache__/
 *.bak*
 dist/
 originale-raven-calendar/
+privato/
