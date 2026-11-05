@@ -1173,6 +1173,8 @@ export default class SmartCalendarHubExtension extends Extension {
             this._trayScroll = null;
             this._trayLeft = null;
             this._trayRight = null;
+            if (this._insideMenu?.cardsId)
+                GLib.source_remove(this._insideMenu.cardsId);
             this._insideMenu = null;
             this._trayMenuHost = null;
         });
