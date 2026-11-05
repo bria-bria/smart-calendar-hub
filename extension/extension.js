@@ -2521,12 +2521,6 @@ export default class SmartCalendarHubExtension extends Extension {
         this._trayMenuHost.grab_key_focus();
     }
 
-    // The backgrounds the app draws inside its menu become transparent, so
-    // the menu looks part of ours: every container that is not clickable
-    // (cards, the tracks of the bars) and any larger empty area. What shows a
-    // value keeps its colour: the filled part of a bar, small tags ("WPA2"),
-    // buttons and the items of the menu. Backgrounds painted by the app's own
-    // drawing code (e.g. a graph) cannot be reached from outside.
     // The same measure for every app: its cards without background, and no
     // empty room before the items when the menu has no check marks at all
     _tidyTrayMenu() {
@@ -2564,6 +2558,12 @@ export default class SmartCalendarHubExtension extends Extension {
         }
     }
 
+    // The backgrounds the app draws inside its menu become transparent, so
+    // the menu looks part of ours: every container that is not clickable
+    // (cards, the tracks of the bars) and any larger empty area. What shows a
+    // value keeps its colour: the filled part of a bar, small tags ("WPA2"),
+    // buttons and the items of the menu. Backgrounds painted by the app's own
+    // drawing code (e.g. a graph) cannot be reached from outside.
     _clearTrayMenuCards() {
         const shown = this._insideMenu;
         if (!shown?.box)
