@@ -467,7 +467,7 @@
     padding: 4px 0 2px 2px;
 }
 
-/* IP addresses in the top bar: [Wi-Fi/cable] local  [globe] public */
+/* IP addresses in the top bar: [Wi-Fi/cable] local  [globe] public (icons/sch-globe-symbolic.svg) */
 .sch-ip-box {
     spacing: 12px;
 }

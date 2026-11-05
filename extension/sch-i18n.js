@@ -80,8 +80,12 @@ export const IT = {
         "Rete",
     "IP addresses in the top bar":
         "Indirizzi IP nella barra in alto",
-    "Click the addresses in the top bar to copy them.":
-        "Clicca sugli indirizzi nella barra in alto per copiarli.",
+    "Click the addresses in the top bar: the menu lists every address switched on here, click one to copy it.":
+        "Clicca sugli indirizzi nella barra in alto: il menu elenca tutti gli indirizzi accesi qui, cliccane uno per copiarlo.",
+    "Show in the top bar":
+        "Mostra nella barra in alto",
+    "Off: only in the menu that opens when you click the addresses":
+        "Spento: solo nel menu che si apre cliccando sugli indirizzi",
     "Show the IP addresses":
         "Mostra gli indirizzi IP",
     "Position in the top bar":

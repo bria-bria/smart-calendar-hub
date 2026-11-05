@@ -53,8 +53,10 @@ icon next to the weather. They are in five tabs:
   instead; "Unmute" to undo) and the apps that
   light the red dot on the clock — for notifications, or when their tray icon
   changes from the usual one (e.g. an unread badge).
-- **Network**: IP addresses in the top bar (left, center or right), local
-  network address, public address.
+- **Network**: IP addresses in the top bar (left, center or right): local
+  network, VPN and public address. Each one switched on is listed in the menu
+  that opens when you click the addresses; open its row to choose whether it
+  is shown in the bar too.
 
 ### Privacy and network use
 

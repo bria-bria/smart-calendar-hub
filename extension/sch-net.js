@@ -5,7 +5,8 @@
 // connection (from NetworkManager) and, only when switched on, the public
 // address (asked to api.ipify.org, the only network request made by the
 // extension). Left, center or right of the top bar. Clicking opens a menu
-// where each address can be copied.
+// with every address switched on, each one can be copied; the settings choose
+// which of them are also shown in the bar.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -28,6 +29,13 @@ export const IP_ROLE = 'smart-calendar-hub-ip';
 const PUBLIC_IP_URL = 'https://api.ipify.org';
 const PUBLIC_REFRESH_SECONDS = 30 * 60;
 
+// Globe of the public address: shipped with the extension, since icon themes
+// draw "web-browser" as a compass and have no common globe icon
+const GLOBE_ICON = new Gio.FileIcon({
+    file: Gio.File.new_for_uri(import.meta.url).get_parent()
+        .get_child('icons').get_child('sch-globe-symbolic.svg'),
+});
+
 const IpIndicator = GObject.registerClass(
 class IpIndicator extends PanelMenu.Button {
     _init(owner) {
@@ -40,7 +48,7 @@ class IpIndicator extends PanelMenu.Button {
         this._lanBox.add_child(this._lanIcon);
         this._lanBox.add_child(this._lanLabel);
         this._pubBox = new St.BoxLayout({style_class: 'sch-ip-part'});
-        this._pubBox.add_child(new St.Icon({icon_name: 'web-browser-symbolic', style_class: 'system-status-icon'}));
+        this._pubBox.add_child(new St.Icon({gicon: GLOBE_ICON, style_class: 'system-status-icon'}));
         this._pubLabel = new St.Label({y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-label'});
         this._pubBox.add_child(this._pubLabel);
         // [shield] VPN address, only while a VPN (e.g. Tailscale) is active
@@ -48,6 +56,9 @@ class IpIndicator extends PanelMenu.Button {
         this._vpnBox.add_child(new St.Icon({icon_name: 'network-vpn-symbolic', style_class: 'system-status-icon'}));
         this._vpnLabel = new St.Label({y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-label'});
         this._vpnBox.add_child(this._vpnLabel);
+        // only when no address is shown in the bar: something to click on
+        this._emptyIcon = new St.Icon({icon_name: 'network-workgroup-symbolic', style_class: 'system-status-icon', visible: false});
+        box.add_child(this._emptyIcon);
         box.add_child(this._lanBox);
         box.add_child(this._vpnBox);
         box.add_child(this._pubBox);
@@ -68,27 +79,31 @@ class IpIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(refresh);
     }
 
-    sync(lanIp, publicIp, showLan, showPublic, kind, vpn, showVpn) {
-        this._vpnBox.visible = showVpn && !!vpn?.ip;
+    // show: switched on (in the menu); bar: also in the top bar
+    sync({lanIp, kind, publicIp, vpn, show, bar}) {
+        this._vpnBox.visible = show.vpn && bar.vpn && !!vpn?.ip;
         this._vpnLabel.text = vpn?.ip ?? '';
-        this._vpnItem.visible = !!vpn?.ip;
+        this._vpnItem.visible = show.vpn && !!vpn?.ip;
         this._vpnItem.label.text = vpn?.ip
             ? _('VPN ({name}): {ip}', {name: vpn.name, ip: vpn.ip})
             : '';
-        this._lanBox.visible = showLan;
+        this._lanBox.visible = show.lan && bar.lan;
         this._lanLabel.text = lanIp ?? _('offline');
         // the connection the traffic is going through right now
         this._lanIcon.icon_name = kind === 'wifi' ? 'network-wireless-symbolic'
             : kind === 'wired' ? 'network-wired-symbolic'
                 : lanIp ? 'network-workgroup-symbolic' : 'network-offline-symbolic';
-        this._pubBox.visible = showPublic;
-        this._pubLabel.text = publicIp ?? '…';
+        this._lanItem.visible = show.lan;
         this._lanItem.label.text = _('Local network: {ip}', {ip: lanIp ?? _('offline')});
-        this._publicItem.label.text = showPublic
+        this._lanItem.reactive = !!lanIp;
+        this._pubBox.visible = show.public && bar.public;
+        this._pubLabel.text = publicIp ?? '…';
+        this._publicItem.label.text = show.public
             ? _('Public: {ip}', {ip: publicIp ?? '…'})
             : _('Public: switched off in the settings');
-        this._publicItem.reactive = showPublic && !!publicIp;
-        this._lanItem.reactive = !!lanIp;
+        this._publicItem.reactive = show.public && !!publicIp;
+        this._emptyIcon.visible = !this._lanBox.visible && !this._vpnBox.visible && !this._pubBox.visible;
+        this._emptyIcon.icon_name = this._lanIcon.icon_name;
     }
 });
 
@@ -107,7 +122,8 @@ export class IpView {
         this._settingsIds = [
             ...['show-ip', 'ip-position'].map(key =>
                 settings.connect(`changed::${key}`, () => this._place())),
-            ...['ip-show-lan', 'ip-show-public', 'ip-show-vpn'].map(key =>
+            ...['ip-show-lan', 'ip-show-public', 'ip-show-vpn',
+                'ip-bar-lan', 'ip-bar-public', 'ip-bar-vpn'].map(key =>
                 settings.connect(`changed::${key}`, () => {
                     this._sync();
                     this._schedulePublic();
@@ -156,11 +172,12 @@ export class IpView {
     }
 
     _sync() {
-        this._indicator?.sync(this.lanIp, this.publicIp,
-            this._settings.get_boolean('ip-show-lan'),
-            this._settings.get_boolean('ip-show-public'),
-            this.lanKind, this.vpn,
-            this._settings.get_boolean('ip-show-vpn'));
+        const flags = prefix => Object.fromEntries(['lan', 'vpn', 'public'].map(
+            k => [k, this._settings.get_boolean(`${prefix}-${k}`)]));
+        this._indicator?.sync({
+            lanIp: this.lanIp, kind: this.lanKind, publicIp: this.publicIp,
+            vpn: this.vpn, show: flags('ip-show'), bar: flags('ip-bar'),
+        });
     }
 
     copy(text) {

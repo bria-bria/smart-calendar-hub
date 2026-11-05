@@ -47,6 +47,7 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-sky.js" \
     --extra-source="sch-net.js" \
     --extra-source="sch-weather.js" \
+    --extra-source="icons" \
     --extra-source="$PROJ_DIR/LICENSE"
 echo "Pacchetto creato: $ZIP"
 

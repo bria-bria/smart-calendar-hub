@@ -411,7 +411,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         // ---------------- Network ----------------
         const ip = new Adw.PreferencesGroup({
             title: _('IP addresses in the top bar'),
-            description: _('Click the addresses in the top bar to copy them.'),
+            description: _('Click the addresses in the top bar: the menu lists every address switched on here, click one to copy it.'),
         });
         pageNetwork.add(ip);
         const showIp = new Adw.SwitchRow({title: _('Show the IP addresses')});
@@ -426,24 +426,26 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
                 ['right', _('Right')],
             ]);
         ip.add(ipPosition);
-        const lanRow = new Adw.SwitchRow({
-            title: _('Local network address'),
-            subtitle: _('The address of this computer in the network it is connected to now'),
-        });
-        settings.bind('ip-show-lan', lanRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        ip.add(lanRow);
-        const vpnRow = new Adw.SwitchRow({
-            title: _('VPN address'),
-            subtitle: _('Shown with a shield while a VPN such as Tailscale is active'),
-        });
-        settings.bind('ip-show-vpn', vpnRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        ip.add(vpnRow);
-        const publicRow = new Adw.SwitchRow({
-            title: _('Public address'),
-            subtitle: _('The address seen on the Internet. To know it, the extension asks api.ipify.org (when the network changes and every 30 minutes); that service sees the request.'),
-        });
-        settings.bind('ip-show-public', publicRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        ip.add(publicRow);
+        // switch = the address is known and listed in the menu;
+        // open the row to choose whether it is in the bar too
+        const addressRow = (key, title, subtitle) => {
+            const row = new Adw.ExpanderRow({title, subtitle, show_enable_switch: true});
+            settings.bind(`ip-show-${key}`, row, 'enable-expansion', Gio.SettingsBindFlags.DEFAULT);
+            const bar = new Adw.SwitchRow({
+                title: _('Show in the top bar'),
+                subtitle: _('Off: only in the menu that opens when you click the addresses'),
+            });
+            settings.bind(`ip-bar-${key}`, bar, 'active', Gio.SettingsBindFlags.DEFAULT);
+            row.add_row(bar);
+            ip.add(row);
+            return row;
+        };
+        const lanRow = addressRow('lan', _('Local network address'),
+            _('The address of this computer in the network it is connected to now'));
+        const vpnRow = addressRow('vpn', _('VPN address'),
+            _('Shown with a shield while a VPN such as Tailscale is active'));
+        const publicRow = addressRow('public', _('Public address'),
+            _('The address seen on the Internet. To know it, the extension asks api.ipify.org (when the network changes and every 30 minutes); that service sees the request.'));
         for (const row of [ipPosition, lanRow, vpnRow, publicRow])
             settings.bind('show-ip', row, 'sensitive', Gio.SettingsBindFlags.GET);
 

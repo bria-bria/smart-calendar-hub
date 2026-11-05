@@ -111,6 +111,21 @@
       <summary>Show the public address (asks api.ipify.org)</summary>
     </key>
 
+    <key name="ip-bar-lan" type="b">
+      <default>true</default>
+      <summary>Show the local network address in the top bar (otherwise only in its menu)</summary>
+    </key>
+
+    <key name="ip-bar-vpn" type="b">
+      <default>true</default>
+      <summary>Show the VPN address in the top bar (otherwise only in its menu)</summary>
+    </key>
+
+    <key name="ip-bar-public" type="b">
+      <default>true</default>
+      <summary>Show the public address in the top bar (otherwise only in its menu)</summary>
+    </key>
+
     <key name="calendar-collapsed" type="b">
       <default>true</default>
       <summary>Collapse the calendar every time the panel opens</summary>
