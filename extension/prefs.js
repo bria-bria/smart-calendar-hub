@@ -328,6 +328,14 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('calendar-collapsed', collapseRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         look.add(collapseRow);
+        look.add(choiceRow(settings, 'calendar-side-reopen',
+            _('Calendar beside the panel'),
+            _('When the panel opens again (it opens with a click on the “Today” card)'),
+            [
+                ['closed', _('Closed')],
+                ['last', _('As it was left')],
+                ['open', _('Open')],
+            ]));
 
         const alignRow = new Adw.SwitchRow({
             title: _('Align to GNOME’s menu'),

@@ -64,7 +64,7 @@ let weatherExpanded = false;
 // Calendar in its own card next to the panel (click on the "Today" card):
 // like the weather, kept until the next login.
 let calendarSide = false;
-// Frame of the menu's content box, measured on screen (see _measureCardFrame)
+// Frame of the menu's content box (see _measureCardFrame)
 let cardFrame = null;
 
 export default class SmartCalendarHubExtension extends Extension {
@@ -1391,9 +1391,12 @@ export default class SmartCalendarHubExtension extends Extension {
             if (isOpen) {
                 if (this._settings.get_boolean('calendar-collapsed'))
                     this._setCalendarExpanded(false);
-                // the calendar beside the panel, as it was left
-                if (calendarSide && !this._calendarCard?.visible)
-                    this._setCalendarSide(true);
+                // the calendar beside the panel: closed, open, or as it was
+                // left (setting)
+                const reopen = this._settings.get_string('calendar-side-reopen');
+                const side = reopen === 'open' || (reopen === 'last' && calendarSide);
+                if (side !== !!this._calendarCard?.visible)
+                    this._setCalendarSide(side);
                 this._syncTray();
                 this._updateSidebarSize();
                 this._calendarView?.reloadCalendars();
@@ -1600,9 +1603,8 @@ export default class SmartCalendarHubExtension extends Extension {
         const host = this._dateMenu?.menu?.box;
         if (!host || !this._sidebar || !this._calendarCard || !this._calendarView)
             return;
-        // before the change, and only when it is on screen: otherwise the
-        // last good measure is kept
-        if (on && !host.has_style_class_name('sch-cards-host') && host.mapped)
+        // before the change (afterwards the box has no padding or border)
+        if (on && !host.has_style_class_name('sch-cards-host'))
             cardFrame = this._measureCardFrame();
         calendarSide = on;
         const view = this._calendarView.actor;
@@ -1648,31 +1650,17 @@ export default class SmartCalendarHubExtension extends Extension {
         this._hostOrientation = undefined;
     }
 
-    // Padding and border of the menu's content box around the panel: from
-    // the real sizes on screen when it is shown (the preferred size was a
-    // few pixels off and the panel shrank when the calendar card opened)
+    // Padding and border of the menu's content box around the panel, from
+    // its style: exact, and available before the menu is drawn
     _measureCardFrame() {
         try {
-            const host = this._dateMenu.menu.box;
-            const hostWidth = host.mapped && host.width > 0
-                ? host.width : host.get_preferred_width(-1)[1];
-            const panelWidth = this._sidebar.mapped && this._sidebar.width > 0
-                ? this._sidebar.width : this._sidebar.get_preferred_width(-1)[1];
-            const frame = Math.round(hostWidth - panelWidth);
+            const node = this._dateMenu.menu.box.get_theme_node();
+            const frame = Math.round(node.get_horizontal_padding() +
+                node.get_border_width(St.Side.LEFT) + node.get_border_width(St.Side.RIGHT));
             return frame >= 0 && frame < 80 ? frame : 22;
         } catch (_e) {
             return 22;
         }
-    }
-
-    // GNOME's "Today" card: not while the calendar is open in the panel
-    // (the calendar has its own list of the day's events)
-    _syncToday() {
-        if (!this._todayBin)
-            return;
-        this._todayBin.visible = !!this._dateMenu?._eventsItem &&
-            this._settings.get_boolean('show-today-events') &&
-            !this._calendarBox?.visible;
     }
 
     _setCalendarExpanded(expanded) {

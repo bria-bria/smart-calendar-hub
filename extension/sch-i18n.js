@@ -144,6 +144,16 @@ export const IT = {
         "Allinea al menu di GNOME",
     "As wide as the system menu (Wi-Fi, volume…), kept the same automatically":
         "Larga come il menu di sistema (Wi-Fi, volume…), tenuta uguale in automatico",
+    "Calendar beside the panel":
+        "Calendario a fianco del pannello",
+    "When the panel opens again (it opens with a click on the “Today” card)":
+        "Quando il pannello si riapre (si apre con un clic sulla scheda «Oggi»)",
+    "Closed":
+        "Chiuso",
+    "As it was left":
+        "Come l'avevi lasciato",
+    "Open":
+        "Aperto",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

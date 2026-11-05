@@ -71,6 +71,16 @@
       <description>"identifier TAB name" of each app seen in the notification list; used by the preferences window.</description>
     </key>
 
+    <key name="calendar-side-reopen" type="s">
+      <choices>
+        <choice value="closed"/>
+        <choice value="last"/>
+        <choice value="open"/>
+      </choices>
+      <default>'closed'</default>
+      <summary>The calendar beside the panel when the panel opens: closed, as it was left, or open</summary>
+    </key>
+
     <key name="show-today-events" type="b">
       <default>true</default>
       <summary>Show GNOME's "Today" card with the events of the day above the notifications</summary>
