@@ -1417,12 +1417,8 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._setCalendarSide(!calendarSide);
             });
         }
-        const syncToday = () => {
-            this._todayBin.visible = !!dm._eventsItem &&
-                this._settings.get_boolean('show-today-events');
-        };
-        this._connect(this._settings, 'changed::show-today-events', syncToday);
-        syncToday();
+        this._connect(this._settings, 'changed::show-today-events', () => this._syncToday());
+        this._syncToday();
 
         // 4. Notifications
         if (dm._messageList) {
@@ -1659,11 +1655,22 @@ export default class SmartCalendarHubExtension extends Extension {
         }
     }
 
+    // GNOME's "Today" card: not while the calendar is open in the panel
+    // (the calendar has its own list of the day's events)
+    _syncToday() {
+        if (!this._todayBin)
+            return;
+        this._todayBin.visible = !!this._dateMenu?._eventsItem &&
+            this._settings.get_boolean('show-today-events') &&
+            !this._calendarBox?.visible;
+    }
+
     _setCalendarExpanded(expanded) {
         if (!this._calendarBox)
             return;
         this._calendarScroll.visible = expanded;
         this._calendarBox.visible = expanded;
+        this._syncToday();
         // The calendar takes the place of the notifications while it is open
         if (this._dateMenu._messageList)
             this._dateMenu._messageList.visible = !expanded && this._sessionShowsNotifications();

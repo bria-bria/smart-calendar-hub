@@ -437,11 +437,6 @@ export class CalendarView {
     _renderAgenda() {
         this._agenda.destroy_all_children();
         const day = this._selected;
-        // today's events are in GNOME's "Today" card above the notifications:
-        // the agenda only for the other days
-        this._agenda.visible = !sameDay(day, new Date());
-        if (!this._agenda.visible)
-            return;
         const events = this._getEvents(day, addDays(day, 1));
 
         const title = new St.BoxLayout({style_class: 'sch-cal-agenda-title'});
