@@ -51,6 +51,28 @@ export const IT = {
     "New event":
         "Nuovo impegno",
 
+    // --- Silencing apps (extension.js, prefs.js) ---
+    "Silence notifications from this app":
+        "Silenzia le notifiche di questa app",
+    "1 hour":
+        "1 ora",
+    "8 hours":
+        "8 ore",
+    "Until tomorrow":
+        "Fino a domani",
+    "Always":
+        "Sempre",
+    "Silenced apps":
+        "App silenziate",
+    "Silenced with the bell of a notification: no pop-up, the notifications stay in the panel and do not light the red dot.":
+        "Silenziate con la campanella di una notifica: niente fumetto, le notifiche restano nel pannello e non accendono il puntino rosso.",
+    "No silenced apps":
+        "Nessuna app silenziata",
+    "Until {time}":
+        "Fino a {time}",
+    "Unmute":
+        "Riattiva",
+
     // --- Calendar (sch-calendar.js) ---
     "Today":
         "Oggi",

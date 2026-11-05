@@ -3,6 +3,7 @@
 
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
@@ -191,6 +192,57 @@ async function calendarsGroup() {
     return group;
 }
 
+// Apps silenced from the bell of a notification: name, until when, and a
+// button to turn them back on. Expired silences are not listed.
+function mutedGroup(window, settings) {
+    const group = new Adw.PreferencesGroup({
+        title: _('Silenced apps'),
+        description: _('Silenced with the bell of a notification: no pop-up, the notifications stay in the panel and do not light the red dot.'),
+    });
+    let rows = [];
+    const rebuild = () => {
+        rows.forEach(r => group.remove(r));
+        rows = [];
+        const now = Date.now() / 1000;
+        const entries = settings.get_strv('muted-apps')
+            .map(line => {
+                const [key, label = key, until = '0'] = line.split('\t');
+                return {line, key, label, until: Number(until) || 0};
+            })
+            .filter(e => e.key && (e.until === 0 || e.until > now));
+        if (!entries.length) {
+            const row = new Adw.ActionRow({title: _('No silenced apps')});
+            group.add(row);
+            rows.push(row);
+            return;
+        }
+        for (const e of entries) {
+            const when = e.until === 0
+                ? _('Always')
+                : _('Until {time}', {time: GLib.DateTime.new_from_unix_local(e.until).format('%a %H:%M')});
+            const row = new Adw.ActionRow({title: e.label, subtitle: when});
+            const button = new Gtk.Button({
+                label: _('Unmute'),
+                valign: Gtk.Align.CENTER,
+            });
+            button.connect('clicked', () => {
+                settings.set_strv('muted-apps',
+                    settings.get_strv('muted-apps').filter(l => l.split('\t')[0] !== e.key));
+            });
+            row.add_suffix(button);
+            group.add(row);
+            rows.push(row);
+        }
+    };
+    rebuild();
+    const id = settings.connect('changed::muted-apps', rebuild);
+    window.connect('close-request', () => {
+        settings.disconnect(id);
+        return false;
+    });
+    return group;
+}
+
 export default class SmartCalendarHubPreferences extends ExtensionPreferences {
     // async: GNOME 47+ waits for it, so the window is built already translated
     async fillPreferencesWindow(window) {
@@ -353,6 +405,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         pageCalendars.add(await calendarsGroup());
 
         // ---------------- Notifications ----------------
+        pageNotifications.add(mutedGroup(window, settings));
         pageNotifications.add(appSwitchGroup(window, settings, {
             title: _('Red dot on the clock'),
             description: _('A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon signals something new (only for apps that report it, e.g. Telegram).'),

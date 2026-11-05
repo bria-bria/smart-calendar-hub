@@ -12,6 +12,8 @@ import GWeather from 'gi://GWeather';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as MessageList from 'resource:///org/gnome/shell/ui/messageList.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
@@ -139,9 +141,10 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         this._signals = null;
 
-        for (const [source, id] of this._alertSources ?? [])
-            source.disconnect(id);
+        for (const [source, ids] of this._alertSources ?? [])
+            ids.forEach(id => source.disconnect(id));
         this._alertSources = null;
+        this._unpatchNotificationMessages();
         for (const [sni, ids] of this._alertTray ?? [])
             ids.forEach(id => sni.disconnect(id));
         this._alertTray = null;
@@ -260,6 +263,10 @@ export default class SmartCalendarHubExtension extends Extension {
             else
                 this._restoreTopBarOrganizer();
             this._applyTopBarPosition();
+            break;
+        case 'muted-apps':
+            this._mutedCache = null;
+            this._updateAlertDot();
             break;
         case 'alert-apps':
             this._updateAlertDot();
@@ -446,11 +453,14 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!clockBox)
             return;
 
+        // Always in place (transparent when off): showing and hiding it
+        // would move the clock and the widgets next to it.
         this._alertDot = new St.Widget({
             style_class: 'sch-alert-dot',
             y_align: Clutter.ActorAlign.CENTER,
-            visible: false,
+            opacity: 0,
         });
+        this._alertDotOn = false;
         // on the left of the time
         clockBox.insert_child_below(this._alertDot, clock);
         // Another extension may destroy the box we live in (see the weather badge).
@@ -460,16 +470,153 @@ export default class SmartCalendarHubExtension extends Extension {
 
         this._connect(Main.messageTray, 'source-added', (_t, source) => this._watchSource(source));
         this._connect(Main.messageTray, 'source-removed', (_t, source) => {
-            const id = this._alertSources.get(source);
-            if (id)
-                source.disconnect(id);
+            this._alertSources.get(source)?.forEach(id => source.disconnect(id));
             this._alertSources.delete(source);
             this._updateAlertDot();
         });
         for (const source of Main.messageTray.getSources())
             this._watchSource(source);
+        this._patchNotificationMessages();
         this._buildAlertTip();
         this._syncTrayAlerts();
+    }
+
+    // ------------------------------------------------------------------
+    // Silencing apps: no banner, notifications kept in the list, no red dot.
+    // muted-apps: "key TAB name TAB until" (until = Unix seconds, 0 = always)
+    // ------------------------------------------------------------------
+
+    // Parsed once per change of the setting (see _onSettingChanged)
+    _mutedEntries() {
+        const now = Date.now() / 1000;
+        this._mutedCache ??= this._settings.get_strv('muted-apps');
+        return this._mutedCache
+            .map(line => {
+                const [key, label = key, until = '0'] = line.split('\t');
+                return {key, label, until: Number(until) || 0};
+            })
+            .filter(e => e.key && (e.until === 0 || e.until > now));
+    }
+
+    _isMuted(key) {
+        return this._mutedEntries().some(e => e.key === key);
+    }
+
+    // until: Unix seconds when the silence ends, 0 = always
+    _mute(source, until) {
+        const key = this._sourceKey(source);
+        if (!key)
+            return;
+        const label = (source.title || key).replace(/[\t\n]/g, ' ');
+        const list = this._mutedEntries().filter(e => e.key !== key)
+            .map(e => `${e.key}\t${e.label}\t${e.until}`);
+        list.push(`${key}\t${label}\t${Math.round(until)}`);
+        this._settings.set_strv('muted-apps', list);
+    }
+
+    // A bell next to the X of every notification in the panel: it opens a
+    // row with the durations. Hooked into GNOME's message group, undone on
+    // disable.
+    _patchNotificationMessages() {
+        const proto = MessageList.NotificationMessageGroup?.prototype;
+        if (!proto?._addNotification || this._origAddNotification)
+            return;
+        this._muteButtons = new Set();
+        const ext = this;
+        const orig = this._origAddNotification = proto._addNotification;
+        this._addNotificationWrapper = proto._addNotification = function (notification) {
+            const result = orig.call(this, notification);
+            try {
+                const message = this._notificationToMessage?.get(notification);
+                if (message)
+                    ext._addMuteButton(message, notification);
+            } catch (e) {
+                console.error(`Smart Calendar Hub: cannot add the silence button: ${e}`);
+            }
+            return result;
+        };
+
+        // Notifications already in the list (login, screen unlock)
+        const groups = this._dateMenu._messageList?._messageView?._notificationSourceToGroup;
+        for (const group of groups?.values() ?? []) {
+            for (const [notification, message] of group._notificationToMessage ?? [])
+                this._addMuteButton(message, notification);
+        }
+    }
+
+    _unpatchNotificationMessages() {
+        const proto = MessageList.NotificationMessageGroup?.prototype;
+        // Put back the original only if nobody patched it after us
+        if (this._origAddNotification && proto?._addNotification === this._addNotificationWrapper)
+            proto._addNotification = this._origAddNotification;
+        else if (this._origAddNotification)
+            console.warn('Smart Calendar Hub: _addNotification patched by someone else, left as is');
+        this._origAddNotification = null;
+        this._addNotificationWrapper = null;
+        for (const actor of this._muteButtons ?? []) {
+            try {
+                actor.destroy();
+            } catch (_e) {
+                // the notification is already gone
+            }
+        }
+        this._muteButtons = null;
+    }
+
+    _addMuteButton(message, notification) {
+        const header = message._header;
+        const vbox = message.get_child();
+        if (!header?.closeButton || !vbox || message._schMuteBell)
+            return;
+
+        const bell = new St.Button({
+            style_class: 'message-close-button sch-mute-button',
+            icon_name: 'notifications-disabled-symbolic',
+            y_align: Clutter.ActorAlign.CENTER,
+            accessible_name: _('Silence notifications from this app'),
+        });
+        header.insert_child_below(bell, header.closeButton);
+        message._schMuteBell = bell;
+        bell.connect('destroy', () => {
+            delete message._schMuteBell;
+        });
+
+        // Reactive and swallowing clicks: the notification itself is a button,
+        // a click in the gaps of the row must not open the app.
+        const row = new St.BoxLayout({style_class: 'sch-mute-row', visible: false, x_expand: true, reactive: true});
+        for (const signal of ['button-press-event', 'button-release-event', 'touch-event'])
+            row.connect(signal, () => Clutter.EVENT_STOP);
+        const hour = 3600;
+        const choices = [
+            [_('1 hour'), () => Date.now() / 1000 + hour],
+            [_('8 hours'), () => Date.now() / 1000 + 8 * hour],
+            // until 8:00 of the next morning (the same day if it is still night)
+            [_('Until tomorrow'), () => {
+                const d = new Date();
+                const day = d.getHours() < 5 ? d.getDate() : d.getDate() + 1;
+                return new Date(d.getFullYear(), d.getMonth(), day, 8).getTime() / 1000;
+            }],
+            [_('Always'), () => 0],
+        ];
+        for (const [label, until] of choices) {
+            const btn = new St.Button({label, style_class: 'sch-mute-choice', x_expand: true, can_focus: true});
+            btn.connect('clicked', () => {
+                const source = notification.source;
+                if (source)
+                    this._mute(source, until());
+                row.hide();
+            });
+            row.add_child(btn);
+        }
+        vbox.add_child(row);
+        bell.connect('clicked', () => {
+            row.visible = !row.visible;
+        });
+
+        for (const actor of [bell, row]) {
+            this._muteButtons?.add(actor);
+            actor.connect('destroy', () => this._muteButtons?.delete(actor));
+        }
     }
 
     // Stable identifier of the app behind a notification source.
@@ -480,10 +627,19 @@ export default class SmartCalendarHubExtension extends Extension {
     _watchSource(source) {
         if (this._alertSources.has(source))
             return;
-        this._alertSources.set(source, source.connect('notify::count', () => {
-            this._rememberSource(source);
-            this._updateAlertDot();
-        }));
+        this._alertSources.set(source, [
+            source.connect('notify::count', () => {
+                this._rememberSource(source);
+                this._updateAlertDot();
+            }),
+            // Silenced app: no banner (low urgency), the notification still
+            // goes to the list. Emitted before GNOME decides about the banner.
+            source.connect('notification-added', (_s, notification) => {
+                if (this._isMuted(this._sourceKey(source)) &&
+                    notification.urgency !== MessageTray.Urgency.CRITICAL)
+                    notification.urgency = MessageTray.Urgency.LOW;
+            }),
+        ]);
         this._rememberSource(source);
         this._updateAlertDot();
     }
@@ -522,7 +678,8 @@ export default class SmartCalendarHubExtension extends Extension {
         const wanted = new Set(this._settings.get_strv('alert-apps'));
         const names = new Set();
         for (const s of this._alertSources?.keys() ?? []) {
-            if (s.count > 0 && wanted.has(this._sourceKey(s)))
+            const key = this._sourceKey(s);
+            if (s.count > 0 && wanted.has(key) && !this._isMuted(key))
                 names.add(s.title || this._sourceKey(s));
         }
         for (const sni of this._alertTray?.keys() ?? []) {
@@ -536,7 +693,8 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!this._alertDot)
             return;
         const apps = this._alertingApps();
-        this._alertDot.visible = apps.length > 0;
+        this._alertDotOn = apps.length > 0;
+        this._alertDot.opacity = this._alertDotOn ? 255 : 0;
         if (this._alertTip?.visible)
             this._showAlertTip();
     }
@@ -548,7 +706,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._alertTip = new St.Label({style_class: 'sch-alert-tip', visible: false, reactive: false});
         Main.uiGroup.add_child(this._alertTip);
         this._connect(this._dateMenu, 'notify::hover', () => {
-            if (this._dateMenu.hover && this._alertDot?.visible && !this._dateMenu.menu.isOpen)
+            if (this._dateMenu.hover && this._alertDotOn && !this._dateMenu.menu.isOpen)
                 this._showAlertTip();
             else
                 this._alertTip.hide();
