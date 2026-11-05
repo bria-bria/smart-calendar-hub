@@ -30,6 +30,10 @@ integrata né spenta; le Preferenze mostrano un avviso se è spenta.
 Le icone del vassoio sono in righe (`_layoutTray`): NON usare
 `Clutter.FlowLayout`, su GNOME 51 dà altezza 0 ai pulsanti del pannello.
 
+Niente **margini negativi** nel CSS (es. `margin-top: -4px`): il 05/11/2026
+uno solo nei puntini delle città rendeva il pannello invisibile (si apriva ma
+GNOME non lo disegnava: "cogl_framebuffer_set_viewport: width > 0 && height > 0").
+
 I commit usano l'email anonima 301696067+bria-bria@users.noreply.github.com
 (configurata in questo repository). Il 04/11/2026 l'email personale è stata
 tolta anche dai primi 3 commit (storia riscritta prima di renderlo pubblico).
