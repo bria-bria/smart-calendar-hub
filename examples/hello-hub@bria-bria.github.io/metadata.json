@@ -1,0 +1,7 @@
+{
+  "uuid": "hello-hub@bria-bria.github.io",
+  "name": "Hello Hub",
+  "description": "Example: a top bar icon with a page for Smart Calendar Hub. Without the hub it keeps its normal floating menu.",
+  "shell-version": ["47", "48", "49", "50", "51"],
+  "url": "https://github.com/bria-bria/smart-calendar-hub"
+}

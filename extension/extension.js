@@ -2467,28 +2467,53 @@ export default class SmartCalendarHubExtension extends Extension {
         if (this._insideMenu?.menu === menu)
             return;
         this._closeTrayMenu();
-        const box = menu.box;
-        const bin = box?.get_parent();
-        if (!box || !bin)
-            return;
-        // the floating box keeps its menu in an St.Bin: emptied properly
-        if (bin instanceof St.Bin)
-            bin.set_child(null);
-        else
-            bin.remove_child(box);
-        this._trayMenuContent.add_child(box);
-        box.add_style_class_name('sch-tray-menu-box');
-        // as tall as its items, at the top: an item asking for the free room
-        // (y_expand) would otherwise stretch to the bottom of the card
-        const shown = {menu, box, bin, info, hidden: [], cleared: new Map(), ornaments: new Set(), yExpand: box.y_expand};
-        box.y_expand = false;
-        menu.actor.hide();
-        shown.boxDestroyId = box.connect('destroy', () => {
-            if (this._insideMenu === shown) {
-                shown.box = null;
-                this._hideTrayMenu();
+        // An extension may describe itself for the hub (see README, "For
+        // extension developers"): a title, a page of its own instead of its
+        // menu, and whether we may clear its backgrounds
+        const hub = indicator.smartCalendarHub ?? null;
+        const shown = {menu, info, hub, hidden: [], cleared: new Map(), ornaments: new Set()};
+        if (typeof hub?.buildPage === 'function') {
+            try {
+                shown.page = hub.buildPage();
+            } catch (e) {
+                console.error(`Smart Calendar Hub: page of ${info.role}: ${e}`);
             }
-        });
+        }
+        if (shown.page instanceof Clutter.Actor) {
+            this._trayMenuContent.add_child(shown.page);
+            shown.page.add_style_class_name?.('sch-hub-page');
+            shown.pageDestroyId = shown.page.connect('destroy', () => {
+                if (this._insideMenu === shown) {
+                    shown.page = null;
+                    this._closeTrayMenu();
+                }
+            });
+        } else {
+            shown.page = null;
+            const box = menu.box;
+            const bin = box?.get_parent();
+            if (!box || !bin)
+                return;
+            // the floating box keeps its menu in an St.Bin: emptied properly
+            if (bin instanceof St.Bin)
+                bin.set_child(null);
+            else
+                bin.remove_child(box);
+            this._trayMenuContent.add_child(box);
+            box.add_style_class_name('sch-tray-menu-box');
+            box.add_style_class_name('sch-hub-page');
+            // as tall as its items, at the top: an item asking for the free
+            // room (y_expand) would otherwise stretch to the bottom of the card
+            Object.assign(shown, {box, bin, yExpand: box.y_expand});
+            box.y_expand = false;
+            shown.boxDestroyId = box.connect('destroy', () => {
+                if (this._insideMenu === shown) {
+                    shown.box = null;
+                    this._hideTrayMenu();
+                }
+            });
+        }
+        menu.actor.hide();
         for (const child of this._sidebar.get_children()) {
             if (child === this._trayMenuHost || child === this._traySection?.get_parent())
                 continue;
@@ -2504,8 +2529,9 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         this._insideMenu = shown;
         // "Nothing Phone 2a Indicator" → "Nothing Phone 2a"
-        this._trayMenuTitle.text = this._trayLabel(info.role, indicator)
-            .replace(/\s+indicator$/i, '');
+        this._trayMenuTitle.text = typeof hub?.title === 'string' && hub.title
+            ? hub.title
+            : this._trayLabel(info.role, indicator).replace(/\s+indicator$/i, '');
         info.cell.add_style_class_name('sch-tray-cell-open');
         this._trayMenuScroll.vadjustment.value = 0;
         this._trayMenuHost.show();
@@ -2524,6 +2550,9 @@ export default class SmartCalendarHubExtension extends Extension {
     // The same measure for every app: its cards without background, and no
     // empty room before the items when the menu has no check marks at all
     _tidyTrayMenu() {
+        // the extension styles itself inside the hub
+        if (this._insideMenu?.hub?.keepStyle)
+            return;
         this._clearTrayMenuCards();
         this._alignTrayMenuItems();
     }
@@ -2633,11 +2662,22 @@ export default class SmartCalendarHubExtension extends Extension {
                 // the app destroyed it
             }
         }
+        // a page of the extension: built for this visit, destroyed after it
+        // (the extension frees its resources on its 'destroy')
+        if (shown.page) {
+            try {
+                shown.page.disconnect(shown.pageDestroyId);
+                shown.page.destroy();
+            } catch (e) {
+                console.error(`Smart Calendar Hub: page of ${shown.info.role}: ${e}`);
+            }
+        }
         try {
             if (shown.box) {
                 shown.box.y_expand = shown.yExpand;
                 shown.box.disconnect(shown.boxDestroyId);
                 shown.box.remove_style_class_name('sch-tray-menu-box');
+                shown.box.remove_style_class_name('sch-hub-page');
                 shown.box.get_parent()?.remove_child(shown.box);
                 if (shown.bin instanceof St.Bin)
                     shown.bin.set_child(shown.box);

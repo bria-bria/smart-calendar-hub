@@ -21,6 +21,26 @@ or after the clock, with the description for a few seconds after each update;
 unless another extension, such as Weather O'Clock, already does it) and lets
 you move the clock to a different spot of the top bar.
 
+## Every extension in one place
+
+A click on an icon of the tray opens its menu **inside the panel**, in place
+of the cards, instead of a floating menu: the panel keeps its size, the menu
+takes the same measure as the rest (items, separators, section titles) and
+the backgrounds of its containers become transparent. Back with the arrow,
+Esc or another click on the icon. It can be switched off, for all icons or
+icon by icon (Settings → Tray).
+
+The other extensions need no change: Smart Calendar Hub takes their menu as
+it is, and never modifies their code.
+
+### Already integrated
+
+| Extension or app | What it shows inside the panel |
+|---|---|
+| [GSConnect](https://extensions.gnome.org/extension/1319/gsconnect/) (with "device indicators" on) | each phone: battery, signal, actions |
+| WiFi Signal Plus | details of the Wi-Fi connection, signal graph, nearby networks |
+| [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) | the menus of the tray icons of applications, e.g. KTailctl (Tailscale) and Cachy-Update |
+
 ## Screenshots
 
 ![The side panel](screenshots/1-overview.png)
@@ -161,6 +181,31 @@ For developers: every sentence is passed in English to `_()` in
 (`_('{app} (tray icon)', {app: name})`), and must have its Italian translation
 in the `IT` table of the same file. `strumenti/controlla-traduzioni.py` checks
 this (the install script runs it).
+
+## For extension developers
+
+An extension with a top bar icon (`PanelMenu.Button`) already shows its menu
+inside Smart Calendar Hub. It can also tell the hub how to show it, with an
+optional property on its button — read only by the hub, so the extension
+keeps working the same without it:
+
+```js
+this._button.smartCalendarHub = {
+    // title above the menu (default: the name of the icon)
+    title: 'My extension',
+    // optional: a page of your own instead of the menu, built at every
+    // visit and destroyed after it (free timers and signals on 'destroy')
+    buildPage: () => new St.Label({text: 'Hello'}),
+    // optional: true = the hub leaves your backgrounds alone
+    keepStyle: false,
+};
+```
+
+- The normal menu is still needed, with at least one item: it is what users
+  without the hub see, and what the hub shows when there is no page.
+- Inside the hub your menu box (or your page) carries the style class
+  `sch-hub-page`, for styles that apply only there.
+- A complete example is in [examples/hello-hub@bria-bria.github.io](examples/hello-hub@bria-bria.github.io).
 
 ## License
 
