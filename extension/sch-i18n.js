@@ -104,6 +104,8 @@ export const IT = {
         "Spazio tra le icone della barra in alto (pixel)",
     "12 is the GNOME default; less brings the icons closer together":
         "12 è il valore di GNOME; meno avvicina le icone",
+    "From GNOME Weather: set your cities there. In the panel, the up and down arrows go through them.":
+        "Da GNOME Meteo: lì si impostano le città. Nel pannello le frecce su e giù le fanno scorrere.",
     "Weather in the top bar":
         "Meteo nella barra in alto",
     "Next to the clock, from GNOME Weather":
@@ -114,10 +116,10 @@ export const IT = {
         "Solo temperatura",
     "Off":
         "Spento",
-    "Weather next to the clock":
-        "Meteo accanto all'ora",
-    "Icon and temperature in the same pill as the clock":
-        "Icona e temperatura nella stessa pillola dell'ora",
+    "Position":
+        "Posizione",
+    "In the same pill as the clock, before or after the time":
+        "Nella stessa pillola dell'ora, prima o dopo l'orario",
     "After the clock":
         "Dopo l'ora",
     "Before the clock":
@@ -300,8 +302,8 @@ export const IT = {
         "Le app compaiono qui dopo aver inviato una notifica",
     "Panel":
         "Pannello",
-    "From top to bottom: tray icons, weather (collapsed at login, with the settings button), date, calendar, notifications, world clocks.":
-        "Dall'alto in basso: icone del vassoio, meteo (chiuso al login, con il pulsante delle impostazioni), data, calendario, notifiche, orologi mondiali.",
+    "From top to bottom: tray icons (with the settings button), IP addresses, weather (collapsed at login), date, calendar, notifications, world clocks.":
+        "Dall'alto in basso: icone del vassoio (con il pulsante delle impostazioni), indirizzi IP, meteo (chiuso al login), data, calendario, notifiche, orologi mondiali.",
     "Calendar collapsed on opening":
         "Calendario chiuso all'apertura",
     "Click “Calendar and events” to open it":

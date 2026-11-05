@@ -318,7 +318,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
 
         const look = new Adw.PreferencesGroup({
             title: _('Appearance'),
-            description: _('From top to bottom: tray icons, weather (collapsed at login, with the settings button), date, calendar, notifications, world clocks.'),
+            description: _('From top to bottom: tray icons (with the settings button), IP addresses, weather (collapsed at login), date, calendar, notifications, world clocks.'),
         });
         pagePanel.add(look);
 
@@ -355,8 +355,13 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('top-bar-spacing', spacingRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         look.add(spacingRow);
 
-        // the weather inside the clock pill
-        look.add(choiceRow(settings, 'clock-weather',
+        // Everything about the weather in one group
+        const weather = new Adw.PreferencesGroup({
+            title: _('Weather'),
+            description: _('From GNOME Weather: set your cities there. In the panel, the up and down arrows go through them.'),
+        });
+        pagePanel.add(weather);
+        weather.add(choiceRow(settings, 'clock-weather',
             _('Weather in the top bar'),
             _('Next to the clock, from GNOME Weather'),
             [
@@ -364,19 +369,28 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
                 ['temperature', _('Temperature only')],
                 ['off', _('Off')],
             ]));
-        look.add(choiceRow(settings, 'clock-weather-position',
-            _('Weather next to the clock'),
-            _('Icon and temperature in the same pill as the clock'),
+        const positionRow = choiceRow(settings, 'clock-weather-position',
+            _('Position'),
+            _('In the same pill as the clock, before or after the time'),
             [
                 ['after', _('After the clock')],
                 ['before', _('Before the clock')],
-            ]));
+            ]);
+        weather.add(positionRow);
         const descriptionRow = new Adw.SwitchRow({
             title: _('Weather description'),
             subtitle: _('After each update, “Cloudy”, “Light rain”… for a few seconds instead of the temperature'),
         });
         settings.bind('clock-weather-description', descriptionRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        look.add(descriptionRow);
+        weather.add(descriptionRow);
+        // position and description only matter with the weather switched on
+        const syncWeatherRows = () => {
+            const on = settings.get_string('clock-weather') !== 'off';
+            positionRow.sensitive = on;
+            descriptionRow.sensitive = on;
+        };
+        settings.connect('changed::clock-weather', syncWeatherRows);
+        syncWeatherRows();
 
         const sky = new Adw.PreferencesGroup({
             title: _('Sky'),
