@@ -1644,24 +1644,16 @@ export default class SmartCalendarHubExtension extends Extension {
             cardFrame = this._measureCardFrame();
         }
         calendarSide = on;
-        // In the card: GNOME's own calendar (the one of the login screen);
-        // ours stays in the panel ("Calendar and events"). Clicking a day in
-        // GNOME's calendar shows that day in the "Today" card.
-        const gnomeCal = this._dateMenu._calendar;
+        const view = this._calendarView.actor;
         if (on) {
             this._setCalendarExpanded(false);
             this._hostOrientation ??= host.orientation;
             host.orientation = Clutter.Orientation.HORIZONTAL;
             host.add_style_class_name('sch-cards-host');
             this._sidebar.add_style_class_name('popup-menu-content');
-            if (gnomeCal && gnomeCal.get_parent() !== this._calendarCard) {
-                const parent = gnomeCal.get_parent();
-                this._gnomeCalOrigin ??= parent
-                    ? {parent, index: parent.get_children().indexOf(gnomeCal), xAlign: gnomeCal.x_align}
-                    : null;
-                parent?.remove_child(gnomeCal);
-                gnomeCal.x_align = Clutter.ActorAlign.CENTER;
-                this._calendarCard.add_child(gnomeCal);
+            if (view.get_parent() !== this._calendarCard) {
+                view.get_parent()?.remove_child(view);
+                this._calendarCard.add_child(view);
             }
             if (!this._calendarCard.get_parent()) {
                 // on the side away from the screen edge
@@ -1680,17 +1672,12 @@ export default class SmartCalendarHubExtension extends Extension {
     // Back to one card: the calendar inside the panel again
     _unsetCalendarSide() {
         const host = this._dateMenu?.menu?.box;
+        const view = this._calendarView?.actor;
         if (this._calendarCard)
             this._calendarCard.visible = false;
-        // GNOME's calendar back where GNOME keeps it (hidden in its menu)
-        const gnomeCal = this._dateMenu?._calendar;
-        const origin = this._gnomeCalOrigin;
-        this._gnomeCalOrigin = null;
-        if (gnomeCal && origin && gnomeCal.get_parent() !== origin.parent) {
-            gnomeCal.get_parent()?.remove_child(gnomeCal);
-            gnomeCal.x_align = origin.xAlign;
-            origin.parent.insert_child_at_index(gnomeCal,
-                Math.min(origin.index, origin.parent.get_n_children()));
+        if (view && this._calendarBox && view.get_parent() !== this._calendarBox) {
+            view.get_parent()?.remove_child(view);
+            this._calendarBox.add_child(view);
         }
         this._calendarCard?.get_parent()?.remove_child(this._calendarCard);
         this._sidebar?.remove_style_class_name('popup-menu-content');
