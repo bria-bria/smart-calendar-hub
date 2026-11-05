@@ -83,7 +83,9 @@ export class CityWeather {
         if (selectedCity === 0)
             return null;
         try {
-            return this._locations[selectedCity]?.get_coords() ?? null;
+            const location = this._locations[selectedCity];
+            // a location without coordinates would give 0, 0
+            return location?.has_coords() ? location.get_coords() : null;
         } catch (_e) {
             return null;
         }

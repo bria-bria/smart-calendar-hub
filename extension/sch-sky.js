@@ -22,31 +22,6 @@ const WIDTH = 120;
 const HEIGHT = 62;
 const RISE_MS = 900; // opening animation
 
-// Sunrise and sunset of a day (NOAA simplified formula), as Date objects,
-// or null in polar day/night.
-function sunTimes(date, lat, lon) {
-    const rad = Math.PI / 180;
-    const start = Date.UTC(date.getFullYear(), 0, 0);
-    const today = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-    const n = (today - start) / 86400000;
-    const gamma = 2 * Math.PI / 365 * (n - 1);
-    const eqTime = 229.18 * (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma) -
-        0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma));
-    const decl = 0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma) -
-        0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma) -
-        0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma);
-    const cosHa = Math.cos(90.833 * rad) / (Math.cos(lat * rad) * Math.cos(decl)) -
-        Math.tan(lat * rad) * Math.tan(decl);
-    if (cosHa < -1 || cosHa > 1)
-        return null;
-    const ha = Math.acos(cosHa) / rad;
-    const minutes = sign => 720 - 4 * (lon + sign * ha) - eqTime; // UTC minutes
-    return {
-        rise: new Date(today + minutes(1) * 60000),
-        set: new Date(today + minutes(-1) * 60000),
-    };
-}
-
 export class SkyView {
     // getCoords(): [latitude, longitude] in degrees of the city shown in the
     // weather, or null
@@ -93,17 +68,19 @@ export class SkyView {
         this.actor.queue_repaint();
     }
 
-    // Another city shown in the weather: sun and moon computed again for it
+    // Another city shown in the weather: drawn again (the cache is keyed on
+    // the coordinates, so the passes are computed again only if they changed)
     refresh() {
-        this._skyCache = null;
         this.actor.queue_repaint();
     }
 
     // [latitude, longitude] of the city, or null
     _coords() {
         try {
+            const location = this._client?.info?.get_location();
+            // a location without coordinates would give 0, 0
             const coords = this._getCoords?.() ??
-                this._client?.info?.get_location()?.get_coords?.();
+                (location?.has_coords?.() ? location.get_coords() : null);
             if (coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1]))
                 return coords;
         } catch (_e) {
@@ -158,8 +135,8 @@ export class SkyView {
         this._progress = 1;
     }
 
-    // Sunrise/sunset of today: from GNOME Weather, else computed from its
-    // coordinates, else 6:30 / 18:30.
+    // Without coordinates: sunrise/sunset of today from GNOME Weather, else
+    // 6:30 / 18:30.
     _todaySun(now) {
         const info = this._client?.info;
         if (info?.is_valid()) {
@@ -171,12 +148,6 @@ export class SkyView {
                     const s = new Date(set * 1000);
                     if (r.toDateString() === now.toDateString() && s > r)
                         return {rise: r, set: s};
-                }
-                const coords = info.get_location()?.get_coords?.();
-                if (coords) {
-                    const times = sunTimes(now, coords[0], coords[1]);
-                    if (times)
-                        return times;
                 }
             } catch (_e) {
                 // fall back to fixed times
