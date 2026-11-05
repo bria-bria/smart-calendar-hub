@@ -345,6 +345,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._cityWeather = null;
         this._citySelector = null;
         this._cityCard = null;
+        this._cityCardBox = null;
         this._gnomeWeatherBin = null;
         this._weatherClient = null;
         this._calendarLabel = null;
@@ -1320,11 +1321,24 @@ export default class SmartCalendarHubExtension extends Extension {
         this._weatherBody.add_child(this._gnomeWeatherBin);
         this._adopt(dm._weatherItem, this._gnomeWeatherBin);
         // Another city: a card with its name and the next hours
-        this._cityCard = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        // a button, like GNOME's weather of the first city: a click opens
+        // GNOME Weather
+        this._cityCard = new St.Button({
             style_class: 'sch-city-card',
             x_expand: true,
+            can_focus: true,
             visible: false,
+        });
+        this._cityCardBox = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'sch-city-card-box',
+            x_expand: true,
+        });
+        this._cityCard.set_child(this._cityCardBox);
+        this._cityCard.connect('clicked', () => {
+            this._weatherClient?.activateApp?.();
+            Main.overview.hide();
+            dm.menu.close();
         });
         this._weatherBody.add_child(this._cityCard);
         weatherExpander.connect('clicked', () => {
@@ -1626,13 +1640,13 @@ export default class SmartCalendarHubExtension extends Extension {
             this._gnomeWeatherBin.visible = !city;
         if (this._cityCard) {
             this._cityCard.visible = !!city;
-            this._cityCard.destroy_all_children();
+            this._cityCardBox.destroy_all_children();
             if (city) {
                 const head = new St.BoxLayout({style_class: 'sch-city-card-head', x_expand: true});
                 head.add_child(new St.Label({text: _('Weather'), x_expand: true}));
                 head.add_child(new St.Label({text: city.name}));
-                this._cityCard.add_child(head);
-                this._cityCard.add_child(buildForecast(info));
+                this._cityCardBox.add_child(head);
+                this._cityCardBox.add_child(buildForecast(info));
             }
         }
     }

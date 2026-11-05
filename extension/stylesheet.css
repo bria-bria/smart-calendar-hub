@@ -111,6 +111,14 @@
     border-radius: 14px;
     padding: 10px 14px;
     margin: 2px 4px;
+}
+
+.sch-city-card:hover,
+.sch-city-card:focus {
+    background-color: rgba(255, 255, 255, 0.13);
+}
+
+.sch-city-card-box {
     spacing: 8px;
 }
 
