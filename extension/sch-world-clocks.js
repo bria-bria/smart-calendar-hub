@@ -249,11 +249,13 @@ export class WorldClocksCard {
                 .sort((a, b) => a.when.compare(b.when));
             for (const alarm of next) {
                 const today = alarm.when.format('%F') === now.format('%F');
+                // on the chip with AM/PM, as the dials; in the label as GNOME
                 const time = this._format(alarm.when, !today);
+                const chipTime = this._format(alarm.when, !today, true);
                 const tip = alarm.name
                     ? _('Alarm · {name} · {time}', {name: alarm.name, time})
                     : _('Alarm · {time}', {time});
-                add('alarm-symbolic', time, tip);
+                add('alarm-symbolic', chipTime, tip);
             }
             const timers = this._clocksApp?.get_value('timers').recursiveUnpack() ?? [];
             for (const timer of timers) {
@@ -296,10 +298,10 @@ export class WorldClocksCard {
         return this._interface?.get_string('clock-format') === '12h';
     }
 
-    // "17:30" or "5:30 PM", as GNOME's clock
-    _format(time, withDay = false) {
+    // "17:30" or "5:30 PM", as GNOME's clock; twelve: always with AM/PM
+    _format(time, withDay = false, twelve = this._twelveHours()) {
         const day = withDay ? '%a ' : '';
-        return time.format(this._twelveHours() ? `${day}%l:%M %p` : `${day}%H:%M`).replace(/\s+/g, ' ').trim();
+        return time.format(twelve ? `${day}%l:%M %p` : `${day}%H:%M`).replace(/\s+/g, ' ').trim();
     }
 
     _time(clock) {
