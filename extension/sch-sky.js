@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
-// A small sky next to the date: the sun moves along an arc from sunrise to
-// sunset, the moon from sunset to the next sunrise, drawn in its real phase.
+// A small sky next to the date: the sun and the moon move along an arc,
+// each from its own real rising (left) to its real setting (right), both
+// drawn when both are above the horizon; the moon in its real phase.
+// Computed for the city shown in the weather (sch-astro.js, no network);
+// without coordinates, the sun from sunrise to sunset and the moon at night.
 // When the panel opens the sun or the moon travels along the arc from the
 // rising point to its place (short animation), then it moves on every minute while the panel is
 // open. Two settings: show-sun-moon (arc with sun and moon) and
@@ -13,19 +16,11 @@ import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
+import {MOON_HORIZON, SUN_HORIZON, moonAltitude, moonPhase, skyPass, sunAltitude} from './sch-astro.js';
+
 const WIDTH = 120;
 const HEIGHT = 62;
-const SYNODIC_MONTH = 29.530588853; // days
-// A known new moon: 6 January 2000, 18:14 UTC
-const NEW_MOON_EPOCH = Date.UTC(2000, 0, 6, 18, 14);
 const RISE_MS = 900; // opening animation
-
-// Moon phase: 0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter
-export function moonPhase(date) {
-    const days = (date.getTime() - NEW_MOON_EPOCH) / 86400000;
-    const phase = (days / SYNODIC_MONTH) % 1;
-    return phase < 0 ? phase + 1 : phase;
-}
 
 // Sunrise and sunset of a day (NOAA simplified formula), as Date objects,
 // or null in polar day/night.
@@ -53,8 +48,12 @@ function sunTimes(date, lat, lon) {
 }
 
 export class SkyView {
-    constructor(weatherClient, settings) {
+    // getCoords(): [latitude, longitude] in degrees of the city shown in the
+    // weather, or null
+    constructor(weatherClient, settings, getCoords = null) {
         this._client = weatherClient;
+        this._getCoords = getCoords;
+        this._skyCache = null;
         this._settings = settings;
         this._timerId = 0;
         this._animId = 0;
@@ -92,6 +91,38 @@ export class SkyView {
         // Only the moon phase: a smaller, square area
         this.actor.width = this._showArc ? WIDTH : HEIGHT;
         this.actor.queue_repaint();
+    }
+
+    // Another city shown in the weather: sun and moon computed again for it
+    refresh() {
+        this._skyCache = null;
+        this.actor.queue_repaint();
+    }
+
+    // [latitude, longitude] of the city, or null
+    _coords() {
+        try {
+            const coords = this._getCoords?.() ??
+                this._client?.info?.get_location()?.get_coords?.();
+            if (coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1]))
+                return coords;
+        } catch (_e) {
+            // no coordinates
+        }
+        return null;
+    }
+
+    // Sun and moon passes for the city, computed once a minute
+    _sky(now, coords) {
+        const key = `${Math.floor(now.getTime() / 60000)}|${coords[0]}|${coords[1]}`;
+        if (this._skyCache?.key !== key) {
+            this._skyCache = {
+                key,
+                sun: skyPass(sunAltitude, SUN_HORIZON, now, coords[0], coords[1]),
+                moon: skyPass(moonAltitude, MOON_HORIZON, now, coords[0], coords[1]),
+            };
+        }
+        return this._skyCache;
     }
 
     // Panel opened: the sun or the moon rises to its place, then moves every minute
@@ -184,19 +215,6 @@ export class SkyView {
         cr.lineTo(w - 4, base + 0.5);
         cr.stroke();
 
-        // day or night, and how far along the arc (0 = rising, 1 = setting)
-        const {rise, set} = this._todaySun(now);
-        let isDay, along;
-        if (now >= rise && now < set) {
-            isDay = true;
-            along = (now - rise) / (set - rise);
-        } else {
-            isDay = false;
-            const lastSet = now >= set ? set : new Date(set.getTime() - 86400000);
-            const nextRise = now >= set ? new Date(rise.getTime() + 86400000) : rise;
-            along = (now - lastSet) / (nextRise - lastSet);
-        }
-
         // dashed path of the day
         cr.setSourceRGBA(1, 1, 1, 0.2);
         cr.setDash([3, 4], 0);
@@ -204,15 +222,38 @@ export class SkyView {
         cr.stroke();
         cr.setDash([], 0);
 
-        // opening animation: from the rising point along the arc to its place
-        const angle = Math.PI * (1 + along * this._progress);
-        const x = cx + r * Math.cos(angle);
-        const y = base + r * Math.sin(angle);
+        // a body `along` its pass (0 = rising, 1 = setting); the opening
+        // animation brings it from the rising point to its place
+        const place = along => {
+            const angle = Math.PI * (1 + along * this._progress);
+            return [cx + r * Math.cos(angle), base + r * Math.sin(angle)];
+        };
+        const phase = this._showPhase ? moonPhase(now) : 0.5;
 
-        if (isDay)
-            this._drawSun(cr, x, y, 8);
-        else
-            this._drawMoon(cr, x, y, 8, this._showPhase ? moonPhase(now) : 0.5);
+        const coords = this._coords();
+        if (!coords) {
+            // no city: the sun from sunrise to sunset, the moon at night
+            const {rise, set} = this._todaySun(now);
+            if (now >= rise && now < set) {
+                this._drawSun(cr, ...place((now - rise) / (set - rise)), 8);
+            } else {
+                const lastSet = now >= set ? set : new Date(set.getTime() - 86400000);
+                const nextRise = now >= set ? new Date(rise.getTime() + 86400000) : rise;
+                this._drawMoon(cr, ...place((now - lastSet) / (nextRise - lastSet)), 8, phase);
+            }
+            return;
+        }
+
+        // real passes: each body between its own rising and setting; both
+        // when both are up (the sun drawn last, on top)
+        const {sun, moon} = this._sky(now, coords);
+        const along = pass => pass.rise && pass.set
+            ? Math.min(1, Math.max(0, (now - pass.rise) / (pass.set - pass.rise)))
+            : 0.5; // up all day (polar summer): at the top
+        if (moon.up)
+            this._drawMoon(cr, ...place(along(moon)), 8, phase);
+        if (sun.up)
+            this._drawSun(cr, ...place(along(sun)), 8);
     }
 
     _drawSun(cr, x, y, r) {

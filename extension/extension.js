@@ -1334,7 +1334,10 @@ export default class SmartCalendarHubExtension extends Extension {
         this._syncWeatherExpanded();
 
         const client = this._weatherClient = dm._weatherItem?._weatherClient;
-        this._cityWeather = new CityWeather(() => this._updateWeatherSummary(this._weatherClient));
+        this._cityWeather = new CityWeather(() => {
+            this._updateWeatherSummary(this._weatherClient);
+            this._skyView?.refresh();
+        });
         if (client)
             this._connect(client, 'changed', () => this._updateWeatherSummary(client));
         this._updateWeatherSummary(client);
@@ -1348,7 +1351,9 @@ export default class SmartCalendarHubExtension extends Extension {
         };
         this._connect(this._settings, 'changed::show-date', syncDate);
         syncDate();
-        this._skyView = new SkyView(dm._weatherItem?._weatherClient ?? null, this._settings);
+        // the sky follows the city shown in the weather (arrows): its coordinates
+        this._skyView = new SkyView(dm._weatherItem?._weatherClient ?? null, this._settings,
+            () => this._cityWeather?.coords() ?? null);
         dateRow.add_child(this._skyView.actor);
         this._adopt(dm._date, dateRow);
         this._dateAlignOrig = [dm._date?._dayLabel, dm._date?._dateLabel]

@@ -76,6 +76,19 @@ export class CityWeather {
         this._onChange();
     }
 
+    // [latitude, longitude] in degrees of the city shown, or null for the
+    // first one (GNOME's own weather knows it, also when it is located
+    // automatically)
+    coords() {
+        if (selectedCity === 0)
+            return null;
+        try {
+            return this._locations[selectedCity]?.get_coords() ?? null;
+        } catch (_e) {
+            return null;
+        }
+    }
+
     // null for the first city (GNOME's own weather), else {info, name}
     current() {
         if (selectedCity === 0 || !this._locations[selectedCity])

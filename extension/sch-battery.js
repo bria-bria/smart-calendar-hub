@@ -12,6 +12,7 @@
 // the new value. Kept on every screen (session, lock and login screen).
 // Written for Smart Calendar Hub after the idea of Battery Indicator Icon.
 
+import 'cairo'; // makes the Cairo context of St.DrawingArea usable
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
