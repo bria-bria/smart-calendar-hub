@@ -10,6 +10,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import GWeather from 'gi://GWeather';
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -698,6 +699,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const note = new St.Label({style_class: 'sch-mute-note', visible: false});
         // the panel is narrow: the note goes on two lines instead of being cut
         note.clutter_text.line_wrap = true;
+        note.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
         // Shows the current state: chosen duration in colour, note, bell in colour
         const sync = () => {
             const source = sourceOf();
