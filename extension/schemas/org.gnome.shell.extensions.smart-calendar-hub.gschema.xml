@@ -146,6 +146,13 @@
       <summary>Side panel: show the public address (asks api.ipify.org)</summary>
     </key>
 
+    <key name="top-bar-spacing" type="i">
+      <range min="0" max="12"/>
+      <default>12</default>
+      <summary>Space on each side of the top bar icons, in pixels</summary>
+      <description>12 is the GNOME default and leaves the top bar as it is; less brings the icons closer together.</description>
+    </key>
+
     <key name="calendar-collapsed" type="b">
       <default>true</default>
       <summary>Collapse the calendar every time the panel opens</summary>

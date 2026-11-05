@@ -341,6 +341,20 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('sidebar-width', widthRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         look.add(widthRow);
 
+        // one setting for the space between the icons of the top bar
+        const spacingRow = new Adw.SpinRow({
+            title: _('Space between the top bar icons (pixels)'),
+            subtitle: _('12 is the GNOME default; less brings the icons closer together'),
+            adjustment: new Gtk.Adjustment({
+                lower: 0,
+                upper: 12,
+                step_increment: 1,
+                page_increment: 2,
+            }),
+        });
+        settings.bind('top-bar-spacing', spacingRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        look.add(spacingRow);
+
         const sky = new Adw.PreferencesGroup({
             title: _('Sky'),
             description: _('Next to the date. The two options can be used separately or together.'),

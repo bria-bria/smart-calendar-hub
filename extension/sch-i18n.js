@@ -100,6 +100,10 @@ export const IT = {
         "Tutte quelle attive: VPN 1, 2, 3…",
     "Asks api.ipify.org, like the top bar":
         "Chiede ad api.ipify.org, come la barra in alto",
+    "Space between the top bar icons (pixels)":
+        "Spazio tra le icone della barra in alto (pixel)",
+    "12 is the GNOME default; less brings the icons closer together":
+        "12 è il valore di GNOME; meno avvicina le icone",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

@@ -22,6 +22,7 @@ import {_, loadUserTranslations, unloadUserTranslations} from './sch-i18n.js';
 import {CalendarView} from './sch-calendar.js';
 import {SkyView} from './sch-sky.js';
 import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
+import {PanelSpacing} from './sch-spacing.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -102,6 +103,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._applyTopBarPosition();
         this._watchPanelBoxes();
         this._ipView = new IpView(this._settings);
+        // space between the icons of the top bar (one setting)
+        this._panelSpacing = new PanelSpacing(this._settings);
         // IP addresses in the side panel, under the tray (if switched on)
         this._ipPanel = new PanelIpBox(this._ipView, this._settings);
         this._ipPanelBin.set_child(this._ipPanel.actor);
@@ -140,6 +143,13 @@ export default class SmartCalendarHubExtension extends Extension {
 
         this._enableToken = null;
         unloadUserTranslations();
+
+        try {
+            this._panelSpacing?.destroy();
+        } catch (e) {
+            console.error(`Smart Calendar Hub: cannot restore the top bar spacing: ${e}`);
+        }
+        this._panelSpacing = null;
 
         // First, so its panel role is freed even if a later step fails
         try {
