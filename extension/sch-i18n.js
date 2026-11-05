@@ -52,6 +52,10 @@ export const IT = {
         "Nuovo impegno",
     "World clocks":
         "Orologi mondiali",
+    "Previous city":
+        "Città precedente",
+    "Next city":
+        "Città successiva",
 
     // --- IP addresses (sch-net.js, prefs.js) ---
     "IP addresses":

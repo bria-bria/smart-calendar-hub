@@ -21,6 +21,7 @@ import {_, loadUserTranslations, unloadUserTranslations} from './sch-i18n.js';
 import {CalendarView} from './sch-calendar.js';
 import {SkyView} from './sch-sky.js';
 import {IP_ROLE, IpView} from './sch-net.js';
+import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
 // An icon counts as "normal" for an app only after being shown this long
@@ -251,6 +252,12 @@ export default class SmartCalendarHubExtension extends Extension {
         this._weatherArrow = null;
         this._weatherSummary = null;
         this._weatherSummaryIcon = null;
+        this._cityWeather?.destroy();
+        this._cityWeather = null;
+        this._citySelector = null;
+        this._cityDots = null;
+        this._cityCard = null;
+        this._gnomeWeatherBin = null;
         this._weatherClient = null;
         this._calendarLabel = null;
         this._gearButton = null;
@@ -1054,6 +1061,27 @@ export default class SmartCalendarHubExtension extends Extension {
         weatherExpander.set_child(weatherLine);
         weatherRow.add_child(weatherExpander);
 
+        // Cities saved in GNOME Weather: up/down arrows between the weather
+        // and the gear (only with two or more cities)
+        this._citySelector = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'sch-city-selector',
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: false,
+        });
+        for (const [icon, delta, name] of [['pan-up-symbolic', -1, _('Previous city')],
+            ['pan-down-symbolic', 1, _('Next city')]]) {
+            const btn = new St.Button({
+                style_class: 'sch-city-arrow',
+                can_focus: true,
+                accessible_name: name,
+                child: new St.Icon({icon_name: icon, icon_size: 12}),
+            });
+            btn.connect('clicked', () => this._cityWeather?.move(delta));
+            this._citySelector.add_child(btn);
+        }
+        weatherRow.add_child(this._citySelector);
+
         const gear = this._gearButton = new St.Button({
             style_class: 'sch-gear-button',
             can_focus: true,
@@ -1072,18 +1100,34 @@ export default class SmartCalendarHubExtension extends Extension {
             x_expand: true,
         });
         this._sidebar.add_child(this._weatherBody);
-        this._adopt(dm._weatherItem, this._weatherBody);
+        // GNOME's weather (first city) in a box of ours, so it can be hidden
+        // while another city is shown (GNOME drives its own visibility)
+        this._gnomeWeatherBin = new St.Bin({x_expand: true});
+        this._weatherBody.add_child(this._gnomeWeatherBin);
+        this._adopt(dm._weatherItem, this._gnomeWeatherBin);
+        // Another city: a card with its name and the next hours
+        this._cityCard = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'sch-city-card',
+            x_expand: true,
+            visible: false,
+        });
+        this._weatherBody.add_child(this._cityCard);
         weatherExpander.connect('clicked', () => {
             weatherExpanded = !weatherExpanded;
             this._syncWeatherExpanded();
         });
         this._syncWeatherExpanded();
 
+        // Dots under the row: which of the cities is shown
+        this._cityDots = new St.BoxLayout({style_class: 'sch-city-dots', x_align: Clutter.ActorAlign.CENTER, visible: false});
+        this._sidebar.insert_child_above(this._cityDots, weatherRow);
+
         const client = this._weatherClient = dm._weatherItem?._weatherClient;
-        if (client) {
+        this._cityWeather = new CityWeather(() => this._updateWeatherSummary(this._weatherClient));
+        if (client)
             this._connect(client, 'changed', () => this._updateWeatherSummary(client));
-            this._updateWeatherSummary(client);
-        }
+        this._updateWeatherSummary(client);
 
         // 2. Sky (sun, moon, moon phase) on the left, date on the right
         const dateRow = new St.BoxLayout({style_class: 'sch-date-row', x_expand: true});
@@ -1156,6 +1200,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._syncTray();
                 this._updateSidebarSize();
                 this._calendarView?.reloadCalendars();
+                this._cityWeather?.refresh();
                 this._skyView?.start();
             } else {
                 this._trayMenuManager?.activeMenu?.close();
@@ -1293,20 +1338,51 @@ export default class SmartCalendarHubExtension extends Extension {
     _updateWeatherSummary(client) {
         if (!this._weatherSummary)
             return;
+        const city = this._cityWeather?.current();
+        const info = city ? city.info : client?.info;
+        const hasLocation = city ? true : !!client?.hasLocation;
         let text = _('Weather');
         let icon = null;
-        const info = client.info;
-        if (client.hasLocation && info?.is_valid()) {
+        if (hasLocation && info?.is_valid()) {
             const [ok, temp] = info.get_value_temp(GWeather.TemperatureUnit.DEFAULT);
-            const place = info.get_location_name() ?? '';
+            const place = city?.name ?? info.get_location_name() ?? '';
             if (ok && Number.isFinite(temp))
                 text = _('Weather · {temp}° {place}', {temp: Math.round(temp), place}).trim();
             icon = info.get_symbolic_icon_name() || null;
+        } else if (city) {
+            text = _('Weather · {temp}° {place}', {temp: '…', place: city.name});
         }
         this._weatherSummary.text = text;
         if (this._weatherSummaryIcon) {
             this._weatherSummaryIcon.icon_name = icon ?? 'weather-clear-symbolic';
             this._weatherSummaryIcon.visible = !!icon;
+        }
+
+        // Selector, dots, and which weather the open section shows
+        const count = this._cityWeather?.count ?? 0;
+        if (this._citySelector)
+            this._citySelector.visible = count > 1;
+        if (this._cityDots) {
+            this._cityDots.visible = count > 1;
+            this._cityDots.destroy_all_children();
+            for (let i = 0; i < count; i++) {
+                this._cityDots.add_child(new St.Widget({
+                    style_class: i === this._cityWeather.index ? 'sch-city-dot sch-city-dot-on' : 'sch-city-dot',
+                }));
+            }
+        }
+        if (this._gnomeWeatherBin)
+            this._gnomeWeatherBin.visible = !city;
+        if (this._cityCard) {
+            this._cityCard.visible = !!city;
+            this._cityCard.destroy_all_children();
+            if (city) {
+                const head = new St.BoxLayout({style_class: 'sch-city-card-head', x_expand: true});
+                head.add_child(new St.Label({text: _('Weather'), x_expand: true}));
+                head.add_child(new St.Label({text: city.name}));
+                this._cityCard.add_child(head);
+                this._cityCard.add_child(buildForecast(info));
+            }
         }
     }
 

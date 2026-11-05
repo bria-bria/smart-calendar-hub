@@ -58,6 +58,58 @@
     background-color: rgba(255, 255, 255, 0.16);
 }
 
+/* Cities of GNOME Weather: up/down arrows, dots, card of another city */
+.sch-city-selector {
+    spacing: 2px;
+}
+
+.sch-city-arrow {
+    width: 26px;
+    height: 17px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.09);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.sch-city-arrow:hover,
+.sch-city-arrow:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.sch-city-dots {
+    spacing: 4px;
+    margin-top: -4px;
+}
+
+.sch-city-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+.sch-city-dot-on {
+    background-color: -st-accent-color;
+}
+
+.sch-city-card {
+    background-color: rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    padding: 10px 14px;
+    margin: 2px 4px;
+    spacing: 8px;
+}
+
+.sch-city-card-head {
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 700;
+}
+
+.sch-city-forecast-col {
+    spacing: 4px;
+    font-size: 0.9em;
+}
+
 /* Weather row: collapsible weather + settings button */
 .sch-weather-line {
     spacing: 8px;

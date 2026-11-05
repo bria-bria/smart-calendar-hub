@@ -57,10 +57,15 @@ icon next to the weather. They are in five tabs:
 
 ### Privacy and network use
 
-Smart Calendar Hub makes **one** kind of network request, and only if you
-switch on **Public address** (off by default): it asks
+Smart Calendar Hub asks for the public IP only if you switch on
+**Public address** (off by default): it asks
 `https://api.ipify.org` for your public IP address when the network changes
-and every 30 minutes. That service sees the request. Nothing else is sent
+and every 30 minutes. That service sees the request.
+
+When GNOME Weather has more than one city and you scroll to another city in
+the panel, its weather is downloaded with GWeather from the same services
+GNOME uses for the first city (MET Norway, airport METAR stations), at most
+every 15 minutes while it is shown. Nothing else is sent
 anywhere; calendars, notifications and settings stay on your computer.
 
 ## Install from source
