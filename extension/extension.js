@@ -1217,7 +1217,7 @@ export default class SmartCalendarHubExtension extends Extension {
             can_focus: true,
             accessible_name: _('Settings'),
             y_align: Clutter.ActorAlign.CENTER,
-            child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 16}),
+            child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 14}),
         });
         gear.connect('clicked', () => {
             dm.menu.close();
