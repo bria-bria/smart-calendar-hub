@@ -51,6 +51,7 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-topbar-style.js" \
     --extra-source="sch-battery.js" \
     --extra-source="sch-astro.js" \
+    --extra-source="sch-world-clocks.js" \
     --extra-source="sch-weather.js" \
     --extra-source="icons" \
     --extra-source="$PROJ_DIR/LICENSE"

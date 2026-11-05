@@ -12,7 +12,9 @@ From top to bottom the panel shows:
 5. GNOME's "Today" card with the events of the day (it can be switched off);
    a click opens the calendar in a card of its own next to the panel,
 6. notifications,
-7. world clocks, next to the button that clears the notifications.
+7. world clocks as analogue clocks, in a card of their own always at the
+   bottom (hover one for the city and time, arrows when they do not fit),
+8. the bottom row: GNOME Clocks, New event, Clear.
 
 It also shows the weather inside the clock pill (icon and temperature, before
 or after the clock, with the description for a few seconds after each update;

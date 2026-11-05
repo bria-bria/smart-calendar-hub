@@ -24,6 +24,7 @@ import {SkyView} from './sch-sky.js';
 import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
 import {MENU_TAIL_ROLES, TopBarStyle, clockSlot} from './sch-topbar-style.js';
 import {ClockWeather} from './sch-clock-weather.js';
+import {WorldClocksCard} from './sch-world-clocks.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -301,10 +302,18 @@ export default class SmartCalendarHubExtension extends Extension {
             this._clearOrig = null;
         }
         if (this._clocksOrig) {
-            this._dateMenu._clocksItem.remove_style_class_name('sch-bottom-btn');
-            Object.assign(this._dateMenu._clocksItem, this._clocksOrig);
+            const clocks = this._dateMenu._clocksItem;
+            // GNOME's own content back (it was an icon in our row)
+            if (this._clocksGrid) {
+                clocks.child = this._clocksGrid;
+                clocks.accessible_name = this._clocksAccessible;
+            }
+            clocks.remove_style_class_name('sch-bottom-btn');
+            Object.assign(clocks, this._clocksOrig);
             this._clocksOrig = null;
         }
+        this._worldClocks?.destroy();
+        this._worldClocks = null;
         this._bottomRow = null;
         this._clearBox = null;
         this._clearLabel = null;
@@ -1459,9 +1468,11 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._calendarView?.reloadCalendars();
                 this._cityWeather?.refresh();
                 this._skyView?.start();
+                this._worldClocks?.start();
             } else {
                 this._trayMenuManager?.activeMenu?.close();
                 this._skyView?.stop();
+                this._worldClocks?.stop();
             }
         });
 
@@ -1488,6 +1499,11 @@ export default class SmartCalendarHubExtension extends Extension {
             dm._messageList.y_expand = true;
             this._adopt(dm._messageList, this._sidebar);
         }
+
+        // 4b. World clocks: a card of analogue clocks, always the last one
+        // above the bottom row (the notifications above take the free room)
+        this._worldClocks = new WorldClocksCard(() => dm.menu.close());
+        this._sidebar.add_child(this._worldClocks.actor);
 
         // 5. Bottom row, three buttons of the same shape and width:
         //    world clocks · New event · Clear (calendar open: only New event)
@@ -1571,21 +1587,14 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._clearLabel = null;
             }
         }
+        // GNOME's world clocks button: always an icon (the clocks themselves
+        // are in their own card above); a click opens GNOME Clocks
         const clocks = this._clocksOrig ? this._dateMenu._clocksItem : null;
-        if (clocks) {
-            // only the "Add world clocks…" title becomes an icon; a list of
-            // clocks stays as GNOME shows it
-            const iconify = compact && (clocks._locations?.length ?? 0) === 0;
-            if (iconify && !this._clocksGrid) {
-                this._clocksGrid = clocks.child;
-                this._clocksAccessible = clocks.accessible_name;
-                clocks.child = new St.Icon({icon_name: 'preferences-system-time-symbolic', icon_size: 16});
-                clocks.accessible_name = _('World clocks');
-            } else if (!iconify && this._clocksGrid) {
-                clocks.child = this._clocksGrid;
-                clocks.accessible_name = this._clocksAccessible;
-                this._clocksGrid = null;
-            }
+        if (clocks && !this._clocksGrid) {
+            this._clocksGrid = clocks.child;
+            this._clocksAccessible = clocks.accessible_name;
+            clocks.child = new St.Icon({icon_name: 'network-workgroup-symbolic', icon_size: 16});
+            clocks.accessible_name = _('World clocks');
         }
     }
 
