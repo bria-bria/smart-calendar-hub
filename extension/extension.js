@@ -20,6 +20,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {_, loadUserTranslations, unloadUserTranslations} from './sch-i18n.js';
 import {CalendarView} from './sch-calendar.js';
 import {SkyView} from './sch-sky.js';
+import {IP_ROLE, IpView} from './sch-net.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
 // An icon counts as "normal" for an app only after being shown this long
@@ -29,6 +30,7 @@ const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
 // Panel items that must never be moved inside the panel tray.
 const ROLES_NEVER_IN_TRAY = new Set([
     'dateMenu',
+    IP_ROLE, // our own IP indicator: it has its own position setting
     'quickSettings',
     'screenRecording',
     'screenSharing',
@@ -93,6 +95,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._buildAlertDot();
         this._applyTopBarPosition();
         this._watchPanelBoxes();
+        this._ipView = new IpView(this._settings);
 
         this._connect(this._settings, 'changed', (_s, key) => this._onSettingChanged(key));
 
@@ -207,6 +210,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._clearBox = null;
 
         // Before the panel goes: it is connected to GNOME's calendar and events
+        this._ipView?.destroy();
+        this._ipView = null;
         this._calendarView?.destroy();
         this._skyView?.destroy();
         this._skyView = null;

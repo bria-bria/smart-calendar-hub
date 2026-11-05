@@ -81,6 +81,31 @@
       <summary>Draw the moon in its real phase</summary>
     </key>
 
+    <key name="show-ip" type="b">
+      <default>true</default>
+      <summary>Show the IP addresses in the top bar</summary>
+    </key>
+
+    <key name="ip-position" type="s">
+      <choices>
+        <choice value="left"/>
+        <choice value="center"/>
+        <choice value="right"/>
+      </choices>
+      <default>'right'</default>
+      <summary>Where the IP addresses sit in the top bar</summary>
+    </key>
+
+    <key name="ip-show-lan" type="b">
+      <default>true</default>
+      <summary>Show the local network address</summary>
+    </key>
+
+    <key name="ip-show-public" type="b">
+      <default>false</default>
+      <summary>Show the public address (asks api.ipify.org)</summary>
+    </key>
+
     <key name="calendar-collapsed" type="b">
       <default>true</default>
       <summary>Collapse the calendar every time the panel opens</summary>

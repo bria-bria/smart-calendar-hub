@@ -51,6 +51,46 @@ export const IT = {
     "New event":
         "Nuovo impegno",
 
+    // --- IP addresses (sch-net.js, prefs.js) ---
+    "IP addresses":
+        "Indirizzi IP",
+    "Refresh":
+        "Aggiorna",
+    "offline":
+        "non connesso",
+    "Local network: {ip}":
+        "Rete locale: {ip}",
+    "Public: {ip}":
+        "Pubblico: {ip}",
+    "Public: switched off in the settings":
+        "Pubblico: spento nelle impostazioni",
+    "Network":
+        "Rete",
+    "IP addresses in the top bar":
+        "Indirizzi IP nella barra in alto",
+    "Click the addresses in the top bar to copy them.":
+        "Clicca sugli indirizzi nella barra in alto per copiarli.",
+    "Show the IP addresses":
+        "Mostra gli indirizzi IP",
+    "Position in the top bar":
+        "Posizione nella barra in alto",
+    "Left":
+        "Sinistra",
+    "Center":
+        "Centro",
+    "Right":
+        "Destra",
+    "Where the IP addresses appear":
+        "Dove compaiono gli indirizzi IP",
+    "Local network address":
+        "Indirizzo della rete locale",
+    "The address of this computer in the network it is connected to now":
+        "L'indirizzo di questo computer nella rete a cui è collegato adesso",
+    "Public address":
+        "Indirizzo pubblico",
+    "The address seen on the Internet. To know it, the extension asks api.ipify.org (when the network changes and every 30 minutes); that service sees the request.":
+        "L'indirizzo visto su Internet. Per saperlo l'estensione lo chiede ad api.ipify.org (quando cambia la rete e ogni 30 minuti); quel servizio vede la richiesta.",
+
     // --- Silencing apps (extension.js, prefs.js) ---
     "Silence notifications from this app":
         "Silenzia le notifiche di questa app",

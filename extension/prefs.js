@@ -276,7 +276,11 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
             title: _('Notifications'),
             icon_name: 'preferences-system-notifications-symbolic',
         });
-        for (const page of [pagePanel, pageTray, pageCalendars, pageNotifications])
+        const pageNetwork = new Adw.PreferencesPage({
+            title: _('Network'),
+            icon_name: 'network-workgroup-symbolic',
+        });
+        for (const page of [pagePanel, pageTray, pageCalendars, pageNotifications, pageNetwork])
             window.add(page);
 
         // ---------------- Panel ----------------
@@ -403,6 +407,39 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
 
         // ---------------- Calendars ----------------
         pageCalendars.add(await calendarsGroup());
+
+        // ---------------- Network ----------------
+        const ip = new Adw.PreferencesGroup({
+            title: _('IP addresses in the top bar'),
+            description: _('Click the addresses in the top bar to copy them.'),
+        });
+        pageNetwork.add(ip);
+        const showIp = new Adw.SwitchRow({title: _('Show the IP addresses')});
+        settings.bind('show-ip', showIp, 'active', Gio.SettingsBindFlags.DEFAULT);
+        ip.add(showIp);
+        const ipPosition = choiceRow(settings, 'ip-position',
+            _('Position in the top bar'),
+            _('Where the IP addresses appear'),
+            [
+                ['left', _('Left')],
+                ['center', _('Center')],
+                ['right', _('Right')],
+            ]);
+        ip.add(ipPosition);
+        const lanRow = new Adw.SwitchRow({
+            title: _('Local network address'),
+            subtitle: _('The address of this computer in the network it is connected to now'),
+        });
+        settings.bind('ip-show-lan', lanRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        ip.add(lanRow);
+        const publicRow = new Adw.SwitchRow({
+            title: _('Public address'),
+            subtitle: _('The address seen on the Internet. To know it, the extension asks api.ipify.org (when the network changes and every 30 minutes); that service sees the request.'),
+        });
+        settings.bind('ip-show-public', publicRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        ip.add(publicRow);
+        for (const row of [ipPosition, lanRow, publicRow])
+            settings.bind('show-ip', row, 'sensitive', Gio.SettingsBindFlags.GET);
 
         // ---------------- Notifications ----------------
         pageNotifications.add(mutedGroup(window, settings));
