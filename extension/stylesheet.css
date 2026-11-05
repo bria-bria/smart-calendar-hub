@@ -872,3 +872,35 @@
     color: -st-accent-fg-color;
     border-radius: 8px;
 }
+
+/* The same measure for the menus of every app inside the panel: items as
+   tall and rounded as our rows, sub-menus and separators in our colours,
+   section titles small and grey (as GNOME's headings) */
+.sch-tray-menu-host .popup-menu-item,
+.sch-tray-menu-host .popup-sub-menu .popup-menu-item {
+    padding: 7px 10px;
+    border-radius: 10px;
+    spacing: 8px;
+}
+
+.sch-tray-menu-host .popup-sub-menu {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-width: 0;
+    border-radius: 0 0 10px 10px;
+    margin-bottom: 4px;
+}
+
+.sch-tray-menu-host .popup-separator-menu-item {
+    padding: 4px 10px;
+    spacing: 8px;
+}
+
+.sch-tray-menu-host .popup-separator-menu-item .popup-separator-menu-item-separator {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sch-tray-menu-host .popup-separator-menu-item StLabel {
+    font-size: 0.85em;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.55);
+}

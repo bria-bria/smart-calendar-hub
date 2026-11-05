@@ -2480,7 +2480,7 @@ export default class SmartCalendarHubExtension extends Extension {
         box.add_style_class_name('sch-tray-menu-box');
         // as tall as its items, at the top: an item asking for the free room
         // (y_expand) would otherwise stretch to the bottom of the card
-        const shown = {menu, box, bin, info, hidden: [], cleared: new Map(), yExpand: box.y_expand};
+        const shown = {menu, box, bin, info, hidden: [], cleared: new Map(), ornaments: new Set(), yExpand: box.y_expand};
         box.y_expand = false;
         menu.actor.hide();
         shown.boxDestroyId = box.connect('destroy', () => {
@@ -2509,11 +2509,11 @@ export default class SmartCalendarHubExtension extends Extension {
         info.cell.add_style_class_name('sch-tray-cell-open');
         this._trayMenuScroll.vadjustment.value = 0;
         this._trayMenuHost.show();
-        this._clearTrayMenuCards();
+        this._tidyTrayMenu();
         // the apps rebuild parts of their menu while it is open (e.g. the
         // list of networks): the new pieces get the same treatment
         shown.cardsId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
-            this._clearTrayMenuCards();
+            this._tidyTrayMenu();
             return GLib.SOURCE_CONTINUE;
         });
         // the keys go to our card (Esc: back, arrows: into the menu); no item
@@ -2527,6 +2527,43 @@ export default class SmartCalendarHubExtension extends Extension {
     // value keeps its colour: the filled part of a bar, small tags ("WPA2"),
     // buttons and the items of the menu. Backgrounds painted by the app's own
     // drawing code (e.g. a graph) cannot be reached from outside.
+    // The same measure for every app: its cards without background, and no
+    // empty room before the items when the menu has no check marks at all
+    _tidyTrayMenu() {
+        this._clearTrayMenuCards();
+        this._alignTrayMenuItems();
+    }
+
+    // GNOME keeps room before every item for a check mark or a dot, even in
+    // a menu that has none: then that room goes, so every app starts at the
+    // same edge. With one mark anywhere in the menu, it stays for all (the
+    // items stay aligned with each other).
+    _alignTrayMenuItems() {
+        const shown = this._insideMenu;
+        if (!shown?.box)
+            return;
+        const ornaments = [];
+        const visit = actor => {
+            for (const child of actor.get_children()) {
+                if (child instanceof St.Icon && child.has_style_class_name('popup-menu-ornament'))
+                    ornaments.push(child);
+                else
+                    visit(child);
+            }
+        };
+        visit(shown.box);
+        const marked = ornaments.some(o => o.icon_name && (o.visible || shown.ornaments.has(o)));
+        for (const ornament of ornaments) {
+            if (marked && shown.ornaments.has(ornament)) {
+                ornament.show();
+                shown.ornaments.delete(ornament);
+            } else if (!marked && ornament.visible) {
+                ornament.hide();
+                shown.ornaments.add(ornament);
+            }
+        }
+    }
+
     _clearTrayMenuCards() {
         const shown = this._insideMenu;
         if (!shown?.box)
@@ -2585,6 +2622,13 @@ export default class SmartCalendarHubExtension extends Extension {
         for (const [widget, style] of shown.cleared) {
             try {
                 widget.set_style(style);
+            } catch (_e) {
+                // the app destroyed it
+            }
+        }
+        for (const ornament of shown.ornaments) {
+            try {
+                ornament.show();
             } catch (_e) {
                 // the app destroyed it
             }
