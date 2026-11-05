@@ -176,6 +176,14 @@ export const IT = {
         "Un anello che si svuota con la carica, nel colore della barra; giallo sotto il 20%, rosso sotto il 10%. Il fulmine solo quando sta davvero caricando",
     "Percentage inside the circle":
         "Percentuale dentro il cerchio",
+    "Alarm · {name} · {time}":
+        "Sveglia · {name} · {time}",
+    "Alarm · {time}":
+        "Sveglia · {time}",
+    "Timer · {name} · {duration}":
+        "Timer · {name} · {duration}",
+    "Timer · {duration}":
+        "Timer · {duration}",
     "Previous clocks":
         "Orologi precedenti",
     "Next clocks":

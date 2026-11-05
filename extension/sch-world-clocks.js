@@ -6,7 +6,10 @@
 // city, the minute hand in GNOME's accent colour, a darker dial where it is
 // night. Hovering a clock shows "city · time"; a click opens GNOME Clocks.
 // With more clocks than room, an arrow on each side moves the view (as the
-// tray). Hidden when there are no world clocks.
+// tray). Before the clocks, the alarms and timers of GNOME Clocks: the next
+// ring of each alarm, and each timer with its duration (GNOME Clocks keeps
+// the countdown of a running timer to itself, it saves only the duration).
+// Hidden when there is nothing to show.
 
 import 'cairo'; // makes the Cairo context of St.DrawingArea usable
 import Clutter from 'gi://Clutter';
@@ -22,6 +25,19 @@ import {_} from './sch-i18n.js';
 
 const DIAL = 34; // px, before the screen scale
 const TICK_SECONDS = 30;
+
+// "1 h", "5 min", "1 h 30", "45 s"
+function formatDuration(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h && m)
+        return `${h} h ${String(m).padStart(2, '0')}`;
+    if (h)
+        return `${h} h`;
+    if (m)
+        return `${m} min`;
+    return `${seconds} s`;
+}
 
 export class WorldClocksCard {
     // onOpen(): called before GNOME Clocks is opened (closes the panel)
@@ -77,6 +93,14 @@ export class WorldClocksCard {
 
         this._settings = new Gio.Settings({schema_id: 'org.gnome.shell.world-clocks'});
         this._settingsId = this._settings.connect('changed::locations', () => this._load());
+        // alarms and timers: only if GNOME Clocks is installed (its schema)
+        this._chips = [];
+        const schema = Gio.SettingsSchemaSource.get_default()?.lookup('org.gnome.clocks', true);
+        if (schema) {
+            this._clocksApp = new Gio.Settings({settings_schema: schema});
+            this._clocksAppIds = ['alarms', 'timers'].map(key =>
+                this._clocksApp.connect(`changed::${key}`, () => this._loadChips()));
+        }
         this.actor.connect('destroy', () => this._cleanup());
         this._load();
     }
@@ -94,6 +118,10 @@ export class WorldClocksCard {
             this._settings?.disconnect(this._settingsId);
         this._settingsId = 0;
         this._settings = null;
+        for (const id of this._clocksAppIds ?? [])
+            this._clocksApp?.disconnect(id);
+        this._clocksAppIds = [];
+        this._clocksApp = null;
         if (this._scaleId)
             this._theme?.disconnect(this._scaleId);
         this._scaleId = 0;
@@ -105,6 +133,7 @@ export class WorldClocksCard {
     // Panel open: the hands follow the time; closed: no timer
     start() {
         this.stop();
+        this._loadChips(); // alarms that already rang go away
         this._repaintAll();
         if (!this._clocks.length)
             return;
@@ -163,7 +192,65 @@ export class WorldClocksCard {
             this._clocks.push({...clock, area, button});
         }
         this._resize();
-        this.actor.visible = this._clocks.length > 0;
+        this._loadChips();
+    }
+
+    // Alarms (next ring) and timers (duration) of GNOME Clocks, before the
+    // clocks
+    _loadChips() {
+        if (!this._box)
+            return;
+        for (const chip of this._chips)
+            chip.destroy();
+        this._chips = [];
+        const first = this._clocks[0]?.button ?? this._endSpacer;
+        const add = (icon, text, tip) => {
+            const line = new St.BoxLayout({style_class: 'sch-clock-chip-line'});
+            line.add_child(new St.Icon({icon_name: icon, icon_size: 14, y_align: Clutter.ActorAlign.CENTER}));
+            line.add_child(new St.Label({text, y_align: Clutter.ActorAlign.CENTER}));
+            const chip = new St.Button({
+                style_class: 'sch-clock-chip',
+                can_focus: true,
+                y_align: Clutter.ActorAlign.CENTER,
+                child: line,
+                accessible_name: tip,
+            });
+            const item = {name: tip};
+            chip.connect('notify::hover', () => this._showTip(chip, item, chip.hover, tip));
+            chip.connect('key-focus-in', () => this._showTip(chip, item, true, tip));
+            chip.connect('key-focus-out', () => this._showTip(chip, item, false, tip));
+            chip.connect('clicked', () => this._openClocks());
+            this._box.insert_child_below(chip, first);
+            this._chips.push(chip);
+        };
+        const now = GLib.DateTime.new_now_local();
+        try {
+            const alarms = this._clocksApp?.get_value('alarms').recursiveUnpack() ?? [];
+            const next = alarms
+                .map(a => ({name: a.name ?? '', when: a.ring_time
+                    ? GLib.DateTime.new_from_iso8601(a.ring_time, null)?.to_local() : null}))
+                .filter(a => a.when && a.when.compare(now) > 0)
+                .sort((a, b) => a.when.compare(b.when));
+            for (const alarm of next) {
+                const today = alarm.when.format('%F') === now.format('%F');
+                const time = alarm.when.format(today ? '%H:%M' : '%a %H:%M');
+                const tip = alarm.name
+                    ? _('Alarm · {name} · {time}', {name: alarm.name, time})
+                    : _('Alarm · {time}', {time});
+                add('alarm-symbolic', time, tip);
+            }
+            const timers = this._clocksApp?.get_value('timers').recursiveUnpack() ?? [];
+            for (const timer of timers) {
+                const duration = formatDuration(timer.duration ?? 0);
+                const tip = timer.name
+                    ? _('Timer · {name} · {duration}', {name: timer.name, duration})
+                    : _('Timer · {duration}', {duration});
+                add('appointment-soon-symbolic', duration, tip);
+            }
+        } catch (e) {
+            console.error(`Smart Calendar Hub: alarms and timers: ${e}`);
+        }
+        this.actor.visible = this._clocks.length > 0 || this._chips.length > 0;
         this._syncArrows();
     }
 
@@ -193,14 +280,15 @@ export class WorldClocksCard {
         return GLib.DateTime.new_now_utc().to_timezone(clock.tz);
     }
 
-    _showTip(actor, clock, show) {
+    // text: given for alarms and timers; for a clock "city · time"
+    _showTip(actor, clock, show, text = null) {
         if (!this._tip)
             return;
         if (!show) {
             this._tip.hide();
             return;
         }
-        const text = `${clock.name} · ${this._time(clock).format('%H:%M')}`;
+        text ??= `${clock.name} · ${this._time(clock).format('%H:%M')}`;
         this._tip.text = text;
         actor.accessible_name = text;
         this._tip.show();

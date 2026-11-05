@@ -469,6 +469,24 @@
     color: -st-accent-color;
 }
 
+/* alarms and timers of GNOME Clocks, before the clocks */
+.sch-clock-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.1);
+    font-weight: 700;
+    font-feature-settings: "tnum";
+}
+
+.sch-clock-chip:hover,
+.sch-clock-chip:focus {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.sch-clock-chip-line {
+    spacing: 6px;
+}
+
 .sch-clock-button {
     padding: 2px;
     border-radius: 999px;
