@@ -88,9 +88,24 @@ function card(...rows) {
     return box;
 }
 
+// On or off for any piece (a row, a button): greyed and not clickable when off
+function setSensitive(actor, on) {
+    if (!actor)
+        return;
+    actor.reactive = !!on && actor._schKitClickable !== false;
+    if (actor.can_focus !== undefined)
+        actor.can_focus = !!on && actor._schKitClickable !== false;
+    if (on)
+        actor.remove_style_pseudo_class?.('insensitive');
+    else
+        actor.add_style_pseudo_class?.('insensitive');
+}
+
 // A row: icon, title, one line of detail, and on the right one thing only
-// (a switch, a value or a chevron). With onActivate the whole row is a button.
-// The labels can be changed later: row.titleLabel.text, row.subtitleLabel.text.
+// (a switch, a value or a chevron). With onActivate (or a switch) the whole
+// row is clickable. To update it in place, without building the page again:
+//   row.titleLabel.text, row.subtitleLabel.text (hidden when empty),
+//   row.setTrailing(actor | null), row.setSensitive(bool).
 function row({icon = null, title = '', subtitle = '', trailing = null, onActivate = null} = {}) {
     const line = new St.BoxLayout({style_class: 'sch-kit-row-line', x_expand: true});
     const image = iconOf(icon, 18);
@@ -100,23 +115,30 @@ function row({icon = null, title = '', subtitle = '', trailing = null, onActivat
     const titleLabel = label(title, 'sch-kit-row-title');
     const subtitleLabel = label(subtitle, 'sch-kit-row-subtitle');
     subtitleLabel.visible = !!subtitle;
+    subtitleLabel.connect('notify::text', () => {
+        subtitleLabel.visible = !!subtitleLabel.text;
+    });
     texts.add_child(titleLabel);
     texts.add_child(subtitleLabel);
     line.add_child(texts);
-    if (trailing)
-        line.add_child(trailing);
 
-    let actor;
-    if (onActivate || trailing?._schKitToggle) {
-        actor = new St.Button({style_class: 'sch-kit-row', can_focus: true, x_expand: true, child: line});
-        actor.connect('clicked', () => {
-            if (trailing?._schKitToggle)
-                trailing._schKitToggle();
-            onActivate?.();
-        });
-    } else {
-        actor = new St.Bin({style_class: 'sch-kit-row', x_expand: true, child: line});
-    }
+    const actor = new St.Button({style_class: 'sch-kit-row', x_expand: true, child: line});
+    let current = null;
+    actor.connect('clicked', () => {
+        current?._schKitToggle?.();
+        onActivate?.();
+    });
+    actor.setTrailing = piece => {
+        current?.destroy();
+        current = piece ?? null;
+        if (current)
+            line.add_child(current);
+        actor._schKitClickable = !!(onActivate || current?._schKitToggle);
+        const insensitive = actor.has_style_pseudo_class('insensitive');
+        setSensitive(actor, !insensitive);
+    };
+    actor.setSensitive = on => setSensitive(actor, on);
+    actor.setTrailing(trailing);
     actor.titleLabel = titleLabel;
     actor.subtitleLabel = subtitleLabel;
     actor.accessible_name = subtitle ? `${title}, ${subtitle}` : title;
@@ -124,7 +146,8 @@ function row({icon = null, title = '', subtitle = '', trailing = null, onActivat
 }
 
 // GNOME's own switch, for the trailing place of a row (the row toggles it).
-// switch.state reads or sets it; onToggle(state) after each click.
+// switch.state reads or sets it (setting it does not call onToggle: use it
+// to follow the real state); onToggle(state) after each click.
 function toggle({active = false, onToggle = null} = {}) {
     const sw = new PopupMenu.Switch(!!active);
     sw.reactive = false; // the row handles the click
@@ -155,6 +178,7 @@ function button({label: text = '', primary = false, onClick = null} = {}) {
     });
     if (onClick)
         btn.connect('clicked', () => onClick());
+    btn.setSensitive = on => setSensitive(btn, on);
     return btn;
 }
 
@@ -183,9 +207,27 @@ function empty({icon = 'action-unavailable-symbolic', text = ''} = {}) {
     return box;
 }
 
-export const PAGE_KIT_VERSION = 1;
+// A short message inside the page (a warning, the result of an action that
+// stays): an icon and one sentence, in a quiet card. For messages that go by
+// themselves use the hub's showPageMessage instead.
+function notice({icon = 'dialog-information-symbolic', text = ''} = {}) {
+    const box = new St.BoxLayout({style_class: 'sch-kit-notice', x_expand: true});
+    const image = iconOf(icon, 16);
+    if (image)
+        box.add_child(image);
+    const l = label(text, 'sch-kit-notice-text');
+    l.x_expand = true;
+    l.clutter_text.line_wrap = true;
+    l.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+    box.add_child(l);
+    box.textLabel = l;
+    return box;
+}
+
+export const PAGE_KIT_VERSION = 2;
 
 export const pageKit = Object.freeze({
     version: PAGE_KIT_VERSION,
     page, section, card, row, toggle, value, chevron, button, buttons, empty,
+    notice, setSensitive,
 });

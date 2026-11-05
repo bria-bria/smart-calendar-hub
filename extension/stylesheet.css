@@ -990,3 +990,30 @@
 .sch-calendar-card .sch-side-header {
     margin: 0 12px 8px 12px;
 }
+
+/* a short message at the bottom of an extension's page (showPageMessage) */
+.sch-page-message {
+    margin: 4px 2px 2px 2px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.1);
+    font-size: 0.9em;
+}
+
+/* a message inside a page (kit.notice) */
+.sch-kit-notice {
+    spacing: 8px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.sch-kit-notice-text {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* a piece of the kit switched off (kit.setSensitive) */
+.sch-kit-row:insensitive,
+.sch-kit-button:insensitive {
+    color: rgba(255, 255, 255, 0.4);
+}

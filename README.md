@@ -291,7 +291,27 @@ const page = kit.page(
 ```
 
 Pieces: `page`, `section`, `card`, `row`, `toggle`, `value`, `chevron`,
-`button`, `buttons`, `empty` (`kit.version` = 1).
+`button`, `buttons`, `empty`, `notice` (a message that stays in the page),
+`setSensitive(piece, on)` (`kit.version` = 2).
+
+**Update in place** instead of building the page again (keeps keyboard focus
+and scrolling):
+
+- `row.titleLabel.text`, `row.subtitleLabel.text` (hidden when empty),
+  `row.setTrailing(piece | null)`, `row.setSensitive(bool)`;
+- `toggle.state = bool` follows the real state without calling `onToggle`;
+  a `value` is a label: `value.text = '…'`; `button.setSensitive(bool)`.
+
+**From the hub** (all return `false` when your page is not on screen):
+
+- `hubState.showPageMessage(id, text, seconds = 4)`: a short message at the
+  bottom of your page (the result of an action, an error), gone by itself;
+- `hubState.setSideCount(id, count)`: the number in the side card's header;
+- `hubState.updateExternalPage(id, {buildPage, buildSidePage})`: new contents
+  for the page and/or the side page, keeping where they were scrolled.
+
+`externalPageFeatures` lists what the installed hub offers: `'side'`,
+`'side-header'`, `'kit'`, `'message'`, `'side-count'`, `'update'`.
 
 ## License
 

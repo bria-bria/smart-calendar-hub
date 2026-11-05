@@ -1176,8 +1176,16 @@ export default class SmartCalendarHubExtension extends Extension {
             this._trayRight = null;
             if (this._insideMenu?.cardsId)
                 GLib.source_remove(this._insideMenu.cardsId);
+            for (const key of ['restoreId', 'sideRestoreId']) {
+                if (this._insideMenu?.[key])
+                    GLib.source_remove(this._insideMenu[key]);
+            }
+            if (this._pageMessageId)
+                GLib.source_remove(this._pageMessageId);
+            this._pageMessageId = 0;
             this._insideMenu = null;
             this._trayMenuHost = null;
+            this._pageMessage = null;
         });
         this._trayMenuManager = new PopupMenu.PopupMenuManager(this._sidebar);
 
@@ -2454,6 +2462,10 @@ export default class SmartCalendarHubExtension extends Extension {
             child: this._trayMenuContent,
         });
         this._trayMenuHost.add_child(this._trayMenuScroll);
+        // short messages of an extension's page (showPageMessage)
+        this._pageMessage = new St.Label({style_class: 'sch-page-message', x_expand: true, visible: false});
+        this._pageMessage.clutter_text.line_wrap = true;
+        this._trayMenuHost.add_child(this._pageMessage);
         // Esc: back to our cards (not the whole panel closed)
         this._trayMenuHost.connect('key-press-event', (_actor, event) => {
             if (event.get_key_symbol() !== Clutter.KEY_Escape)
@@ -2590,17 +2602,120 @@ export default class SmartCalendarHubExtension extends Extension {
             hidden: [], cleared: new Map(), ornaments: new Set(),
         };
         this._trayMenuContent.add_child(page);
-        page.add_style_class_name?.('sch-hub-page');
-        shown.pageDestroyId = page.connect('destroy', () => {
-            if (this._insideMenu === shown) {
-                shown.page = null;
-                this._closeTrayMenu();
-            }
-        });
+        this._watchExternalPage(shown, page);
         this._enterTrayPage(shown, typeof title === 'string' && title ? title : String(id ?? ''));
         if (typeof buildSidePage === 'function')
             this._showSidePage(shown, buildSidePage, {sideTitle, sideCount, sideActions});
         return true;
+    }
+
+    // The page of an extension: our style class, and its end ends the visit
+    _watchExternalPage(shown, page) {
+        page.add_style_class_name?.('sch-hub-page');
+        shown.pageDestroyId = page.connect('destroy', () => {
+            if (this._insideMenu === shown && shown.page === page) {
+                shown.page = null;
+                this._closeTrayMenu();
+            }
+        });
+    }
+
+    // The external page `id` shown now, or null
+    _externalShown(id) {
+        const shown = this._insideMenu;
+        return shown && shown.externalId !== null && shown.externalId === id ? shown : null;
+    }
+
+    // Public: a short message at the bottom of the page of extension `id`
+    // (the result of an action, an error), gone after `seconds`. false when
+    // that page is not on screen.
+    showPageMessage(id, text, seconds = 4) {
+        if (!this._externalShown(id) || !this._pageMessage)
+            return false;
+        this._pageMessage.text = String(text ?? '');
+        this._pageMessage.visible = !!this._pageMessage.text;
+        if (this._pageMessageId)
+            GLib.source_remove(this._pageMessageId);
+        this._pageMessageId = 0;
+        const secs = Math.max(1, Math.min(30, Math.round(Number(seconds) || 4)));
+        this._pageMessageId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, secs, () => {
+            this._pageMessageId = 0;
+            if (this._pageMessage)
+                this._pageMessage.visible = false;
+            return GLib.SOURCE_REMOVE;
+        });
+        return true;
+    }
+
+    // Public: the number in the header of the side card of extension `id`
+    setSideCount(id, count) {
+        const label = this._externalShown(id)?.side?.countLabel;
+        if (!label)
+            return false;
+        label.text = count === null || count === undefined ? '' : String(count);
+        return true;
+    }
+
+    // Public: new contents for the page (and side page) of extension `id`,
+    // keeping where they were scrolled. false when that page is not on
+    // screen or nothing could be replaced.
+    updateExternalPage(id, {buildPage = null, buildSidePage = null} = {}) {
+        const shown = this._externalShown(id);
+        if (!shown)
+            return false;
+        const build = fn => {
+            try {
+                const actor = fn();
+                return actor instanceof Clutter.Actor && !actor.get_parent() ? actor : null;
+            } catch (e) {
+                console.error(`Smart Calendar Hub: external page ${id}: ${e}`);
+                return null;
+            }
+        };
+        // put back the scroll position once the new contents are laid out
+        const keepScroll = (adjustment, key) => {
+            const value = adjustment.value;
+            if (shown[key])
+                GLib.source_remove(shown[key]);
+            shown[key] = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                shown[key] = 0;
+                if (this._insideMenu === shown)
+                    adjustment.value = Math.min(value, adjustment.upper - adjustment.page_size);
+                return GLib.SOURCE_REMOVE;
+            });
+        };
+        let done = false;
+        if (typeof buildPage === 'function' && shown.page) {
+            const page = build(buildPage);
+            if (page) {
+                keepScroll(this._trayMenuScroll.vadjustment, 'restoreId');
+                const old = shown.page;
+                old.disconnect(shown.pageDestroyId);
+                this._trayMenuContent.insert_child_above(page, old);
+                shown.page = page;
+                this._watchExternalPage(shown, page);
+                old.destroy();
+                done = true;
+            }
+        }
+        const side = shown.side;
+        if (typeof buildSidePage === 'function' && side?.page) {
+            const page = build(buildSidePage);
+            const inner = side.page.get_parent();
+            if (page && inner) {
+                keepScroll(side.scroll.vadjustment, 'sideRestoreId');
+                inner.insert_child_above(page, side.page);
+                page.add_style_class_name?.('sch-hub-page');
+                side.page.destroy();
+                side.page = page;
+                done = true;
+            } else {
+                page?.destroy();
+            }
+        }
+        if (done)
+            this._tidyTrayMenu();
+        return done;
     }
 
     // The standard pieces for the pages of other extensions (sch-page-kit.js)
@@ -2611,7 +2726,7 @@ export default class SmartCalendarHubExtension extends Extension {
     // What showExternalPage supports beyond the page itself (read only):
     // 'side' = buildSidePage, a card beside the panel
     get externalPageFeatures() {
-        return Object.freeze(['side', 'side-header', 'kit']);
+        return Object.freeze(['side', 'side-header', 'kit', 'message', 'side-count', 'update']);
     }
 
     // The second page of an extension in the card beside the panel (the one
@@ -2657,6 +2772,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // count, at most two round buttons; it stays while the list scrolls
         if (typeof sideTitle === 'string' && sideTitle) {
             side.header = this._sideHeader(sideTitle, sideCount, sideActions);
+            side.countLabel = side.header.countLabel;
             card.add_child(side.header);
         }
         card.add_child(side.scroll);
@@ -2669,12 +2785,13 @@ export default class SmartCalendarHubExtension extends Extension {
     _sideHeader(title, count, actions) {
         const header = new St.BoxLayout({style_class: 'sch-cal-header sch-side-header', x_expand: true});
         header.add_child(new St.Label({text: title, style_class: 'sch-cal-month', y_align: Clutter.ActorAlign.CENTER}));
-        header.add_child(new St.Label({
+        header.countLabel = new St.Label({
             text: count === null || count === undefined ? '' : String(count),
             style_class: 'sch-cal-year',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
-        }));
+        });
+        header.add_child(header.countLabel);
         for (const action of (Array.isArray(actions) ? actions : []).slice(0, 2)) {
             if (!action?.icon || typeof action.onClick !== 'function')
                 continue;
@@ -2965,6 +3082,16 @@ export default class SmartCalendarHubExtension extends Extension {
         } catch (_e) {
             // the icon is gone
         }
+        for (const key of ['restoreId', 'sideRestoreId']) {
+            if (shown[key])
+                GLib.source_remove(shown[key]);
+            shown[key] = 0;
+        }
+        if (this._pageMessageId)
+            GLib.source_remove(this._pageMessageId);
+        this._pageMessageId = 0;
+        if (this._pageMessage)
+            this._pageMessage.visible = false;
         this._trayMenuHost?.hide();
     }
 
