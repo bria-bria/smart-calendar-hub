@@ -27,10 +27,19 @@
     margin: 2px 4px 0 4px;
 }
 
-.sch-tray-box,
-.sch-tray-row {
-    /* TRAY_SPACING in extension.js */
+.sch-tray-box {
     spacing: 4px;
+}
+
+/* every icon in a cell of the same size, centred */
+.sch-tray-cell {
+    width: 32px;
+    height: 32px;
+}
+
+/* scrollbar under the row, only when the icons do not fit */
+.sch-tray-scroll {
+    -st-hfade-offset: 0;
 }
 
 .sch-tray-item {
@@ -38,8 +47,10 @@
     padding: 0;
 }
 
-/* Icons in cells of the same size (TRAY_CELL in extension.js), centred */
+/* The button fills its cell; hover shows the whole cell */
 .sch-tray-box .panel-button {
+    min-width: 32px;
+    min-height: 32px;
     padding: 0;
     border-radius: 8px;
     margin: 0;

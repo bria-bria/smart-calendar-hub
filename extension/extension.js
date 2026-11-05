@@ -25,10 +25,6 @@ import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
-// Tray icons: size of each cell and space between cells (stylesheet.css
-// .sch-tray-row spacing must match)
-const TRAY_CELL = 32;
-const TRAY_SPACING = 4;
 // An icon counts as "normal" for an app only after being shown this long
 const NORMAL_ICON_MIN_SECONDS = 600;
 const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
@@ -1144,14 +1140,39 @@ export default class SmartCalendarHubExtension extends Extension {
             visible: false,
         });
         this._traySpacer = new St.Widget({x_expand: true});
-        // Rows of icons laid out by _layoutTray(). Clutter.FlowLayout is not
-        // used: on GNOME 51 it gives panel buttons a height of 0.
-        this._trayBox = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
-            style_class: 'sch-tray-box',
+        // One row of icons, each in a cell of ours of the same size
+        // (sch-tray-cell) with the icon centred: the buttons of other
+        // extensions have different widths. Packed on the right; with more
+        // icons than room a scrollbar appears under the row.
+        this._trayBox = new St.BoxLayout({style_class: 'sch-tray-box', x_expand: true});
+        this._trayBox.add_child(new St.Widget({x_expand: true}));
+        const trayScroll = new St.ScrollView({
+            style_class: 'sch-tray-scroll',
             x_expand: true,
+            hscrollbar_policy: St.PolicyType.AUTOMATIC,
+            vscrollbar_policy: St.PolicyType.NEVER,
+            overlay_scrollbars: false,
+            child: this._trayBox,
         });
-        this._traySection.add_child(this._trayBox);
+        // the mouse wheel scrolls the row sideways
+        trayScroll.connect('scroll-event', (_actor, event) => {
+            const adj = this._trayBox.hadjustment;
+            const dir = event.get_scroll_direction();
+            let delta = 0;
+            if (dir === Clutter.ScrollDirection.UP || dir === Clutter.ScrollDirection.LEFT)
+                delta = -1;
+            else if (dir === Clutter.ScrollDirection.DOWN || dir === Clutter.ScrollDirection.RIGHT)
+                delta = 1;
+            else if (dir === Clutter.ScrollDirection.SMOOTH) {
+                const [dx, dy] = event.get_scroll_delta();
+                delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+            }
+            if (!delta)
+                return Clutter.EVENT_PROPAGATE;
+            adj.value += delta * adj.step_increment;
+            return Clutter.EVENT_STOP;
+        });
+        this._traySection.add_child(trayScroll);
         trayRow.add_child(this._traySection);
         trayRow.add_child(this._traySpacer);
         const gear = this._gearButton = new St.Button({
@@ -1674,7 +1695,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._excludedTray = new Set(this._settings.get_strv('tray-excluded'));
         try {
             for (const [indicator, info] of [...this._movedTrayItems]) {
-                if (info.container.get_parent()?.get_parent() !== this._trayBox) {
+                if (info.container.get_parent() !== info.cell ||
+                    info.cell.get_parent() !== this._trayBox) {
                     // Another extension (e.g. Top Bar Organizer, which re-sorts
                     // every icon whenever one is added) took it back to the
                     // top bar: forget it, the loop below moves it in again.
@@ -1703,43 +1725,20 @@ export default class SmartCalendarHubExtension extends Extension {
     _layoutTray() {
         if (!this._trayBox)
             return;
-        // panel padding + section padding/margins ≈ 48 px, settings button
-        // on the right ≈ 46 px; one cell + spacing
-        const perRow = Math.max(1, Math.floor(
-            (this._settings.get_int('sidebar-width') - 48 - 46) / (TRAY_CELL + TRAY_SPACING)));
-        const containers = [...this._movedTrayItems.values()].map(i => i.container);
-        this._showTraySection(containers.length > 0);
-
-        // Nothing to do if the rows already match (avoids re-mapping every icon,
-        // which makes AppIndicator reload them).
-        const rows = this._trayBox.get_children();
-        const current = rows.flatMap(r => r.get_children());
-        if (current.length === containers.length &&
-            current.every((c, i) => c === containers[i]) &&
-            rows.every((r, i) => r.get_n_children() ===
-                Math.min(perRow, containers.length - i * perRow)))
+        const cells = [...this._movedTrayItems.values()].map(i => i.cell);
+        this._showTraySection(cells.length > 0);
+        // first child: the spacer that packs the icons on the right
+        const current = this._trayBox.get_children().slice(1);
+        // Nothing to do if the order is the same (re-adding every icon makes
+        // AppIndicator reload them)
+        if (current.length === cells.length && current.every((c, i) => c === cells[i]))
             return;
-
-        for (const row of rows) {
-            for (const child of row.get_children())
-                row.remove_child(child);
+        for (const cell of current)
+            this._trayBox.remove_child(cell);
+        for (const cell of cells) {
+            cell.get_parent()?.remove_child(cell);
+            this._trayBox.add_child(cell);
         }
-        this._trayBox.destroy_all_children();
-
-        let row = null;
-        containers.forEach((container, i) => {
-            if (i % perRow === 0) {
-                // packed on the right, not spread over the row
-                row = new St.BoxLayout({
-                    style_class: 'sch-tray-row',
-                    x_expand: false,
-                    x_align: Clutter.ActorAlign.END,
-                });
-                this._trayBox.add_child(row);
-            }
-            container.get_parent()?.remove_child(container);
-            row.add_child(container);
-        });
     }
 
     // The tray box only with icons; the spacer keeps the settings button on
@@ -1765,6 +1764,10 @@ export default class SmartCalendarHubExtension extends Extension {
             hadPanelMenu: false,
             yExpand: container.y_expand,
             xExpand: container.x_expand,
+            xAlign: container.x_align,
+            yAlign: container.y_align,
+            // a cell of ours, all of the same size, with the icon centred
+            cell: new St.Bin({style_class: 'sch-tray-cell'}),
             menuId: 0,
             destroyId: 0,
         };
@@ -1782,19 +1785,18 @@ export default class SmartCalendarHubExtension extends Extension {
             });
         }
 
-        // _layoutTray() puts it in a row
+        // into its cell; _layoutTray() puts the cell in the row
         parent.remove_child(container);
         container.add_style_class_name('sch-tray-item');
         container.y_expand = false;
         container.x_expand = false;
-        // Every icon in a cell of the same size: buttons of other extensions
-        // have different widths (padding, two icons, labels) and the gaps
-        // looked random. The panel button centres its icon in the cell.
-        container.set_size(TRAY_CELL, TRAY_CELL);
+        container.x_align = Clutter.ActorAlign.CENTER;
+        container.y_align = Clutter.ActorAlign.CENTER;
+        info.cell.set_child(container);
 
-        // The empty slot is filled at the next layout (next time the panel opens).
         info.destroyId = container.connect('destroy', () => {
             this._movedTrayItems?.delete(indicator);
+            info.cell.destroy();
             this._showTraySection(this._movedTrayItems?.size > 0);
         });
         this._movedTrayItems.set(indicator, info);
@@ -1813,7 +1815,13 @@ export default class SmartCalendarHubExtension extends Extension {
         info.container.remove_style_class_name('sch-tray-item');
         info.container.y_expand = info.yExpand;
         info.container.x_expand = info.xExpand;
-        info.container.set_size(-1, -1); // its own size again in the top bar
+        info.container.x_align = info.xAlign;
+        info.container.y_align = info.yAlign;
+        // the cell goes away; the container stays where it is (the caller
+        // moves it back to the top bar, or another extension already did)
+        if (info.container.get_parent() === info.cell)
+            info.cell.set_child(null);
+        info.cell.destroy();
     }
 
     _restoreTrayItem(indicator, info) {

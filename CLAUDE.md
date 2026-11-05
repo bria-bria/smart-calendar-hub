@@ -27,8 +27,12 @@ Le icone del vassoio le crea l'estensione AppIndicator
 soltanto. Deciso da Michele il 04/11/2026: AppIndicator resta accesa, non va
 integrata né spenta; le Preferenze mostrano un avviso se è spenta.
 
-Le icone del vassoio sono in righe (`_layoutTray`): NON usare
-`Clutter.FlowLayout`, su GNOME 51 dà altezza 0 ai pulsanti del pannello.
+Le icone del vassoio stanno su **una sola riga** (scelta di Michele, 05/11/2026)
+con barra di scorrimento sotto se non ci stanno; ogni icona è in una casella
+nostra (`sch-tray-cell`, 32 px) con l'icona centrata, perché i pulsanti delle
+altre estensioni hanno larghezze diverse (con `set_size` sul contenitore non
+funzionava). NON usare `Clutter.FlowLayout`: su GNOME 51 dà altezza 0 ai
+pulsanti del pannello.
 
 Niente **margini negativi** nel CSS (es. `margin-top: -4px`): il 05/11/2026
 uno solo nei puntini delle città rendeva il pannello invisibile (si apriva ma
