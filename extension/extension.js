@@ -1177,7 +1177,14 @@ export default class SmartCalendarHubExtension extends Extension {
             x_expand: true,
             visible: false,
         });
-        this._traySpacer = new St.Widget({x_expand: true});
+        // with no icons in the tray: the name of the extension on the left,
+        // the settings button stays on the right
+        this._traySpacer = new St.Label({
+            text: 'Smart Calendar Hub',
+            style_class: 'sch-app-title',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
         // One row of icons, each in a cell of ours of the same size
         // (sch-tray-cell) with the icon centred: the buttons of other
         // extensions have different widths. In the centre; with more icons

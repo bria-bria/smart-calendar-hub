@@ -449,6 +449,13 @@
     border-radius: 14px;
 }
 
+/* The name of the extension where the tray is, when the tray has no icons */
+.sch-app-title {
+    font-weight: 700;
+    margin-left: 10px;
+    color: rgba(255, 255, 255, 0.75);
+}
+
 /* World clocks: a card of analogue clocks above the bottom row, with the
    look of the other rows */
 .sch-clocks-card {
