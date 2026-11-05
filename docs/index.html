@@ -219,6 +219,9 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
 .screen.photo img { width: 100%; height: auto; display: block; border-radius: 16px; }
 .scatter.photo-after { display: flex; justify-content: center; align-items: flex-start; background: #1c1a26; }
 .scatter.photo-after img { height: 100%; width: auto; display: block; }
+.tagline { font-size: 22px; font-weight: 700; margin: 0 0 14px; color: var(--accent-text); }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.badges span { font-size: 13px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
 </style>
 </head>
 <body>
@@ -256,20 +259,21 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
       <a href="#one-place">One place</a>
       <a href="#tour">Tour</a>
       <a href="#features">Features</a>
-      <a href="#integrated">Recommended</a>
+      <a href="#integrated">Extensions</a>
       <a href="#developers">Developers</a>
     </nav>
   </header>
 
   <section class="hero">
     <div>
-      <h1>Every extension in one place.</h1>
-      <p class="lead">Smart Calendar Hub turns GNOME's clock menu into a side panel. Your calendar, weather, notifications and clocks live there, and every top bar extension opens its menu right inside it, instead of a floating menu of its own.</p>
+      <h1>Smart Calendar Hub</h1>
+      <p class="tagline">Your GNOME clock menu, reimagined as a unified side panel.</p>
+      <p class="lead">Smart Calendar Hub turns GNOME's clock menu into a full-featured side panel. Your calendar, weather forecast, notifications, and clocks live together in one clean space, while top bar extensions embed their menus directly inside the panel instead of opening detached floating popups.</p>
       <div class="cta">
         <a class="btn primary" href="https://github.com/bria-bria/smart-calendar-hub#install-from-source">Install</a>
         <a class="btn secondary" href="https://github.com/bria-bria/smart-calendar-hub">Source on GitHub</a>
       </div>
-      <p class="note">For GNOME Shell 48–51. Free software, GPL-2.0-or-later. Coming to extensions.gnome.org.</p>
+      <div class="badges"><span>GNOME Shell 48–51</span><span>Free and Open Source (GPL-2.0-or-later)</span><span>Native Wayland Ready</span></div>
     </div>
 
     <div class="desk" role="img" aria-label="The side panel: tray, weather, date with the sky, today's events, a notification and world clocks">
@@ -334,8 +338,9 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
     </div>
   </section>
   <section class="block" id="one-place">
-    <h2>No more menus scattered around the screen</h2>
-    <p class="sub">Every extension in the top bar opens its own floating menu, with its own look. Smart Calendar Hub gathers them: a click on an icon of the tray shows its menu inside the panel, at the same size, with the same measure for items, separators and titles. Back with the arrow, Esc, or another click.</p>
+    <h2>No more disconnected menus scattered across the screen.</h2>
+    <p class="sub">Extensions in the top bar typically open detached popups with disparate styling. Smart Calendar Hub unifies them: clicking any tray icon renders its complete menu seamlessly inside the panel, adhering to consistent item padding, typography, and separators.</p>
+    <p class="sub">Navigate back effortlessly using the back button, the Escape key, or another quick click on the tray icon.</p>
     <div class="compare">
       <figure>
         <div class="scatter" role="img" aria-label="Before: several floating menus in different styles">
@@ -363,20 +368,6 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
     <div class="tour">
       <figure class="shot">
         <div class="panel mini">
-          <div class="card">
-            <div class="calhead"><span>‹</span><b>November 2026</b><span>›</span></div>
-            <div class="calgrid"><span class="cd h">M</span><span class="cd h">T</span><span class="cd h">W</span><span class="cd h">T</span><span class="cd h">F</span><span class="cd h">S</span><span class="cd h">S</span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd">1</span><span class="cd">2</span><span class="cd">3</span><span class="cd">4</span><span class="cd today">5</span><span class="cd">6</span><span class="cd">7</span><span class="cd">8</span><span class="cd">9<i style="background:#33d17a"></i></span><span class="cd">10</span><span class="cd">11</span><span class="cd">12<i style="background:#3584e4"></i></span><span class="cd">13</span><span class="cd">14</span><span class="cd">15</span><span class="cd">16</span><span class="cd">17</span><span class="cd">18<i style="background:#e66100"></i></span><span class="cd">19</span><span class="cd">20</span><span class="cd">21</span><span class="cd">22</span><span class="cd">23<i style="background:#33d17a"></i></span><span class="cd">24</span><span class="cd">25</span><span class="cd">26</span><span class="cd">27<i style="background:#9141ac"></i></span><span class="cd">28</span><span class="cd">29</span><span class="cd">30</span></div>
-          </div>
-          <div class="card">
-            <div class="agenda"><i style="background:#3584e4"></i><span>Team meeting</span><em>11:00</em></div>
-            <div class="agenda"><i style="background:#33d17a"></i><span>Lunch with Anna</span><em>13:00</em></div>
-            <div class="agenda"><i style="background:#e66100"></i><span>Gym</span><em>18:30</em></div>
-          </div>
-        </div>
-        <figcaption>Calendar and agenda<span>A calendar that fits the panel, with the colours of your online accounts and the events of the day.</span></figcaption>
-      </figure>
-      <figure class="shot">
-        <div class="panel mini">
           <div class="bar inline"><span class="pill"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg> 203.0.113.42</span></div>
           <div class="card">
             <div class="card-head" style="margin-bottom:4px"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span>IP addresses</span><span class="chev" style="margin-left:auto">⌄</span></div>
@@ -386,7 +377,7 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
             <div class="iprow"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span>Public</span><em>203.0.113.42</em></div>
           </div>
         </div>
-        <figcaption>IP addresses<span>Every address in the panel, the ones you choose in the top bar too. A click copies it.</span></figcaption>
+        <figcaption>IP Addresses &amp; Network Hub<span>The address of every active connection — Ethernet, Wi-Fi, VPN — and your public one, IPv4 or IPv6, visible in the panel, with selective pinning to the top bar. Click any address to copy it directly to your clipboard.</span></figcaption>
       </figure>
       <figure class="shot">
         <div class="panel mini">
@@ -400,7 +391,7 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
             <b>Dentist</b><div style="color:var(--panel-muted)">Today at 17:00</div>
           </div>
         </div>
-        <figcaption>Silence an app<span>From the bell of a notification: no banners for an hour, until tomorrow or always. The messages wait in the panel.</span></figcaption>
+        <figcaption>Granular App Muting<span>Silence noisy apps straight from the notification header: snooze banners for an hour, eight hours, until tomorrow, or indefinitely, while keeping messages neatly indexed in the hub.</span></figcaption>
       </figure>
       <figure class="shot">
         <div class="panel mini">
@@ -414,7 +405,21 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
           </div>
           <div class="tip">Tokyo · 6:24 PM</div>
         </div>
-        <figcaption>Clocks, alarms and timers<span>World clocks as small dials, the alarms of GNOME Clocks, and timers you start, pause and reset with a click.</span></figcaption>
+        <figcaption>Clocks, Alarms &amp; Timers<span>World clocks with elegant analog dials, the alarms of GNOME Clocks at a glance, and integrated countdown timers you can start, pause, and reset in place.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="panel mini">
+          <div class="card">
+            <div class="calhead"><span>‹</span><b>November 2026</b><span>›</span></div>
+            <div class="calgrid"><span class="cd h">M</span><span class="cd h">T</span><span class="cd h">W</span><span class="cd h">T</span><span class="cd h">F</span><span class="cd h">S</span><span class="cd h">S</span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd">1</span><span class="cd">2</span><span class="cd">3</span><span class="cd">4</span><span class="cd today">5</span><span class="cd">6</span><span class="cd">7</span><span class="cd">8</span><span class="cd">9<i style="background:#33d17a"></i></span><span class="cd">10</span><span class="cd">11</span><span class="cd">12<i style="background:#3584e4"></i></span><span class="cd">13</span><span class="cd">14</span><span class="cd">15</span><span class="cd">16</span><span class="cd">17</span><span class="cd">18<i style="background:#e66100"></i></span><span class="cd">19</span><span class="cd">20</span><span class="cd">21</span><span class="cd">22</span><span class="cd">23<i style="background:#33d17a"></i></span><span class="cd">24</span><span class="cd">25</span><span class="cd">26</span><span class="cd">27<i style="background:#9141ac"></i></span><span class="cd">28</span><span class="cd">29</span><span class="cd">30</span></div>
+          </div>
+          <div class="card">
+            <div class="agenda"><i style="background:#3584e4"></i><span>Team meeting</span><em>11:00</em></div>
+            <div class="agenda"><i style="background:#33d17a"></i><span>Lunch with Anna</span><em>13:00</em></div>
+            <div class="agenda"><i style="background:#e66100"></i><span>Gym</span><em>18:30</em></div>
+          </div>
+        </div>
+        <figcaption>Unified Calendar Timeline<span>Seamlessly browse events and local hourly weather with single-day drill-downs and quick event creation.</span></figcaption>
       </figure>
     </div>
   </section>
@@ -432,13 +437,13 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
   </section>
 
   <section class="block" id="integrated">
-    <h2>Extensions we recommend</h2>
-    <p class="sub">We like these extensions and recommend them alongside Smart Calendar Hub. We tested each one inside the panel and tuned the hub until it looked right there — always on our side: their code stays exactly as their authors wrote it.</p>
+    <h2>Recommended Extensions</h2>
+    <p class="sub">Smart Calendar Hub is engineered to complement your existing workflow. Compatibility is handled entirely client-side: upstream extensions remain 100% stock with zero modifications needed from their authors.</p>
     <table class="works">
-      <tr><th>Extension</th><th>How the hub works with it</th></tr>
-      <tr><td><a href="https://extensions.gnome.org/extension/9329/wifi-signal-plus/">WiFi Signal Plus</a></td><td>The details of the Wi-Fi connection, the signal graph and the nearby networks, with the backgrounds of its cards blended into the panel.</td></tr>
-      <tr><td><a href="https://extensions.gnome.org/extension/615/appindicator-support/">AppIndicator and KStatusNotifierItem Support</a></td><td>The tray icons of your apps and their menus, sub-menus included — for example KTailctl (Tailscale) and Cachy-Update.</td></tr>
-      <tr><td><a href="https://extensions.gnome.org/extension/4356/top-bar-organizer/">Top Bar Organizer</a></td><td>It sorts the icons of the top bar. With one switch in the settings, the hub writes the position of its clock into Top Bar Organizer's order, so the two never fight, and gives the old order back when switched off. When it re-sorts the icons, the tray takes its own back without losing any.</td></tr>
+      <tr><th>Extension</th><th>How it works with the hub</th></tr>
+      <tr><td><a href="https://extensions.gnome.org/extension/615/appindicator-support/">AppIndicator / KStatusNotifierItem</a></td><td>Provides native application status icons in GNOME. Smart Calendar Hub relocates them to the panel's tray and renders their complete menus (and nested submenus) natively inside the sidebar.</td></tr>
+      <tr><td><a href="https://extensions.gnome.org/extension/9329/wifi-signal-plus/">WiFi Signal Plus</a></td><td>Visualizes Wi-Fi performance meters, signal history, and nearby SSIDs. Inside the hub, all widgets stay fully interactive while container backgrounds are automatically balanced for visual harmony.</td></tr>
+      <tr><td><a href="https://extensions.gnome.org/extension/4356/top-bar-organizer/">Top Bar Organizer</a></td><td>Built-in cooperative ordering: a single toggle syncs the hub's clock position directly with Top Bar Organizer's preferences to prevent layout conflicts, safely restoring your original order when turned off.</td></tr>
     </table>
   </section>
 
@@ -446,29 +451,25 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
     <h2>For extension developers</h2>
     <div class="dev">
       <div>
-        <p>If your extension has a top bar icon, it already works: Smart Calendar Hub shows your menu inside the panel as it is.</p>
-        <p>To do more, add one optional property to your button. Only the hub reads it, so nothing changes for users without it.</p>
+        <p>If your GNOME extension creates a panel button in the top bar, it already works out of the box: when its icon is in the hub's tray, Smart Calendar Hub automatically embeds its menu and items.</p>
+        <p>To further fine-tune the presentation, you can optionally attach a <code>smartCalendarHub</code> object to your panel button. It is completely safe, non-intrusive, and silently ignored by GNOME Shell when the hub isn't installed.</p>
         <ul>
-          <li><strong>title</strong> — the title above your menu.</li>
-          <li><strong>buildPage</strong> — a page of your own instead of the menu.</li>
-          <li><strong>keepStyle</strong> — keep your own backgrounds.</li>
-          <li>Inside the hub your content has the class <code>sch-hub-page</code>.</li>
+          <li>Keep your normal menu, with at least one item: it is what users without the hub see, and what the hub shows when there is no custom page.</li>
+          <li>Inside the hub your content carries the style class <code>sch-hub-page</code>.</li>
         </ul>
         <p><a href="https://github.com/bria-bria/smart-calendar-hub/tree/main/examples/hello-hub@bria-bria.github.io">See the complete example →</a></p>
       </div>
-<pre><code>this._button.smartCalendarHub = {
-    title: 'My extension',
+<pre><code>// Optional integration metadata on your PanelMenu.Button
+this._button.smartCalendarHub = {
+    // Custom label displayed in the hub's sidebar header
+    title: 'My Extension',
 
-    // optional: a page of your own,
-    // built at every visit, destroyed after
+    // Optional callback to construct a custom full-width widget/page
     buildPage: () => {
-        const page = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
-        });
-        page.add_child(new St.Label({text: 'Hello'}));
-        return page;
+        return new MyCustomSidebarWidget();
     },
 
+    // Set to true to preserve your own container styling and backgrounds
     keepStyle: false,
 };</code></pre>
     </div>
