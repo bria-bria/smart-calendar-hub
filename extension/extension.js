@@ -266,6 +266,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._clockWeather?.destroy();
         this._clockWeather = null;
 
+        this._closeTrayMenu();
         this._restoreAllTrayItems();
         this._movedTrayItems = null;
         this._excludedTray = null;
@@ -404,6 +405,10 @@ export default class SmartCalendarHubExtension extends Extension {
         case 'tray-excluded':
             this._syncTray();
             this._applyTopBarPosition();
+            break;
+        case 'tray-menus-inside':
+        case 'tray-menus-floating':
+            this._syncTrayMenuModes();
             break;
         case 'top-bar-position':
             this._syncTopBarOrganizer();
@@ -1165,6 +1170,8 @@ export default class SmartCalendarHubExtension extends Extension {
             this._trayScroll = null;
             this._trayLeft = null;
             this._trayRight = null;
+            this._insideMenu = null;
+            this._trayMenuHost = null;
         });
         this._trayMenuManager = new PopupMenu.PopupMenuManager(this._sidebar);
 
@@ -1265,6 +1272,10 @@ export default class SmartCalendarHubExtension extends Extension {
             this.openPreferences();
         });
         trayRow.add_child(gear);
+
+        // 0a. The menu of a tray icon, inside the panel (instead of floating):
+        // our cards hide while it is shown, the panel keeps its size
+        this._buildTrayMenuHost();
 
         // 0b. IP addresses (sch-net.js PanelIpBox, added once IpView exists)
         this._ipPanelBin = new St.Bin({x_expand: true});
@@ -1479,6 +1490,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._worldClocks?.start();
             } else {
                 this._trayMenuManager?.activeMenu?.close();
+                this._closeTrayMenu();
                 this._skyView?.stop();
                 this._worldClocks?.stop();
             }
@@ -2223,10 +2235,15 @@ export default class SmartCalendarHubExtension extends Extension {
             info.hadPanelMenu = Main.panel.menuManager._menus?.includes(menu) ?? false;
             if (info.hadPanelMenu)
                 Main.panel.menuManager.removeMenu(menu);
-            this._trayMenuManager.addMenu(menu);
+            info.key = this._trayKey(role, indicator);
+            this._setTrayMenuMode(indicator, info);
             info.menuId = menu.connect('open-state-changed', (m, isOpen) => {
-                if (isOpen && m.actor)
+                if (isOpen && info.inside && this._trayMenuHost)
+                    this._showTrayMenu(indicator, info);
+                else if (isOpen && m.actor)
                     Main.uiGroup.set_child_above_sibling(m.actor, null);
+                else if (!isOpen && this._insideMenu?.menu === m)
+                    this._hideTrayMenu();
             });
         }
 
@@ -2257,6 +2274,8 @@ export default class SmartCalendarHubExtension extends Extension {
     _releaseTrayItem(indicator, info) {
         info.container.disconnect(info.destroyId);
         const menu = indicator.menu;
+        if (menu && this._insideMenu?.menu === menu)
+            this._closeTrayMenu();
         if (menu && info.menuId) {
             menu.disconnect(info.menuId);
             this._trayMenuManager?.removeMenu(menu);
@@ -2328,6 +2347,178 @@ export default class SmartCalendarHubExtension extends Extension {
         } catch (e) {
             console.error(`Smart Calendar Hub: cannot restore a tray icon: ${e}`);
         }
+    }
+
+    // Inside the panel unless switched off, or chosen floating for this icon.
+    // Inside: no menu manager (its grab would close the menu at the first
+    // click inside the panel); the panel's own grab covers it.
+    _setTrayMenuMode(indicator, info) {
+        const menu = indicator.menu;
+        const inside = this._settings.get_boolean('tray-menus-inside') &&
+            !this._settings.get_strv('tray-menus-floating').includes(info.key);
+        const managed = this._trayMenuManager._menus?.includes(menu) ?? false;
+        if (inside && managed)
+            this._trayMenuManager.removeMenu(menu);
+        else if (!inside && !managed)
+            this._trayMenuManager.addMenu(menu);
+        info.inside = inside;
+    }
+
+    _syncTrayMenuModes() {
+        this._trayMenuManager?.activeMenu?.close();
+        this._closeTrayMenu();
+        for (const [indicator, info] of this._movedTrayItems ?? []) {
+            if (info.menuId && indicator.menu)
+                this._setTrayMenuMode(indicator, info);
+        }
+    }
+
+    // A card of ours: [←] name of the app, then its menu (scrolls if long)
+    _buildTrayMenuHost() {
+        this._trayMenuHost = new St.BoxLayout({
+            style_class: 'sch-tray-menu-host',
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+            y_expand: true,
+            reactive: true,
+            visible: false,
+        });
+        const header = new St.BoxLayout({style_class: 'sch-tray-menu-header', x_expand: true});
+        const back = new St.Button({
+            style_class: 'sch-tray-menu-back',
+            can_focus: true,
+            accessible_name: _('Back'),
+            y_align: Clutter.ActorAlign.CENTER,
+            child: new St.Icon({icon_name: 'go-previous-symbolic', icon_size: 16}),
+        });
+        back.connect('clicked', () => this._closeTrayMenu());
+        header.add_child(back);
+        this._trayMenuTitle = new St.Label({
+            style_class: 'sch-tray-menu-title',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._trayMenuTitle.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        header.add_child(this._trayMenuTitle);
+        this._trayMenuHost.add_child(header);
+
+        this._trayMenuContent = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+        });
+        this._trayMenuScroll = new St.ScrollView({
+            style_class: 'sch-tray-menu-scroll',
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+            overlay_scrollbars: true,
+            x_expand: true,
+            y_expand: true,
+            child: this._trayMenuContent,
+        });
+        this._trayMenuHost.add_child(this._trayMenuScroll);
+        // Esc: back to our cards (not the whole panel closed)
+        this._trayMenuHost.connect('key-press-event', (_actor, event) => {
+            if (event.get_key_symbol() !== Clutter.KEY_Escape)
+                return Clutter.EVENT_PROPAGATE;
+            this._closeTrayMenu();
+            return Clutter.EVENT_STOP;
+        });
+        this._sidebar.add_child(this._trayMenuHost);
+    }
+
+    // The menu leaves its floating box (hidden) for our card; every other
+    // card of the panel hides (and stays hidden if something shows it)
+    _showTrayMenu(indicator, info) {
+        const menu = indicator.menu;
+        if (this._insideMenu?.menu === menu)
+            return;
+        this._closeTrayMenu();
+        const box = menu.box;
+        const bin = box?.get_parent();
+        if (!box || !bin)
+            return;
+        // the floating box keeps its menu in an St.Bin: emptied properly
+        if (bin instanceof St.Bin)
+            bin.set_child(null);
+        else
+            bin.remove_child(box);
+        this._trayMenuContent.add_child(box);
+        box.add_style_class_name('sch-tray-menu-box');
+        menu.actor.hide();
+        const shown = {menu, box, bin, info, hidden: []};
+        shown.boxDestroyId = box.connect('destroy', () => {
+            if (this._insideMenu === shown) {
+                shown.box = null;
+                this._hideTrayMenu();
+            }
+        });
+        for (const child of this._sidebar.get_children()) {
+            if (child === this._trayMenuHost || child === this._traySection?.get_parent())
+                continue;
+            const entry = {child, wanted: child.visible};
+            entry.id = child.connect('notify::visible', () => {
+                if (child.visible) {
+                    entry.wanted = true;
+                    child.hide();
+                }
+            });
+            child.hide();
+            shown.hidden.push(entry);
+        }
+        this._insideMenu = shown;
+        this._trayMenuTitle.text = this._trayLabel(info.role, indicator);
+        info.cell.add_style_class_name('sch-tray-cell-open');
+        this._trayMenuScroll.vadjustment.value = 0;
+        this._trayMenuHost.show();
+        box.navigate_focus(null, St.DirectionType.TAB_FORWARD, false);
+    }
+
+    // Close the menu shown inside (its 'open-state-changed' puts it back)
+    _closeTrayMenu() {
+        const shown = this._insideMenu;
+        if (!shown)
+            return;
+        try {
+            shown.menu.close();
+        } catch (e) {
+            console.error(`Smart Calendar Hub: tray menu: ${e}`);
+        }
+        this._hideTrayMenu();
+    }
+
+    // The menu back in its floating box, our cards back as they want to be
+    _hideTrayMenu() {
+        const shown = this._insideMenu;
+        if (!shown)
+            return;
+        this._insideMenu = null;
+        try {
+            if (shown.box) {
+                shown.box.disconnect(shown.boxDestroyId);
+                shown.box.remove_style_class_name('sch-tray-menu-box');
+                shown.box.get_parent()?.remove_child(shown.box);
+                if (shown.bin instanceof St.Bin)
+                    shown.bin.set_child(shown.box);
+                else
+                    shown.bin.add_child(shown.box);
+            }
+        } catch (e) {
+            console.error(`Smart Calendar Hub: cannot give a tray menu back: ${e}`);
+        }
+        for (const {child, wanted, id} of shown.hidden) {
+            try {
+                child.disconnect(id);
+                child.visible = wanted;
+            } catch (_e) {
+                // already gone
+            }
+        }
+        try {
+            shown.info.cell.remove_style_class_name('sch-tray-cell-open');
+        } catch (_e) {
+            // the icon is gone
+        }
+        this._trayMenuHost?.hide();
     }
 
     _restoreAllTrayItems() {

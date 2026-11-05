@@ -827,3 +827,48 @@
 .sch-clock-weather-label {
     margin-left: 0.3em;
 }
+
+/* The menu of a tray icon inside the panel: a card as the others, the
+   floating look of the menu (background, border, shadow) taken away */
+.sch-tray-menu-host {
+    background-color: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 6px;
+    margin: 2px 4px;
+    spacing: 4px;
+}
+
+.sch-tray-menu-header {
+    spacing: 8px;
+    padding: 0 4px 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sch-tray-menu-back {
+    padding: 4px;
+    border-radius: 999px;
+}
+
+.sch-tray-menu-back:hover,
+.sch-tray-menu-back:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.sch-tray-menu-title {
+    font-weight: 700;
+}
+
+.sch-tray-menu-box.popup-menu-content {
+    background-color: transparent;
+    border-width: 0;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+}
+
+.sch-tray-cell-open {
+    background-color: -st-accent-color;
+    color: -st-accent-fg-color;
+    border-radius: 8px;
+}

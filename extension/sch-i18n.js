@@ -276,6 +276,18 @@ export const IT = {
         "In pausa · mancano {left} · clic: riprendi · clic destro: azzera",
     "Timer finished":
         "Timer finito",
+    "Back":
+        "Indietro",
+    "Menus of the icons":
+        "Menu delle icone",
+    "Menus inside the panel":
+        "Menu dentro il pannello",
+    "Clicking a tray icon shows its menu inside the panel, in place of the cards, instead of a floating menu. Back with the arrow, Esc or another click on the icon.":
+        "Il clic su un'icona del vassoio mostra il suo menu dentro il pannello, al posto delle schede, invece di un menu fluttuante. Si torna indietro con la freccia, con Esc o con un altro clic sull'icona.",
+    "Menu inside the panel, icon by icon":
+        "Menu dentro il pannello, icona per icona",
+    "Switch off an icon to keep its menu floating (e.g. an app whose menu does not look right inside).":
+        "Spegni un'icona per tenere il suo menu fluttuante (per esempio un'app il cui menu dentro non si vede bene).",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

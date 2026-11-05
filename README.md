@@ -53,7 +53,9 @@ icon next to the tray icons. They are in five tabs:
   icons of the top bar in GNOME's accent colour, the battery as a circle that
   empties with the charge (percentage inside optional).
 - **Tray**: which top bar icons move inside the panel, and a switch for each
-  app.
+  app. The menu of a tray icon (e.g. a GSConnect device) opens inside the
+  panel, in place of the cards, instead of floating; it can be switched off,
+  for all icons or icon by icon.
 - **Calendars**: which calendars are shown. This is the same switch GNOME
   Calendar uses, so a calendar turned off here is off there too (your online
   accounts are not changed). Calendars shared between two accounts appear once.

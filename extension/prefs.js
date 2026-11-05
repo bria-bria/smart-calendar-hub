@@ -647,6 +647,27 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
             watchKeys: ['tray-mode'],
         }));
 
+        const menusGroup = new Adw.PreferencesGroup({title: _('Menus of the icons')});
+        const insideRow = new Adw.SwitchRow({
+            title: _('Menus inside the panel'),
+            subtitle: _('Clicking a tray icon shows its menu inside the panel, in place of the cards, instead of a floating menu. Back with the arrow, Esc or another click on the icon.'),
+        });
+        settings.bind('tray-menus-inside', insideRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        menusGroup.add(insideRow);
+        pageTray.add(menusGroup);
+        pageTray.add(appSwitchGroup(window, settings, {
+            title: _('Menu inside the panel, icon by icon'),
+            description: _('Switch off an icon to keep its menu floating (e.g. an app whose menu does not look right inside).'),
+            seenKey: 'tray-items-seen',
+            listKey: 'tray-menus-floating',
+            listMeansOn: false,
+            emptyTitle: _('No icons found yet'),
+            emptySubtitle: _('Open the panel once: the list fills in by itself'),
+            isDisabled: () => settings.get_string('tray-mode') === 'disabled' ||
+                !settings.get_boolean('tray-menus-inside'),
+            watchKeys: ['tray-mode', 'tray-menus-inside'],
+        }));
+
         // ---------------- Calendars ----------------
         const today = new Adw.PreferencesGroup();
         pageCalendars.add(today);

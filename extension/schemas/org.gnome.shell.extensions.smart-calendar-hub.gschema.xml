@@ -42,6 +42,18 @@
       <description>Identifiers of the icons that stay in the top bar instead of moving inside the panel.</description>
     </key>
 
+    <key name="tray-menus-inside" type="b">
+      <default>true</default>
+      <summary>Menus of the tray icons inside the panel</summary>
+      <description>The menu of a tray icon opens inside the side panel, in place of its cards, instead of floating.</description>
+    </key>
+
+    <key name="tray-menus-floating" type="as">
+      <default>[]</default>
+      <summary>Tray icons whose menu keeps floating</summary>
+      <description>Identifiers of the tray icons whose menu opens floating even when the menus open inside the panel.</description>
+    </key>
+
     <key name="tray-items-seen" type="as">
       <default>[]</default>
       <summary>Icons currently available (written by the extension)</summary>
