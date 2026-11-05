@@ -120,18 +120,18 @@ export const IT = {
         "Sempre",
     "Silenced apps":
         "App silenziate",
-    "Silenced with the bell of a notification: no pop-up; the notifications stay in the panel and light the red dot on the clock instead.":
-        "Silenziate con la campanella di una notifica: niente fumetto; le notifiche restano nel pannello e al loro posto si accende il puntino rosso sull'ora.",
+    "Silenced with the bell of a notification: no pop-up and no red dot; the notifications stay in the panel. Change or turn off the silence with the bell of the notification too.":
+        "Silenziate con la campanella di una notifica: niente fumetto e niente puntino rosso; le notifiche restano nel pannello. Il silenzio si cambia o si toglie anche dalla stessa campanella.",
     "No silenced apps":
         "Nessuna app silenziata",
     "Until {time}":
         "Fino a {time}",
     "Unmute":
         "Riattiva",
-    "Silenced until {time}":
-        "Silenziata fino a: {time}",
-    "Silenced always (turn it back on in the settings)":
-        "Silenziata sempre (si riattiva dalle Impostazioni)",
+    "Silenced until {time} · press the coloured button again to turn it back on":
+        "Silenziata fino alle {time} · ripremi il tasto colorato per riattivarla",
+    "Silenced always · press the coloured button again to turn it back on":
+        "Silenziata sempre · ripremi il tasto colorato per riattivarla",
 
     // --- Calendar (sch-calendar.js) ---
     "Today":

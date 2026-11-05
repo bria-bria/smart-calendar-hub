@@ -531,7 +531,7 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     // ------------------------------------------------------------------
-    // Silencing apps: no banner, notifications kept in the list, red dot instead.
+    // Silencing apps: no banner, no red dot, notifications kept in the list.
     // muted-apps: "key TAB name TAB until" (until = Unix seconds, 0 = always)
     // ------------------------------------------------------------------
 
@@ -696,6 +696,8 @@ export default class SmartCalendarHubExtension extends Extension {
         const buttons = [];
         // "Silenced until 12:40", under the durations
         const note = new St.Label({style_class: 'sch-mute-note', visible: false});
+        // the panel is narrow: the note goes on two lines instead of being cut
+        note.clutter_text.line_wrap = true;
         // Shows the current state: chosen duration in colour, note, bell in colour
         const sync = () => {
             const source = sourceOf();
@@ -713,11 +715,11 @@ export default class SmartCalendarHubExtension extends Extension {
             note.visible = !!entry && row.visible;
             if (entry) {
                 if (entry.until === 0) {
-                    note.text = _('Silenced always (turn it back on in the settings)');
+                    note.text = _('Silenced always · press the coloured button again to turn it back on');
                 } else {
                     const end = GLib.DateTime.new_from_unix_local(entry.until);
                     const sameDay = end.format('%F') === GLib.DateTime.new_now_local().format('%F');
-                    note.text = _('Silenced until {time}', {time: end.format(sameDay ? '%H:%M' : '%a %H:%M')});
+                    note.text = _('Silenced until {time} · press the coloured button again to turn it back on', {time: end.format(sameDay ? '%H:%M' : '%a %H:%M')});
                 }
             }
         };
@@ -813,8 +815,8 @@ export default class SmartCalendarHubExtension extends Extension {
         const names = new Set();
         for (const s of this._alertSources?.keys() ?? []) {
             const key = this._sourceKey(s);
-            // silenced apps: no banner, the red dot instead
-            if (s.count > 0 && (wanted.has(key) || this._isMuted(key)))
+            // silenced apps: no banner and no red dot, only the panel list
+            if (s.count > 0 && wanted.has(key) && !this._isMuted(key))
                 names.add(s.title || this._sourceKey(s));
         }
         for (const sni of this._alertTray?.keys() ?? []) {

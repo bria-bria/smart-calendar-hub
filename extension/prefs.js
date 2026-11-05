@@ -197,7 +197,7 @@ async function calendarsGroup() {
 function mutedGroup(window, settings) {
     const group = new Adw.PreferencesGroup({
         title: _('Silenced apps'),
-        description: _('Silenced with the bell of a notification: no pop-up; the notifications stay in the panel and light the red dot on the clock instead.'),
+        description: _('Silenced with the bell of a notification: no pop-up and no red dot; the notifications stay in the panel. Change or turn off the silence with the bell of the notification too.'),
     });
     let rows = [];
     const rebuild = () => {
