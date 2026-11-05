@@ -2521,10 +2521,12 @@ export default class SmartCalendarHubExtension extends Extension {
         this._trayMenuHost.grab_key_focus();
     }
 
-    // The cards drawn by the app inside its menu lose their background, so
-    // the menu looks part of ours: a container (it holds other widgets), not
-    // clickable, at least as tall as a line. Bars, graphs, buttons and the
-    // items of the menu keep their colours (they show something).
+    // The backgrounds the app draws inside its menu become transparent, so
+    // the menu looks part of ours: every container that is not clickable
+    // (cards, the tracks of the bars) and any larger empty area. What shows a
+    // value keeps its colour: the filled part of a bar, small tags ("WPA2"),
+    // buttons and the items of the menu. Backgrounds painted by the app's own
+    // drawing code (e.g. a graph) cannot be reached from outside.
     _clearTrayMenuCards() {
         const shown = this._insideMenu;
         if (!shown?.box)
@@ -2542,8 +2544,10 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     _isTrayMenuCard(widget) {
-        if (widget.reactive || widget instanceof St.Button || widget.height < 24 ||
-            !widget.get_children().some(c => c instanceof St.Widget))
+        if (widget.reactive || widget instanceof St.Button)
+            return false;
+        const container = widget.get_children().some(c => c instanceof St.Widget);
+        if (!container && (widget.height < 24 || widget instanceof St.Label || widget instanceof St.Icon))
             return false;
         const classes = widget.get_style_class_name() ?? '';
         if (/popup-menu-item|popup-sub-menu|button|toggle|slider|switch/.test(classes))
