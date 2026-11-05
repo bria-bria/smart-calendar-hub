@@ -5,7 +5,7 @@ A GNOME Shell extension that turns the clock menu into a side panel.
 From top to bottom the panel shows:
 
 1. tray icons of applications (optional), with the button that opens the
-   settings at the end,
+   settings on their right,
 2. weather, collapsed at login (it stays as you leave it until you log out),
 3. today's date,
 4. the calendar and events, collapsed by default,
@@ -36,7 +36,7 @@ the panel; the preferences window shows a warning when that extension is off.
 ## Settings
 
 Open the preferences (Extensions app → Smart Calendar Hub) or click the gear
-icon at the end of the tray. They are in five tabs:
+icon next to the tray icons. They are in five tabs:
 
 - **Panel**: panel side (right, left, under the clock), clock position in the
   top bar, Top Bar Organizer sync (off by default; turn it on if you use Top
@@ -59,7 +59,8 @@ icon at the end of the tray. They are in five tabs:
   that opens when you click the addresses; open its row to choose whether it
   is shown in the bar too. **IP address in Smart Calendar Hub** adds a box
   under the tray icons with the chosen addresses (local network, every active
-  VPN, public), one at a time with arrows; click one to copy it.
+  VPN, public), shaped like the weather row, one at a time with arrows;
+  click one to copy it.
 
 ### Privacy and network use
 

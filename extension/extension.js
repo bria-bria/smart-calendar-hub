@@ -250,6 +250,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._sidebar?.destroy();
         this._sidebar = null;
         this._traySection = null;
+        this._traySpacer = null;
         this._ipPanelBin = null;
         this._trayBox = null;
         this._calendarBox = null;
@@ -265,7 +266,6 @@ export default class SmartCalendarHubExtension extends Extension {
         this._cityWeather?.destroy();
         this._cityWeather = null;
         this._citySelector = null;
-        this._cityDots = null;
         this._cityCard = null;
         this._gnomeWeatherBin = null;
         this._weatherClient = null;
@@ -1129,13 +1129,17 @@ export default class SmartCalendarHubExtension extends Extension {
         menuBox.add_child(this._sidebar);
         this._trayMenuManager = new PopupMenu.PopupMenuManager(this._sidebar);
 
-        // 0. Tray icons, and the settings button as the last item. Always
-        // shown, even with no icons, so the settings button can be reached.
+        // 0. Tray icons, with the settings button on their right (outside the
+        // tray). With no icons the row keeps only the button, on the right.
+        const trayRow = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true});
+        this._sidebar.add_child(trayRow);
         this._traySection = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             style_class: 'sch-tray-section',
             x_expand: true,
+            visible: false,
         });
+        this._traySpacer = new St.Widget({x_expand: true});
         // Rows of icons laid out by _layoutTray(). Clutter.FlowLayout is not
         // used: on GNOME 51 it gives panel buttons a height of 0.
         this._trayBox = new St.BoxLayout({
@@ -1144,7 +1148,20 @@ export default class SmartCalendarHubExtension extends Extension {
             x_expand: true,
         });
         this._traySection.add_child(this._trayBox);
-        this._sidebar.add_child(this._traySection);
+        trayRow.add_child(this._traySection);
+        trayRow.add_child(this._traySpacer);
+        const gear = this._gearButton = new St.Button({
+            style_class: 'sch-gear-button',
+            can_focus: true,
+            accessible_name: _('Settings'),
+            y_align: Clutter.ActorAlign.CENTER,
+            child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 16}),
+        });
+        gear.connect('clicked', () => {
+            dm.menu.close();
+            this.openPreferences();
+        });
+        trayRow.add_child(gear);
 
         // 0b. IP addresses (sch-net.js PanelIpBox, added once IpView exists)
         this._ipPanelBin = new St.Bin({x_expand: true});
@@ -1207,19 +1224,6 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         weatherRow.add_child(this._citySelector);
 
-        // placed at the end of the tray by _layoutTray()
-        const gear = this._gearButton = new St.Button({
-            style_class: 'sch-gear-button',
-            can_focus: true,
-            accessible_name: _('Settings'),
-            y_align: Clutter.ActorAlign.CENTER,
-            child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 16}),
-        });
-        gear.connect('clicked', () => {
-            dm.menu.close();
-            this.openPreferences();
-        });
-
         this._weatherBody = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
@@ -1243,10 +1247,6 @@ export default class SmartCalendarHubExtension extends Extension {
             this._syncWeatherExpanded();
         });
         this._syncWeatherExpanded();
-
-        // Dots under the row: which of the cities is shown
-        this._cityDots = new St.BoxLayout({style_class: 'sch-city-dots', x_align: Clutter.ActorAlign.CENTER, visible: false});
-        this._sidebar.insert_child_above(this._cityDots, weatherRow);
 
         const client = this._weatherClient = dm._weatherItem?._weatherClient;
         this._cityWeather = new CityWeather(() => this._updateWeatherSummary(this._weatherClient));
@@ -1487,15 +1487,6 @@ export default class SmartCalendarHubExtension extends Extension {
         const count = this._cityWeather?.count ?? 0;
         if (this._citySelector)
             this._citySelector.visible = count > 1;
-        if (this._cityDots) {
-            this._cityDots.visible = count > 1;
-            this._cityDots.destroy_all_children();
-            for (let i = 0; i < count; i++) {
-                this._cityDots.add_child(new St.Widget({
-                    style_class: i === this._cityWeather.index ? 'sch-city-dot sch-city-dot-on' : 'sch-city-dot',
-                }));
-            }
-        }
         if (this._gnomeWeatherBin)
             this._gnomeWeatherBin.visible = !city;
         if (this._cityCard) {
@@ -1708,13 +1699,12 @@ export default class SmartCalendarHubExtension extends Extension {
     _layoutTray() {
         if (!this._trayBox)
             return;
-        // panel padding + section padding/margins ≈ 48 px; one icon ≈ 34 px
+        // panel padding + section padding/margins ≈ 48 px, settings button
+        // on the right ≈ 46 px; one icon ≈ 34 px
         const perRow = Math.max(1,
-            Math.floor((this._settings.get_int('sidebar-width') - 48) / 34));
-        // the settings button closes the last row
+            Math.floor((this._settings.get_int('sidebar-width') - 48 - 46) / 34));
         const containers = [...this._movedTrayItems.values()].map(i => i.container);
-        if (this._gearButton)
-            containers.push(this._gearButton);
+        this._showTraySection(containers.length > 0);
 
         // Nothing to do if the rows already match (avoids re-mapping every icon,
         // which makes AppIndicator reload them).
@@ -1746,6 +1736,15 @@ export default class SmartCalendarHubExtension extends Extension {
             container.get_parent()?.remove_child(container);
             row.add_child(container);
         });
+    }
+
+    // The tray box only with icons; the spacer keeps the settings button on
+    // the right when the box is hidden.
+    _showTraySection(visible) {
+        if (this._traySection)
+            this._traySection.visible = visible;
+        if (this._traySpacer)
+            this._traySpacer.visible = !visible;
     }
 
     _moveToTray(role, indicator) {
@@ -1788,6 +1787,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // The empty slot is filled at the next layout (next time the panel opens).
         info.destroyId = container.connect('destroy', () => {
             this._movedTrayItems?.delete(indicator);
+            this._showTraySection(this._movedTrayItems?.size > 0);
         });
         this._movedTrayItems.set(indicator, info);
     }

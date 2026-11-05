@@ -58,9 +58,11 @@
     background-color: rgba(255, 255, 255, 0.16);
 }
 
-/* Cities of GNOME Weather: up/down arrows, dots, card of another city */
+/* Cities of GNOME Weather: up/down arrows, card of another city */
 .sch-city-selector {
     spacing: 2px;
+    /* same right edge as the settings button above */
+    margin-right: 4px;
 }
 
 .sch-city-arrow {
@@ -74,21 +76,6 @@
 .sch-city-arrow:hover,
 .sch-city-arrow:focus {
     background-color: rgba(255, 255, 255, 0.2);
-}
-
-.sch-city-dots {
-    spacing: 4px;
-}
-
-.sch-city-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 3px;
-    background-color: rgba(255, 255, 255, 0.25);
-}
-
-.sch-city-dot-on {
-    background-color: -st-accent-color;
 }
 
 .sch-city-card {
@@ -476,12 +463,9 @@
     spacing: 4px;
 }
 
-/* IP addresses in the side panel, under the tray */
+/* IP addresses in the side panel, under the tray: the box takes the look
+   of the weather row (sch-calendar-expander) */
 .sch-ip-panel {
-    background-color: rgba(255, 255, 255, 0.07);
-    border-radius: 14px;
-    padding: 6px 10px 6px 14px;
-    margin: 2px 4px 0 4px;
     spacing: 8px;
 }
 
@@ -489,16 +473,17 @@
     background-color: -st-accent-color;
     color: -st-accent-fg-color;
     border-radius: 6px;
-    padding: 1px 6px;
+    padding: 0 6px;
     font-size: 0.8em;
     font-weight: 700;
 }
 
 .sch-ip-panel-address {
     font-weight: 700;
+    font-size: 0.92em;
     font-feature-settings: "tnum";
-    padding: 4px 6px;
-    border-radius: 8px;
+    padding: 0 4px;
+    border-radius: 6px;
 }
 
 .sch-ip-panel-address:hover,
@@ -540,11 +525,4 @@
 
 .sch-panel-weather-temp {
     font-weight: 600;
-}
-
-/* Settings button as the last item of the tray: same size as the icons */
-.sch-tray-row .sch-gear-button {
-    margin: 0;
-    padding: 7px;
-    border-radius: 8px;
 }

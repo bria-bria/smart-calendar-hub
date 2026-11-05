@@ -385,7 +385,7 @@ export class IpView {
 }
 
 // The chosen addresses in the side panel, under the tray: icon and address,
-// one at a time; with two or more, dots and up/down arrows go through them.
+// one at a time; with two or more, up/down arrows go through them.
 // Clicking the address copies it.
 export class PanelIpBox {
     constructor(ipView, settings) {
@@ -394,13 +394,17 @@ export class PanelIpBox {
         this._index = 0;
         this._key = null;
 
-        this.actor = new St.BoxLayout({style_class: 'sch-ip-panel', x_expand: true, visible: false});
+        // Same shape as the weather row: a box with icon and address, the
+        // up/down arrows outside it on the right (only with two or more)
+        this.actor = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true, visible: false});
+        const card = new St.BoxLayout({style_class: 'sch-calendar-expander sch-ip-panel', x_expand: true});
         this._icon = new St.Icon({icon_size: 16, y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-panel-icon'});
         this._tag = new St.Label({style_class: 'sch-ip-panel-tag', y_align: Clutter.ActorAlign.CENTER, visible: false});
         this._address = new St.Button({
             style_class: 'sch-ip-panel-address',
             x_expand: true,
             x_align: Clutter.ActorAlign.START,
+            y_align: Clutter.ActorAlign.CENTER,
             can_focus: true,
             label: '',
         });
@@ -409,7 +413,8 @@ export class PanelIpBox {
             if (item?.copy)
                 this._ipView.copy(item.copy);
         });
-        this._dots = new St.BoxLayout({style_class: 'sch-city-dots', y_align: Clutter.ActorAlign.CENTER});
+        for (const child of [this._icon, this._tag, this._address])
+            card.add_child(child);
         this._arrows = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             style_class: 'sch-city-selector',
@@ -426,8 +431,8 @@ export class PanelIpBox {
             btn.connect('clicked', () => this._move(delta));
             this._arrows.add_child(btn);
         }
-        for (const child of [this._icon, this._tag, this._address, this._dots, this._arrows])
-            this.actor.add_child(child);
+        this.actor.add_child(card);
+        this.actor.add_child(this._arrows);
 
         this._items = [];
         this._listener = ipView.addListener(() => this._update());
@@ -513,14 +518,6 @@ export class PanelIpBox {
         this._tag.visible = !!item.tag;
         this._address.label = item.text;
         this._address.accessible_name = _('{name}: {ip} (click to copy)', {name: item.name, ip: item.text});
-        const many = items.length > 1;
-        this._arrows.visible = many;
-        this._dots.visible = many;
-        this._dots.destroy_all_children();
-        if (many) {
-            items.forEach((_item, i) => this._dots.add_child(new St.Widget({
-                style_class: i === this._index ? 'sch-city-dot sch-city-dot-on' : 'sch-city-dot',
-            })));
-        }
+        this._arrows.visible = items.length > 1;
     }
 }
