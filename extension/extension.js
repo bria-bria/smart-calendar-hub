@@ -2551,11 +2551,48 @@ export default class SmartCalendarHubExtension extends Extension {
     // The same measure for every app: its cards without background, and no
     // empty room before the items when the menu has no check marks at all
     _tidyTrayMenu() {
+        this._prefillTraySubmenus();
         // the extension styles itself inside the hub
         if (this._insideMenu?.hub?.keepStyle)
             return;
         this._clearTrayMenuCards();
         this._alignTrayMenuItems();
+    }
+
+    // Some apps (Qt ones, e.g. KTailctl) leave a sub-menu empty until they
+    // are told it is about to open; AppIndicator tells them only once the
+    // sub-menu is open, and GNOME never opens an empty sub-menu: so it never
+    // opens. Inside the panel we tell them first, once per visit, so the
+    // sub-menu is filled before the click. Only through the item's own
+    // AppIndicator object, when it has one; nothing else is touched.
+    _prefillTraySubmenus() {
+        const shown = this._insideMenu;
+        if (!shown?.box)
+            return;
+        shown.prefilled ??= new Set();
+        const visit = menu => {
+            for (const item of menu?._getMenuItems?.() ?? []) {
+                if (item instanceof PopupMenu.PopupMenuSection) {
+                    visit(item);
+                    continue;
+                }
+                const sub = item.menu;
+                if (!sub)
+                    continue;
+                const dbus = item._dbusItem;
+                if (sub.isEmpty?.() && typeof dbus?.sendAboutToShow === 'function' &&
+                    !shown.prefilled.has(dbus)) {
+                    shown.prefilled.add(dbus);
+                    try {
+                        dbus.sendAboutToShow()?.catch?.(() => {});
+                    } catch (e) {
+                        console.error(`Smart Calendar Hub: tray sub-menu: ${e}`);
+                    }
+                }
+                visit(sub);
+            }
+        };
+        visit(shown.menu);
     }
 
     // GNOME keeps room before every item for a check mark or a dot, even in
