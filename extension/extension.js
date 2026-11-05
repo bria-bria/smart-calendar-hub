@@ -2548,7 +2548,7 @@ export default class SmartCalendarHubExtension extends Extension {
     // The page is built now and destroyed when the visit ends. Returns false
     // when the panel is not available (extension switched off, lock screen)
     // or the page cannot be shown, so the caller can use its own fallback.
-    showExternalPage({id = null, title = '', buildPage, keepStyle = false} = {}) {
+    showExternalPage({id = null, title = '', buildPage, keepStyle = false, buildSidePage = null} = {}) {
         const dm = this._dateMenu;
         if (!dm?.menu || this._disabling || !this._trayMenuHost || typeof buildPage !== 'function')
             return false;
@@ -2591,7 +2591,81 @@ export default class SmartCalendarHubExtension extends Extension {
             }
         });
         this._enterTrayPage(shown, typeof title === 'string' && title ? title : String(id ?? ''));
+        if (typeof buildSidePage === 'function')
+            this._showSidePage(shown, buildSidePage);
         return true;
+    }
+
+    // What showExternalPage supports beyond the page itself (read only):
+    // 'side' = buildSidePage, a card beside the panel
+    get externalPageFeatures() {
+        return Object.freeze(['side']);
+    }
+
+    // The second page of an extension in the card beside the panel (the one
+    // of the calendar): the calendar steps aside for the visit, the page
+    // scrolls if long. When it cannot be shown, the main page stays alone.
+    _showSidePage(shown, buildSidePage) {
+        let page;
+        try {
+            page = buildSidePage();
+        } catch (e) {
+            console.error(`Smart Calendar Hub: side page ${shown.externalId}: ${e}`);
+            return;
+        }
+        if (!(page instanceof Clutter.Actor) || page.get_parent())
+            return;
+        const card = this._calendarCard;
+        const view = this._calendarView?.actor;
+        if (!card || !view || !this._sidebar) {
+            page.destroy();
+            return;
+        }
+        const side = {page, wasSide: calendarSide, wasExpanded: !!this._calendarBox?.visible};
+        if (!calendarSide)
+            this._setCalendarSide(true);
+        if (!calendarSide) {
+            page.destroy();
+            return;
+        }
+        view.hide();
+        const inner = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+        inner.add_child(page);
+        page.add_style_class_name?.('sch-hub-page');
+        side.scroll = new St.ScrollView({
+            style_class: 'sch-side-page-scroll',
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+            overlay_scrollbars: true,
+            x_expand: true,
+            y_expand: true,
+            child: inner,
+        });
+        card.add_child(side.scroll);
+        // as tall as the panel, so a long list scrolls inside the card
+        card.height = this._sidebar.height;
+        shown.side = side;
+        this._tidyTrayMenu();
+    }
+
+    // The calendar back in its card, or back inside the panel as it was
+    _hideSidePage(shown) {
+        const side = shown.side;
+        if (!side)
+            return;
+        shown.side = null;
+        try {
+            side.scroll.destroy(); // the page with it: the extension frees it on 'destroy'
+        } catch (e) {
+            console.error(`Smart Calendar Hub: side page ${shown.externalId}: ${e}`);
+        }
+        if (this._calendarCard)
+            this._calendarCard.height = -1;
+        this._calendarView?.actor.show();
+        if (!side.wasSide) {
+            this._setCalendarSide(false);
+            this._setCalendarExpanded(side.wasExpanded);
+        }
     }
 
     // The card takes the place of every other card of the panel (they stay
@@ -2679,8 +2753,8 @@ export default class SmartCalendarHubExtension extends Extension {
     // items stay aligned with each other).
     _alignTrayMenuItems() {
         const shown = this._insideMenu;
-        const root = shown?.box ?? shown?.page;
-        if (!root)
+        const roots = [shown?.box ?? shown?.page, shown?.side?.page].filter(Boolean);
+        if (!roots.length)
             return;
         const ornaments = [];
         const visit = actor => {
@@ -2691,7 +2765,7 @@ export default class SmartCalendarHubExtension extends Extension {
                     visit(child);
             }
         };
-        visit(root);
+        roots.forEach(visit);
         const marked = ornaments.some(o => o.icon_name && (o.visible || shown.ornaments.has(o)));
         for (const ornament of ornaments) {
             if (marked && shown.ornaments.has(ornament)) {
@@ -2712,8 +2786,8 @@ export default class SmartCalendarHubExtension extends Extension {
     // drawing code (e.g. a graph) cannot be reached from outside.
     _clearTrayMenuCards() {
         const shown = this._insideMenu;
-        const root = shown?.box ?? shown?.page;
-        if (!root)
+        const roots = [shown?.box ?? shown?.page, shown?.side?.page].filter(Boolean);
+        if (!roots.length)
             return;
         const visit = actor => {
             for (const child of actor.get_children()) {
@@ -2724,7 +2798,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 visit(child);
             }
         };
-        visit(root);
+        roots.forEach(visit);
     }
 
     _isTrayMenuCard(widget) {
@@ -2766,6 +2840,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._insideMenu = null;
         if (shown.cardsId)
             GLib.source_remove(shown.cardsId);
+        this._hideSidePage(shown);
         if (shown.actorShowId) {
             try {
                 shown.menu.actor.disconnect(shown.actorShowId);

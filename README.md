@@ -225,6 +225,9 @@ const shown = hub?.stateObj?.showExternalPage?.({
     title: 'My extension',       // title above the page
     buildPage: () => new St.Label({text: 'Hello'}),
     keepStyle: false,            // true: the hub leaves your backgrounds alone
+    // optional: a second page in a card beside the panel (where the
+    // calendar opens), for long lists; it scrolls by itself
+    buildSidePage: () => new St.Label({text: 'More room here'}),
 }) ?? false;
 if (!shown)
     this.openPreferences();      // your own fallback
@@ -237,6 +240,11 @@ if (!shown)
   screen, or when `buildPage` throws or returns an actor that already has a
   parent: keep a fallback of your own.
 - Nothing to register: one call, the hub owns the page while it is shown.
+- `buildSidePage` is optional: if it throws or returns an invalid actor the
+  main page is shown alone. The calendar beside the panel steps aside for the
+  visit and comes back after it. Both pages are destroyed together.
+- `hub.stateObj.externalPageFeatures` (read only) lists what this version
+  supports beyond the main page: `['side']` means `buildSidePage`.
 
 ## License
 
