@@ -222,6 +222,7 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
 .tagline { font-size: 22px; font-weight: 700; margin: 0 0 14px; color: var(--accent-text); }
 .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .badges span { font-size: 13px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.shot.wide img { width: 100%; height: auto; display: block; border-radius: 16px; }
 </style>
 </head>
 <body>
@@ -260,6 +261,7 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
       <a href="#tour">Tour</a>
       <a href="#features">Features</a>
       <a href="#integrated">Extensions</a>
+      <a href="#built-for-the-hub">BlueHub</a>
       <a href="#developers">Developers</a>
     </nav>
   </header>
@@ -445,6 +447,19 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
       <tr><td><a href="https://extensions.gnome.org/extension/9329/wifi-signal-plus/">WiFi Signal Plus</a></td><td>Visualizes Wi-Fi performance meters, signal history, and nearby SSIDs. Inside the hub, all widgets stay fully interactive while container backgrounds are automatically balanced for visual harmony.</td></tr>
       <tr><td><a href="https://extensions.gnome.org/extension/4356/top-bar-organizer/">Top Bar Organizer</a></td><td>Built-in cooperative ordering: a single toggle syncs the hub's clock position directly with Top Bar Organizer's preferences to prevent layout conflicts, safely restoring your original order when turned off.</td></tr>
     </table>
+  </section>
+
+  <section class="block" id="built-for-the-hub">
+    <h2>Built for the hub: BlueHub</h2>
+    <p class="sub">BlueHub, our other extension, manages several Bluetooth devices at once — gamepads, headphones, speakers — sharing the channels of your adapters and the audio. On its own it opens a full window of settings. With Smart Calendar Hub it lives inside the panel, following the page model: its controls in the column, its device lists in the card beside it.</p>
+    <figure class="shot wide">
+      <img src="img/bluehub.webp" alt="BlueHub without the hub, a long settings window, and with the hub: controls in the side panel and the list of Bluetooth devices in the card beside it" loading="lazy">
+      <figcaption>Without the hub, and inside it<span>Left: BlueHub's own window. Right: the same extension inside Smart Calendar Hub, built with the page kit — two panels, one look.</span></figcaption>
+    </figure>
+    <div class="cta" style="margin-top:20px">
+      <a class="btn primary" href="https://extensions.gnome.org/extension/11630/">BlueHub on extensions.gnome.org</a>
+      <a class="btn secondary" href="https://github.com/bria-bria/bluehub">Source on GitHub</a>
+    </div>
   </section>
 
   <section class="block" id="developers">

@@ -47,6 +47,14 @@ there — always on our side: their code stays exactly as their authors wrote it
 | [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) | the tray icons of your apps and their menus, e.g. KTailctl (Tailscale) and Cachy-Update |
 | [Top Bar Organizer](https://extensions.gnome.org/extension/4356/top-bar-organizer/) | with one switch, the clock position is written into its order so the two never fight (the old order comes back when switched off); the tray keeps its icons when it re-sorts them |
 
+### Built for the hub
+
+[BlueHub](https://extensions.gnome.org/extension/11630/) ([source](https://github.com/bria-bria/bluehub)),
+our other extension, manages several Bluetooth devices at once and lives
+entirely inside the panel when Smart Calendar Hub is installed: its controls
+in the column, its device lists in the card beside it, built with the page
+kit. Without the hub it opens its own settings window.
+
 ## Screenshots
 
 ![The side panel](screenshots/1-overview.png)
