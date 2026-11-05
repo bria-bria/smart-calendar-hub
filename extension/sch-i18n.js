@@ -140,6 +140,10 @@ export const IT = {
         "Impegni di oggi",
     "A card with the events of the day above the notifications; click it to open GNOME Calendar":
         "Una scheda con gli impegni del giorno sopra le notifiche; cliccala per aprire GNOME Calendar",
+    "Align to GNOME’s menu":
+        "Allinea al menu di GNOME",
+    "As wide as the system menu (Wi-Fi, volume…), kept the same automatically":
+        "Larga come il menu di sistema (Wi-Fi, volume…), tenuta uguale in automatico",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

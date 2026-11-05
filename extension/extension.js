@@ -82,6 +82,8 @@ export default class SmartCalendarHubExtension extends Extension {
 
     _enable() {
         this._disabling = false;
+        this._calendarWidth = undefined; // the new calendar view gets its width
+        this._gnomeWidth = null;
         this._dateMenu = Main.panel.statusArea.dateMenu;
         if (!this._dateMenu)
             return;
@@ -357,7 +359,7 @@ export default class SmartCalendarHubExtension extends Extension {
             this._updateAlertDot();
             break;
         case 'sidebar-width':
-            this._calendarView?.setWidth(this._settings.get_int(key));
+        case 'sidebar-width-gnome':
             this._updateSidebarSize();
             this._layoutTray();
             break;
@@ -1455,7 +1457,7 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!items.length)
             return;
         // panel padding (4) + row margins (8), 6 px between buttons
-        const inner = this._settings.get_int('sidebar-width') - 12;
+        const inner = this._sidebarWidth() - 12;
         const width = Math.floor((inner - 6 * (items.length - 1)) / items.length);
         for (const item of items)
             item.width = width;
@@ -1576,12 +1578,49 @@ export default class SmartCalendarHubExtension extends Extension {
         this._relayout();
     }
 
+    // Width of the panel: the setting, or the width of GNOME's system menu
+    // ("Align to GNOME's menu"), measured again when asked (`measure`, e.g.
+    // every time the panel opens: that menu changes with its buttons, the
+    // theme and the screen scale).
+    _sidebarWidth(measure = false) {
+        if (!this._settings.get_boolean('sidebar-width-gnome'))
+            return this._settings.get_int('sidebar-width');
+        if (measure || !this._gnomeWidth)
+            this._gnomeWidth = this._measureGnomeMenu() ?? this._gnomeWidth;
+        return this._gnomeWidth ?? this._settings.get_int('sidebar-width');
+    }
+
+    // Outer width of GNOME's system menu minus the frame of our popup
+    _measureGnomeMenu() {
+        try {
+            const theirs = Main.panel.statusArea.quickSettings?.menu?._boxPointer;
+            const ours = this._dateMenu?.menu?._boxPointer;
+            if (!theirs || !ours || !this._sidebar)
+                return null;
+            const [, theirWidth] = theirs.get_preferred_width(-1);
+            const [, ourWidth] = ours.get_preferred_width(-1);
+            const frame = ourWidth - this._sidebar.width;
+            const width = Math.round(theirWidth - frame);
+            // a menu not drawn yet measures nothing useful
+            return width >= 280 && width <= 900 ? width : null;
+        } catch (e) {
+            console.warn(`Smart Calendar Hub: cannot measure GNOME's menu: ${e.message}`);
+            return null;
+        }
+    }
+
     _updateSidebarSize() {
         if (!this._sidebar)
             return;
         const monitor = Main.layoutManager.findIndexForActor(this._dateMenu.container);
         const workArea = Main.layoutManager.getWorkAreaForMonitor(monitor);
-        this._sidebar.width = this._settings.get_int('sidebar-width');
+        const width = this._sidebarWidth(true);
+        this._sidebar.width = width;
+        // the calendar cells follow the width (only when it changed)
+        if (this._calendarWidth !== width) {
+            this._calendarWidth = width;
+            this._calendarView?.setWidth(width);
+        }
         // Fill the work area, but never be taller than it: 4 px gap at the
         // top plus the popup padding and border (about 24 px) and a margin.
         this._sidebar.height = Math.max(0, workArea.height - 40);

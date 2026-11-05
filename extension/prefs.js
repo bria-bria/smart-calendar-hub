@@ -329,6 +329,12 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('calendar-collapsed', collapseRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         look.add(collapseRow);
 
+        const alignRow = new Adw.SwitchRow({
+            title: _('Align to GNOME’s menu'),
+            subtitle: _('As wide as the system menu (Wi-Fi, volume…), kept the same automatically'),
+        });
+        settings.bind('sidebar-width-gnome', alignRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        look.add(alignRow);
         const widthRow = new Adw.SpinRow({
             title: _('Panel width (pixels)'),
             adjustment: new Gtk.Adjustment({
@@ -339,6 +345,8 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
             }),
         });
         settings.bind('sidebar-width', widthRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('sidebar-width-gnome', widthRow, 'sensitive',
+            Gio.SettingsBindFlags.GET | Gio.SettingsBindFlags.INVERT_BOOLEAN);
         look.add(widthRow);
 
         // one setting for the space between the icons of the top bar

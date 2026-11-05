@@ -192,6 +192,11 @@
       <summary>Collapse the calendar every time the panel opens</summary>
     </key>
 
+    <key name="sidebar-width-gnome" type="b">
+      <default>false</default>
+      <summary>Panel as wide as GNOME's system menu (measured every time it opens)</summary>
+    </key>
+
     <key name="sidebar-width" type="i">
       <range min="320" max="520"/>
       <default>380</default>
