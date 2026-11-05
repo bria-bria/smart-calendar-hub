@@ -27,6 +27,8 @@ import {CityWeather, buildForecast} from './sch-weather.js';
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
 // Tray arrows: how far one click moves the view (one icon cell + spacing)
 const TRAY_STEP = 36;
+// Inline style of the buttons in the tray (see _tightenTrayButton)
+const TRAY_BUTTON_STYLE = '-natural-hpadding: 0px; -minimum-hpadding: 0px';
 // An icon counts as "normal" for an app only after being shown this long
 const NORMAL_ICON_MIN_SECONDS = 600;
 const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
@@ -1881,6 +1883,7 @@ export default class SmartCalendarHubExtension extends Extension {
         container.x_align = Clutter.ActorAlign.CENTER;
         container.y_align = Clutter.ActorAlign.CENTER;
         info.cell.set_child(container);
+        this._tightenTrayButton(info);
 
         // The icon is being destroyed (e.g. AppIndicator removes it). Its cell
         // must NOT be destroyed here: the icon is still its child, in the
@@ -1905,6 +1908,7 @@ export default class SmartCalendarHubExtension extends Extension {
             if (info.hadPanelMenu)
                 Main.panel.menuManager.addMenu(menu);
         }
+        this._restoreTrayButton(info);
         info.container.remove_style_class_name('sch-tray-item');
         info.container.y_expand = info.yExpand;
         info.container.x_expand = info.xExpand;
@@ -1915,6 +1919,49 @@ export default class SmartCalendarHubExtension extends Extension {
         if (info.container.get_parent() === info.cell)
             info.cell.set_child(null);
         info.cell.destroy();
+    }
+
+    // No side padding on the button of a tray icon, so every icon fits its
+    // cell centred. Other extensions set it INLINE (AppIndicator in compact
+    // mode: "-natural-hpadding: 10px"), and inline style wins over our
+    // stylesheet: so it is set inline too, in front of their style, and set
+    // again if they change it (same approach as the Status Area Horizontal
+    // Spacing extension). _restoreTrayButton() gives the original back.
+    _tightenTrayButton(info) {
+        const button = info.container.get_first_child();
+        if (!button?.set_style)
+            return;
+        info.button = button;
+        info.buttonStyle = button.get_style();
+        const apply = () => {
+            const theirs = info.buttonStyle ? `; ${info.buttonStyle}` : '';
+            // ours last, so it wins over theirs
+            button.set_style(`${theirs}; ${TRAY_BUTTON_STYLE}`.replace(/^; /, ''));
+        };
+        apply();
+        info.buttonStyleId = button.connect('style-changed', () => {
+            const current = button.get_style() ?? '';
+            if (current.includes(TRAY_BUTTON_STYLE))
+                return;
+            // they changed it: keep theirs as the original, ours again on top
+            info.buttonStyle = current;
+            apply();
+        });
+    }
+
+    _restoreTrayButton(info) {
+        const button = info.button;
+        if (!button)
+            return;
+        try {
+            if (info.buttonStyleId)
+                button.disconnect(info.buttonStyleId);
+            button.set_style(info.buttonStyle ?? null);
+        } catch (_e) {
+            // the button is already gone
+        }
+        info.button = null;
+        info.buttonStyleId = 0;
     }
 
     _restoreTrayItem(indicator, info) {
