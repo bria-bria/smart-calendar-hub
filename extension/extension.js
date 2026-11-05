@@ -22,6 +22,8 @@ import {CalendarView} from './sch-calendar.js';
 import {SkyView} from './sch-sky.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
+// An icon counts as "normal" for an app only after being shown this long
+const NORMAL_ICON_MIN_SECONDS = 600;
 const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
 
 // Panel items that must never be moved inside the panel tray.
@@ -145,9 +147,18 @@ export default class SmartCalendarHubExtension extends Extension {
             ids.forEach(id => source.disconnect(id));
         this._alertSources = null;
         this._unpatchNotificationMessages();
-        for (const [sni, ids] of this._alertTray ?? [])
+        for (const [sni, ids] of this._alertTray ?? []) {
+            this._accountTrayIcon(sni); // last stretch of time of its icon
             ids.forEach(id => sni.disconnect(id));
+        }
+        if (this._iconSaveId) {
+            GLib.source_remove(this._iconSaveId);
+            this._iconSaveId = 0;
+        }
+        this._saveIconStats();
         this._alertTray = null;
+        this._iconStats = null;
+        this._iconShown = null;
         this._alertDot?.destroy();
         this._alertTip?.destroy();
         this._alertTip = null;
@@ -739,7 +750,105 @@ export default class SmartCalendarHubExtension extends Extension {
     // name says so. Apps that only draw a badge inside the image cannot be read.
     _trayIsAlerting(sni) {
         return sni.status === 'NeedsAttention' ||
-            /attention|unread|updates-available/i.test(sni.icon?.name ?? '');
+            /attention|unread|updates-available/i.test(sni.icon?.name ?? '') ||
+            this._trayIconChanged(sni);
+    }
+
+    // ------------------------------------------------------------------
+    // Apps that only change their tray icon (a badge drawn in the image,
+    // e.g. WhatsApp, MEGA): the icon shown longest is learnt as "normal";
+    // any other icon counts as an alert. Times are kept across sessions in
+    // tray-icon-stats: "app id TAB fingerprint TAB seconds".
+    // ------------------------------------------------------------------
+
+    // Name + checksum of the image (and of the overlay, used by some apps)
+    _iconFingerprint(sni) {
+        try {
+            const parts = [];
+            for (const icon of [sni.icon, sni.hasOverlayIcon ? sni.overlayIcon : null]) {
+                if (!icon)
+                    continue;
+                parts.push(icon.name ?? '');
+                const pixmap = icon.pixmap;
+                if (pixmap && pixmap.n_children?.() > 0) {
+                    parts.push(GLib.compute_checksum_for_bytes(GLib.ChecksumType.MD5,
+                        pixmap.get_data_as_bytes()));
+                }
+            }
+            return parts.join('|') || null;
+        } catch (_e) {
+            return null;
+        }
+    }
+
+    _loadIconStats() {
+        this._iconStats = new Map(); // app id -> Map(fingerprint -> seconds)
+        this._iconShown = new Map(); // sni -> {fp, since}
+        for (const line of this._settings.get_strv('tray-icon-stats')) {
+            const [id, fp, secs] = line.split('\t');
+            if (!id || !fp)
+                continue;
+            if (!this._iconStats.has(id))
+                this._iconStats.set(id, new Map());
+            this._iconStats.get(id).set(fp, Number(secs) || 0);
+        }
+    }
+
+    // Animated icons (e.g. a sync spinner) change many times a second:
+    // write the setting at most once a minute (and on disable).
+    _queueSaveIconStats() {
+        if (this._iconSaveId)
+            return;
+        this._iconSaveId = GLib.timeout_add_seconds(GLib.PRIORITY_LOW, 60, () => {
+            this._iconSaveId = 0;
+            this._saveIconStats();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _saveIconStats() {
+        if (!this._iconStats)
+            return;
+        const lines = [];
+        for (const [id, fps] of this._iconStats) {
+            // the three icons seen longest are enough
+            [...fps].sort((a, b) => b[1] - a[1]).slice(0, 3)
+                .forEach(([fp, secs]) => lines.push(`${id}\t${fp}\t${Math.round(secs)}`));
+        }
+        const old = this._settings.get_strv('tray-icon-stats');
+        if (old.length !== lines.length || old.some((l, i) => l !== lines[i]))
+            this._settings.set_strv('tray-icon-stats', lines);
+    }
+
+    // Adds the time the current icon has been shown, then restarts the count
+    _accountTrayIcon(sni) {
+        const shown = this._iconShown?.get(sni);
+        const now = Date.now() / 1000;
+        if (shown?.fp) {
+            if (!this._iconStats.has(sni.id))
+                this._iconStats.set(sni.id, new Map());
+            const fps = this._iconStats.get(sni.id);
+            fps.set(shown.fp, (fps.get(shown.fp) ?? 0) + Math.max(0, now - shown.since));
+        }
+        this._iconShown?.set(sni, {fp: this._iconFingerprint(sni), since: now});
+    }
+
+    _trayIconChanged(sni) {
+        const shown = this._iconShown?.get(sni);
+        const fps = this._iconStats?.get(sni.id);
+        if (!shown?.fp || !fps)
+            return false;
+        const running = Date.now() / 1000 - shown.since;
+        let normal = null;
+        let best = 0;
+        for (const [fp, secs] of fps) {
+            const total = secs + (fp === shown.fp ? running : 0);
+            if (total > best) {
+                best = total;
+                normal = fp;
+            }
+        }
+        return best >= NORMAL_ICON_MIN_SECONDS && normal !== shown.fp;
     }
 
     // Follows every AppIndicator icon (wherever it is) for the red dot.
@@ -751,10 +860,20 @@ export default class SmartCalendarHubExtension extends Extension {
             if (!sni?.id || this._alertTray.has(sni) || typeof sni.connect !== 'function')
                 continue;
             const update = () => this._updateAlertDot();
+            if (!this._iconStats)
+                this._loadIconStats();
+            this._iconShown.set(sni, {fp: this._iconFingerprint(sni), since: Date.now() / 1000});
             const ids = [
-                sni.connect('icon', update),
+                sni.connect('icon', () => {
+                    this._accountTrayIcon(sni);
+                    this._queueSaveIconStats();
+                    this._updateAlertDot();
+                }),
                 sni.connect('status', update),
                 sni.connect('destroy', () => {
+                    this._accountTrayIcon(sni);
+                    this._iconShown?.delete(sni);
+                    this._queueSaveIconStats();
                     this._alertTray?.delete(sni);
                     this._updateAlertDot();
                 }),

@@ -59,6 +59,12 @@
       <description>"identifier TAB name TAB until" (Unix seconds, 0 = always): no banner, notifications stay in the panel list, no red dot.</description>
     </key>
 
+    <key name="tray-icon-stats" type="as">
+      <default>[]</default>
+      <summary>How long each tray icon has been shown (written by the extension)</summary>
+      <description>"app id TAB fingerprint TAB seconds": the icon shown longest is the normal one; any other counts as an alert for the red dot.</description>
+    </key>
+
     <key name="notify-apps-seen" type="as">
       <default>[]</default>
       <summary>Apps that sent notifications (written by the extension)</summary>

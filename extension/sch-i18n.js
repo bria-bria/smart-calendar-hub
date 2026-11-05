@@ -176,8 +176,8 @@ export const IT = {
         "Scrive la posizione dell'ora anche nelle impostazioni dell'estensione Top Bar Organizer; l'ordine precedente viene ripristinato quando Smart Calendar Hub viene spenta",
     "Red dot on the clock":
         "Puntino rosso sull'ora",
-    "A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon signals something new (only for apps that report it, e.g. Telegram).":
-        "Accanto all'ora compare un puntino rosso finché una delle app accese qui ha delle notifiche, o la sua icona del vassoio segnala una novità (solo per le app che lo comunicano, per esempio Telegram).",
+    "A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon changes from the usual one (for example a badge with unread messages).":
+        "Accanto all'ora compare un puntino rosso finché una delle app accese qui ha delle notifiche, o la sua icona del vassoio cambia rispetto al solito (per esempio un pallino con i messaggi non letti).",
     "No notifications seen yet":
         "Nessuna notifica vista per ora",
     "Apps appear here after they send a notification":

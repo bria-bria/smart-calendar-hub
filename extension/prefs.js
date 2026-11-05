@@ -408,7 +408,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         pageNotifications.add(mutedGroup(window, settings));
         pageNotifications.add(appSwitchGroup(window, settings, {
             title: _('Red dot on the clock'),
-            description: _('A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon signals something new (only for apps that report it, e.g. Telegram).'),
+            description: _('A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon changes from the usual one (for example a badge with unread messages).'),
             seenKey: 'notify-apps-seen',
             listKey: 'alert-apps',
             listMeansOn: true,
