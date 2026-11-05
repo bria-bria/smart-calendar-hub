@@ -15,7 +15,6 @@ import 'cairo'; // makes the Cairo context of St.DrawingArea usable
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
-import PangoCairo from 'gi://PangoCairo';
 import GLib from 'gi://GLib';
 import GWeather from 'gi://GWeather';
 import Shell from 'gi://Shell';
@@ -249,9 +248,9 @@ export class WorldClocksCard {
                 .sort((a, b) => a.when.compare(b.when));
             for (const alarm of next) {
                 const today = alarm.when.format('%F') === now.format('%F');
-                // on the chip with AM/PM, as the dials; in the label as GNOME
-                const time = this._format(alarm.when, !today);
-                const chipTime = this._format(alarm.when, !today, true);
+                // on the chip as GNOME's clock; in the label with AM/PM
+                const chipTime = this._format(alarm.when, !today);
+                const time = this._format(alarm.when, !today, true);
                 const tip = alarm.name
                     ? _('Alarm · {name} · {time}', {name: alarm.name, time})
                     : _('Alarm · {time}', {time});
@@ -316,7 +315,8 @@ export class WorldClocksCard {
             this._tip.hide();
             return;
         }
-        text ??= `${clock.name} · ${this._format(this._time(clock))}`;
+        // the hands show only 12 hours: the label says AM or PM
+        text ??= `${clock.name} · ${this._format(this._time(clock), false, true)}`;
         this._tip.text = text;
         actor.accessible_name = text;
         this._tip.show();
@@ -362,19 +362,6 @@ export class WorldClocksCard {
                 cr.lineTo(cx + Math.sin(a) * r * 0.92, cy - Math.cos(a) * r * 0.92);
             }
             cr.stroke();
-            // AM or PM in the lower half, under the hands: the hands show only
-            // 12 hours (the labels follow GNOME's 12/24-hour format)
-            {
-                const layout = PangoCairo.create_layout(cr);
-                const font = Pango.FontDescription.from_string('Sans Bold');
-                font.set_absolute_size(r * 0.42 * Pango.SCALE);
-                layout.set_font_description(font);
-                layout.set_text(hour < 12 ? 'AM' : 'PM', -1);
-                const [, ext] = layout.get_pixel_extents();
-                cr.setSourceRGBA(1, 1, 1, 0.55);
-                cr.moveTo(cx - ext.width / 2 - ext.x, cy + r * 0.32 - ext.y);
-                PangoCairo.show_layout(cr, layout);
-            }
             cr.setLineCap(1); // round
             // hour hand
             const hourAngle = ((hour % 12) + t.get_minute() / 60) * Math.PI / 6;
