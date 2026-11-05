@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Calendar Hub</title>
+<meta name="description" content="A GNOME Shell extension that gathers every extension's menu in one side panel, together with your calendar, weather, notifications and clocks.">
+<style>
+:root {
+  --bg: #f6f5f4;
+  --surface: #ffffff;
+  --text: #241f31;
+  --muted: #5e5c64;
+  --line: rgba(0, 0, 0, 0.1);
+  --accent: #3584e4;
+  --accent-text: #1c71d8;
+  --panel: #2b2b2f;
+  --panel-card: rgba(255, 255, 255, 0.09);
+  --panel-line: rgba(255, 255, 255, 0.08);
+  --panel-text: #ffffff;
+  --panel-muted: rgba(255, 255, 255, 0.55);
+  --desk: #1a2a4f;
+  --code-bg: #f0eff2;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1e1e22;
+    --surface: #28282d;
+    --text: #f6f5f4;
+    --muted: #b0aeb6;
+    --line: rgba(255, 255, 255, 0.1);
+    --accent-text: #78aeed;
+    --desk: #12182b;
+    --code-bg: #303036;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Cantarell, "Adwaita Sans", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+}
+a { color: var(--accent-text); }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+header.top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 0;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 8px; background: var(--accent);
+  display: grid; place-items: center; color: #fff; font-size: 15px;
+}
+nav a { margin-left: 18px; color: var(--muted); text-decoration: none; font-size: 15px; }
+nav a:hover { color: var(--text); }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 48px; align-items: center; padding: 40px 0 72px; }
+.hero h1 { font-size: 52px; line-height: 1.08; margin: 0 0 18px; letter-spacing: -0.02em; }
+.hero p.lead { font-size: 20px; color: var(--muted); margin: 0 0 28px; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn {
+  display: inline-block; padding: 11px 20px; border-radius: 999px;
+  font-weight: 700; text-decoration: none; font-size: 16px;
+}
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.secondary { border: 1px solid var(--line); color: var(--text); background: var(--surface); }
+.note { font-size: 14px; color: var(--muted); margin-top: 12px; }
+
+/* the panel illustration */
+.desk {
+  background: radial-gradient(circle at 30% 20%, #2c4a8a, var(--desk) 70%);
+  border-radius: 20px; padding: 0 0 22px; overflow: hidden;
+}
+.bar {
+  height: 30px; background: #000; display: flex; align-items: center; justify-content: flex-end;
+  gap: 10px; padding: 0 12px; color: #fff; font-size: 12px; font-weight: 700;
+}
+.pill { background: #2f2f33; border-radius: 999px; padding: 2px 10px; }
+.panel {
+  width: min(330px, 92%); margin: 10px 12px 0 auto; background: var(--panel); border-radius: 22px;
+  padding: 10px; color: var(--panel-text); font-size: 13px; display: flex; flex-direction: column; gap: 8px;
+}
+.tray { display: flex; align-items: center; gap: 6px; }
+.tray-box {
+  flex: 1; display: flex; justify-content: center; gap: 6px; padding: 5px;
+  border: 1px solid var(--panel-line); border-radius: 12px; background: var(--panel-card);
+}
+.ico {
+  width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.ico.on { background: var(--accent); color: #fff; }
+.gear { width: 26px; height: 26px; border-radius: 50%; background: var(--panel-card); display: grid; place-items: center; }
+.card { background: var(--panel-card); border: 1px solid var(--panel-line); border-radius: 12px; padding: 8px 10px; }
+.card-head { display: flex; align-items: center; gap: 8px; font-weight: 700; padding-bottom: 6px; border-bottom: 1px solid var(--panel-line); margin-bottom: 6px; }
+.row { display: flex; justify-content: space-between; padding: 4px 0; }
+.row span:last-child { color: var(--panel-muted); }
+.section { color: var(--panel-muted); font-size: 11px; font-weight: 700; margin-top: 6px; }
+.meter { height: 4px; border-radius: 2px; background: var(--accent); margin: 2px 0 6px; }
+.graph { height: 34px; border-radius: 4px; background: linear-gradient(180deg, transparent 40%, rgba(51, 209, 122, 0.25)); border-bottom: 2px solid #33d17a; margin: 4px 0; }
+.item { padding: 6px 8px; border-radius: 10px; }
+.item:hover { background: rgba(255, 255, 255, 0.08); }
+
+section.block { padding: 64px 0; border-top: 1px solid var(--line); }
+section.block h2 { font-size: 34px; line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.01em; }
+section.block p.sub { color: var(--muted); margin: 0 0 32px; max-width: 680px; }
+
+.compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.compare figure { margin: 0; }
+.compare figcaption { margin-top: 10px; font-weight: 700; }
+.compare figcaption span { display: block; font-weight: 400; color: var(--muted); font-size: 15px; }
+.scatter { position: relative; height: 440px; border-radius: 16px; background: var(--desk); overflow: hidden; }
+.scatter .bar { position: absolute; left: 0; right: 0; top: 0; }
+.float {
+  position: absolute; border-radius: 12px; padding: 8px 10px; font-size: 12px; color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.feature { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+.feature .icon { font-size: 22px; }
+.feature h3 { margin: 8px 0 6px; font-size: 18px; }
+.feature p { margin: 0; color: var(--muted); font-size: 15px; }
+
+table.works { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+table.works th, table.works td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.works tr:last-child td { border-bottom: none; }
+table.works th { font-size: 14px; color: var(--muted); font-weight: 700; }
+
+.dev { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 32px; align-items: start; }
+pre {
+  margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 14px;
+  padding: 18px; overflow-x: auto; font-size: 14px; line-height: 1.5;
+  font-family: "Source Code Pro", ui-monospace, "DejaVu Sans Mono", monospace;
+}
+.dev ul { padding-left: 20px; color: var(--muted); }
+.dev li { margin-bottom: 8px; }
+
+footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+
+@media (max-width: 820px) {
+  .hero, .dev, .compare { grid-template-columns: minmax(0, 1fr); }
+  .hero h1 { font-size: 38px; }
+  nav { display: none; }
+}
+
+.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.ico .i { width: 15px; height: 15px; }
+.gear .i { width: 14px; height: 14px; }
+.card-head .i { width: 15px; height: 15px; }
+.bar .i { width: 13px; height: 13px; display: inline-block; vertical-align: -2px; }
+.feature .icon { width: 40px; height: 40px; border-radius: 12px; background: rgba(53, 132, 228, 0.12); color: var(--accent-text); display: grid; place-items: center; }
+.feature .icon .i { width: 22px; height: 22px; }
+.brand-mark .i { width: 18px; height: 18px; }
+.bar .tray-icons { display: flex; gap: 10px; align-items: center; }
+.row-card { display: flex; justify-content: space-between; align-items: center; }
+.with-icon { display: flex; align-items: center; gap: 6px; }
+.with-icon .i { width: 13px; height: 13px; }
+.chev { color: var(--panel-muted); font-weight: 700; }
+.sky-row { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+.sky { width: 110px; height: 46px; }
+.date { text-align: right; line-height: 1.2; }
+.date span { color: var(--panel-muted); display: block; }
+.date b { font-size: 17px; color: rgba(255, 255, 255, 0.8); }
+.clocks { display: flex; align-items: center; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; background: var(--accent); color: #fff; border-radius: 999px; padding: 3px 9px; font-weight: 700; font-size: 12px; }
+.chip .i { width: 12px; height: 12px; }
+.dial { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.6); position: relative; }
+.dial::after, .dial::before { content: ""; position: absolute; left: 50%; bottom: 50%; width: 2px; margin-left: -1px; border-radius: 1px; transform-origin: 50% 100%; }
+.dial::after { height: 40%; background: var(--accent); transform: rotate(var(--m, 0deg)); }
+.dial::before { height: 26%; background: #fff; transform: rotate(var(--h, 0deg)); }
+.mini-btn { display: inline-block; background: rgba(255, 255, 255, 0.12); border-radius: 999px; padding: 3px 12px; font-weight: 700; }
+.screen { position: relative; height: 440px; border-radius: 16px; background: var(--desk); overflow: hidden; }
+.bar.center { justify-content: center; }
+.gmenu { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); width: 88%; max-width: 420px; display: grid; grid-template-columns: 1fr 1.15fr; gap: 10px; background: #36363a; border-radius: 20px; padding: 10px; color: #fff; font-size: 11px; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+.gcol { display: flex; flex-direction: column; gap: 6px; }
+.gcol.empty { align-items: center; justify-content: center; color: rgba(255,255,255,0.45); gap: 8px; }
+.gcol.empty .i { width: 28px; height: 28px; }
+.gdate span { display: block; color: rgba(255,255,255,0.6); }
+.gdate b { font-size: 13px; }
+.gbtn { background: rgba(255,255,255,0.08); border-radius: 10px; padding: 6px 8px; }
+.panel.side { position: absolute; right: 10px; top: 36px; bottom: 10px; margin: 0; width: 46%; min-width: 180px; font-size: 11px; gap: 6px; }
+.calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: 12px; }
+.calgrid.small { font-size: 9px; gap: 1px; }
+.cd { position: relative; padding: 3px 0; border-radius: 999px; color: rgba(255,255,255,0.9); }
+.cd.h { color: rgba(255,255,255,0.5); font-weight: 700; }
+.cd.today { justify-self: center; width: 2.2em; background: var(--accent); color: #fff; font-weight: 700; }
+.cd i { position: absolute; left: 50%; bottom: 0; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; }
+.calhead { display: flex; justify-content: space-between; align-items: center; padding: 0 4px 6px; }
+.calhead span { color: var(--panel-muted); font-weight: 700; }
+.tour { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.shot { margin: 0; }
+.shot .panel.mini { margin: 0; width: 100%; background: var(--panel); border-radius: 22px; min-height: 250px; padding: 12px; justify-content: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+.shot figcaption { margin-top: 10px; font-weight: 700; }
+.shot figcaption span { display: block; font-weight: 400; color: var(--muted); font-size: 15px; }
+.agenda { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.agenda i { width: 8px; height: 8px; border-radius: 50%; }
+.agenda span { flex: 1; }
+.agenda em, .iprow em { font-style: normal; color: var(--panel-muted); }
+.iprow { display: flex; align-items: center; gap: 8px; padding: 5px 2px; }
+.iprow span { flex: 1; }
+.iprow .i, .bar.inline .i { width: 14px; height: 14px; }
+.bar.inline { background: transparent; justify-content: center; height: auto; padding: 0 0 4px; }
+.bar.inline .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 13px; }
+.mute { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.mute .i { width: 14px; height: 14px; color: var(--panel-muted); }
+.mpill { border-radius: 999px; padding: 2px 9px; background: rgba(255,255,255,0.1); font-size: 11px; font-weight: 700; }
+.mpill.on { background: var(--accent); color: #fff; }
+.chip.paused, .chip.off { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.65); }
+.dial.big { width: 38px; height: 38px; }
+.dial.night { background: rgba(0,0,0,0.35); }
+.tip { align-self: center; background: #1e1e20; border-radius: 8px; padding: 4px 10px; font-size: 12px; }
+@media (max-width: 820px) { .screen { height: 520px; } .screen.photo { height: auto; } .tour { grid-template-columns: minmax(0, 1fr); } .panel.side { width: 60%; } }
+.screen.photo { height: auto; background: none; }
+.screen.photo img { width: 100%; height: auto; display: block; border-radius: 16px; }
+.scatter.photo-after { display: flex; justify-content: center; align-items: flex-start; background: #1c1a26; }
+.scatter.photo-after img { height: 100%; width: auto; display: block; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 8.8a15 15 0 0 1 20 0"/><path d="M5 12.4a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M11 18h2"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10.5 13.5"/><path d="M21 3 14.5 21l-4-7.5L3 9.5z"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10.5a4 4 0 0 0 .4-8 6 6 0 0 0-11.6 1.6A3.5 3.5 0 0 0 7 18.5z"/></symbol>
+    <symbol id="i-apps" viewBox="0 0 24 24"><circle cx="5.5" cy="5.5" r="1.6" fill="currentColor"/><circle cx="12" cy="5.5" r="1.6" fill="currentColor"/><circle cx="18.5" cy="5.5" r="1.6" fill="currentColor"/><circle cx="5.5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="18.5" cy="12" r="1.6" fill="currentColor"/><circle cx="5.5" cy="18.5" r="1.6" fill="currentColor"/><circle cx="12" cy="18.5" r="1.6" fill="currentColor"/><circle cx="18.5" cy="18.5" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="M10.3 4.3c.4-1.8 2.9-1.8 3.4 0a1.7 1.7 0 0 0 2.5 1.1c1.6-1 3.3.8 2.4 2.4a1.7 1.7 0 0 0 1 2.5c1.8.4 1.8 2.9 0 3.4a1.7 1.7 0 0 0-1 2.5c.9 1.6-.8 3.3-2.4 2.4a1.7 1.7 0 0 0-2.5 1c-.5 1.8-3 1.8-3.4 0a1.7 1.7 0 0 0-2.5-1c-1.6.9-3.3-.8-2.4-2.4a1.7 1.7 0 0 0-1-2.5c-1.8-.5-1.8-3 0-3.4a1.7 1.7 0 0 0 1-2.5c-.9-1.6.8-3.4 2.4-2.4a1.7 1.7 0 0 0 2.5-1.1z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6.5 6.5 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/><path d="M6.3 6.3A6 6 0 0 0 6 8v4l-2 3.5h12"/><path d="M18 13.5V8a6 6 0 0 0-8.7-5.3"/><path d="m3 3 18 18"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/></symbol>
+    <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="i-lan" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></symbol>
+    <symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2 1.5M4 5l3-2.5M20 5l-3-2.5"/></symbol>
+    <symbol id="i-hub" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M14 4v16"/><path d="M16.5 8h2M16.5 11.5h2M16.5 15h2"/></symbol>
+  </defs>
+</svg>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><div class="brand-mark"><svg class="i" aria-hidden="true"><use href="#i-hub"/></svg></div>Smart Calendar Hub</div>
+    <nav>
+      <a href="#clock-menu">Clock menu</a>
+      <a href="#one-place">One place</a>
+      <a href="#tour">Tour</a>
+      <a href="#features">Features</a>
+      <a href="#integrated">Recommended</a>
+      <a href="#developers">Developers</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>Every extension in one place.</h1>
+      <p class="lead">Smart Calendar Hub turns GNOME's clock menu into a side panel. Your calendar, weather, notifications and clocks live there, and every top bar extension opens its menu right inside it, instead of a floating menu of its own.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/bria-bria/smart-calendar-hub#install-from-source">Install</a>
+        <a class="btn secondary" href="https://github.com/bria-bria/smart-calendar-hub">Source on GitHub</a>
+      </div>
+      <p class="note">For GNOME Shell 48–51. Free software, GPL-2.0-or-later. Coming to extensions.gnome.org.</p>
+    </div>
+
+    <div class="desk" role="img" aria-label="The side panel: tray, weather, date with the sky, today's events, a notification and world clocks">
+      <div class="bar"><span class="pill">Thu 10:24 · <svg class="i" aria-hidden="true"><use href="#i-sun"/></svg> 12°</span><svg class="i" aria-hidden="true"><use href="#i-wifi"/></svg><svg class="i" aria-hidden="true"><use href="#i-down"/></svg></div>
+      <div class="panel">
+        <div class="tray">
+          <div class="tray-box">
+            <div class="ico"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg></div><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-smile"/></svg></div><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></div><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-cloud"/></svg></div><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-apps"/></svg></div>
+          </div>
+          <div class="gear"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg></div>
+        </div>
+        <div class="card row-card"><span class="with-icon"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg><b>Weather · 12° Rome</b></span><span class="chev">›</span></div>
+        <div class="sky-row">
+          <svg class="sky" viewBox="0 0 120 50" aria-hidden="true"><path d="M8 46 Q60 -10 112 46" fill="none" stroke="rgba(255,255,255,0.3)" stroke-dasharray="3 3"/><line x1="4" y1="46" x2="116" y2="46" stroke="rgba(255,255,255,0.25)"/><circle cx="42" cy="17" r="6" fill="#f6d32d"/></svg>
+          <div class="date"><span>Thursday</span><b>November 5</b></div>
+        </div>
+        <div class="card">
+          <div class="section" style="margin-top:0">Today</div>
+          <div class="row"><span>Team meeting</span><span>11:00</span></div>
+          <div class="row"><span>Gym</span><span>18:30</span></div>
+        </div>
+        <div class="card">
+          <div class="with-icon" style="color:var(--panel-muted);font-size:11px"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg>Calendar · now</div>
+          <div style="font-weight:700;margin-top:2px">Dentist</div>
+          <div style="color:var(--panel-muted)">Today at 17:00</div>
+        </div>
+        <div class="card clocks">
+          <span class="chip"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg>4:59</span>
+          <span style="--h:310deg;--m:144deg" class="dial" title="London"></span><span style="--h:15deg;--m:144deg" class="dial" title="New York"></span><span style="--h:195deg;--m:144deg" class="dial" title="Tokyo"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section class="block" id="clock-menu">
+    <h2>From GNOME's clock menu to a side panel</h2>
+    <p class="sub">The same things GNOME already gives you — notifications, calendar, weather, world clocks — rearranged in one tall panel on the side of the screen, with room for much more.</p>
+    <div class="compare">
+      <figure>
+        <div class="screen" role="img" aria-label="GNOME's clock menu: a box under the clock with notifications on the left and the calendar on the right">
+          <div class="bar center"><span class="pill">Nov 5 10:24</span></div>
+          <div class="gmenu">
+            <div class="gcol empty"><svg class="i" aria-hidden="true"><use href="#i-bell-off"/></svg><span>No Notifications</span></div>
+            <div class="gcol">
+              <div class="gdate"><span>Thursday</span><b>November 5 2026</b></div>
+              <div class="calgrid small"><span class="cd h">M</span><span class="cd h">T</span><span class="cd h">W</span><span class="cd h">T</span><span class="cd h">F</span><span class="cd h">S</span><span class="cd h">S</span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd">1</span><span class="cd">2</span><span class="cd">3</span><span class="cd">4</span><span class="cd today">5</span><span class="cd">6</span><span class="cd">7</span><span class="cd">8</span><span class="cd">9<i style="background:#33d17a"></i></span><span class="cd">10</span><span class="cd">11</span><span class="cd">12<i style="background:#3584e4"></i></span><span class="cd">13</span><span class="cd">14</span><span class="cd">15</span><span class="cd">16</span><span class="cd">17</span><span class="cd">18<i style="background:#e66100"></i></span><span class="cd">19</span><span class="cd">20</span><span class="cd">21</span><span class="cd">22</span><span class="cd">23<i style="background:#33d17a"></i></span><span class="cd">24</span><span class="cd">25</span><span class="cd">26</span><span class="cd">27<i style="background:#9141ac"></i></span><span class="cd">28</span><span class="cd">29</span><span class="cd">30</span></div>
+              <div class="gbtn">Today · No events</div>
+              <div class="gbtn">Add world clocks…</div>
+              <div class="gbtn">Select weather location…</div>
+            </div>
+          </div>
+        </div>
+        <figcaption>GNOME today<span>A box under the clock: notifications on one side, calendar and buttons on the other.</span></figcaption>
+      </figure>
+      <figure>
+        <div class="screen photo">
+          <img src="img/panel.webp" alt="Smart Calendar Hub on GNOME: the side panel with the tray, the IP address, the weather forecast, the sky and the date, today's events, a notification, timers and world clocks; the month calendar beside it; GNOME Weather open" loading="lazy">
+        </div>
+        <figcaption>With Smart Calendar Hub<span>Everything in one tall panel — tray, network, weather, the sky and the date, notifications, clocks and timers — with the month calendar opening beside it. The colours follow GNOME's accent.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+  <section class="block" id="one-place">
+    <h2>No more menus scattered around the screen</h2>
+    <p class="sub">Every extension in the top bar opens its own floating menu, with its own look. Smart Calendar Hub gathers them: a click on an icon of the tray shows its menu inside the panel, at the same size, with the same measure for items, separators and titles. Back with the arrow, Esc, or another click.</p>
+    <div class="compare">
+      <figure>
+        <div class="scatter" role="img" aria-label="Before: several floating menus in different styles">
+          <div class="bar"><span class="tray-icons"><svg class="i" aria-hidden="true"><use href="#i-smile"/></svg><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg><svg class="i" aria-hidden="true"><use href="#i-send"/></svg><svg class="i" aria-hidden="true"><use href="#i-cloud"/></svg><svg class="i" aria-hidden="true"><use href="#i-apps"/></svg></span></div>
+          <div class="float" style="left:8%;top:70px;width:44%;background:#3a3a40">Music player · ▶ ⏭</div>
+          <div class="float" style="left:40%;top:170px;width:50%;background:#20242c;border:1px solid #4a5568">System monitor · CPU 12%</div>
+          <div class="float" style="left:14%;top:270px;width:46%;background:#efefef;color:#222">Clipboard history</div>
+          <div class="float" style="left:56%;top:350px;width:38%;background:#30234a">Network ▸</div>
+        </div>
+        <figcaption>Before<span>Each extension opens a menu of its own, wherever its icon is.</span></figcaption>
+      </figure>
+      <figure>
+        <div class="scatter photo-after">
+          <img src="img/one-look.webp" alt="Smart Calendar Hub on GNOME: one panel where the network, the weather, the calendar, the music player and the notifications share the same look" loading="lazy">
+        </div>
+        <figcaption>With Smart Calendar Hub<span>One panel, one look: every card in the same style and in the colours of GNOME's accent.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+
+  <section class="block" id="tour">
+    <h2>A closer look</h2>
+    <p class="sub">A few of the cards of the panel, as they look on your desktop.</p>
+    <div class="tour">
+      <figure class="shot">
+        <div class="panel mini">
+          <div class="card">
+            <div class="calhead"><span>‹</span><b>November 2026</b><span>›</span></div>
+            <div class="calgrid"><span class="cd h">M</span><span class="cd h">T</span><span class="cd h">W</span><span class="cd h">T</span><span class="cd h">F</span><span class="cd h">S</span><span class="cd h">S</span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cd">1</span><span class="cd">2</span><span class="cd">3</span><span class="cd">4</span><span class="cd today">5</span><span class="cd">6</span><span class="cd">7</span><span class="cd">8</span><span class="cd">9<i style="background:#33d17a"></i></span><span class="cd">10</span><span class="cd">11</span><span class="cd">12<i style="background:#3584e4"></i></span><span class="cd">13</span><span class="cd">14</span><span class="cd">15</span><span class="cd">16</span><span class="cd">17</span><span class="cd">18<i style="background:#e66100"></i></span><span class="cd">19</span><span class="cd">20</span><span class="cd">21</span><span class="cd">22</span><span class="cd">23<i style="background:#33d17a"></i></span><span class="cd">24</span><span class="cd">25</span><span class="cd">26</span><span class="cd">27<i style="background:#9141ac"></i></span><span class="cd">28</span><span class="cd">29</span><span class="cd">30</span></div>
+          </div>
+          <div class="card">
+            <div class="agenda"><i style="background:#3584e4"></i><span>Team meeting</span><em>11:00</em></div>
+            <div class="agenda"><i style="background:#33d17a"></i><span>Lunch with Anna</span><em>13:00</em></div>
+            <div class="agenda"><i style="background:#e66100"></i><span>Gym</span><em>18:30</em></div>
+          </div>
+        </div>
+        <figcaption>Calendar and agenda<span>A calendar that fits the panel, with the colours of your online accounts and the events of the day.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="panel mini">
+          <div class="bar inline"><span class="pill"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg> 203.0.113.42</span></div>
+          <div class="card">
+            <div class="card-head" style="margin-bottom:4px"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span>IP addresses</span><span class="chev" style="margin-left:auto">⌄</span></div>
+            <div class="iprow"><svg class="i" aria-hidden="true"><use href="#i-lan"/></svg><span>Ethernet</span><em>192.168.1.24</em></div>
+            <div class="iprow"><svg class="i" aria-hidden="true"><use href="#i-wifi"/></svg><span>Wi-Fi</span><em>192.168.1.31</em></div>
+            <div class="iprow"><svg class="i" aria-hidden="true"><use href="#i-shield"/></svg><span>VPN</span><em>100.64.0.7</em></div>
+            <div class="iprow"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span>Public</span><em>203.0.113.42</em></div>
+          </div>
+        </div>
+        <figcaption>IP addresses<span>Every address in the panel, the ones you choose in the top bar too. A click copies it.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="panel mini">
+          <div class="card">
+            <div class="with-icon" style="color:var(--panel-muted);font-size:11px"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg>Chat · 2 min ago</div>
+            <b>Anna</b><div style="color:var(--panel-muted)">See you at 8 then!</div>
+            <div class="mute"><svg class="i" aria-hidden="true"><use href="#i-bell-off"/></svg><span class="mpill">1 hour</span><span class="mpill on">Until tomorrow</span><span class="mpill">Always</span></div>
+          </div>
+          <div class="card">
+            <div class="with-icon" style="color:var(--panel-muted);font-size:11px"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg>Calendar · now</div>
+            <b>Dentist</b><div style="color:var(--panel-muted)">Today at 17:00</div>
+          </div>
+        </div>
+        <figcaption>Silence an app<span>From the bell of a notification: no banners for an hour, until tomorrow or always. The messages wait in the panel.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="panel mini">
+          <div class="card clocks">
+            <span class="chip"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg>4:59</span>
+            <span class="chip paused"><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg>12:00</span>
+            <span class="chip off"><svg class="i" aria-hidden="true"><use href="#i-alarm"/></svg>07:00</span>
+          </div>
+          <div class="card clocks">
+            <span style="--h:15deg;--m:144deg" class="dial big"></span><span style="--h:195deg;--m:144deg" class="dial big"></span><span style="--h:100deg;--m:144deg" class="dial big night"></span><span style="--h:310deg;--m:144deg" class="dial big"></span>
+          </div>
+          <div class="tip">Tokyo · 6:24 PM</div>
+        </div>
+        <figcaption>Clocks, alarms and timers<span>World clocks as small dials, the alarms of GNOME Clocks, and timers you start, pause and reset with a click.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+  <section class="block" id="features">
+    <h2>A side panel that does the everyday things well</h2>
+    <p class="sub">Everything can be switched on or off from a preferences window with tabs.</p>
+    <div class="grid">
+      <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-apps"/></svg></div><h3>Tray in one row</h3><p>The icons of your apps at the top of the panel, arrows when they don't fit, and their menus inside the panel.</p></div>
+      <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg></div><h3>Weather and sky</h3><p>The weather in the clock pill and in the panel, and a small sky with the real position of the sun and the moon.</p></div>
+      <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg></div><h3>Calendar and agenda</h3><p>A calendar that fits the panel, your online accounts' colours, and today's events one click away.</p></div>
+      <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-bell-off"/></svg></div><h3>Silence an app</h3><p>From the bell: no banners for an hour, until tomorrow or always. Its messages wait in the panel.</p></div>
+      <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg></div><h3>Clocks and timers</h3><p>World clocks as small dials, the alarms and timers of GNOME Clocks, with a countdown you can pause.</p></div>
+      <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-contrast"/></svg></div><h3>Top bar touches</h3><p>Accent colour on the icons, tighter spacing, the battery as a ring, the IP address. Also on the lock and login screens.</p></div>
+    </div>
+  </section>
+
+  <section class="block" id="integrated">
+    <h2>Extensions we recommend</h2>
+    <p class="sub">We like these extensions and recommend them alongside Smart Calendar Hub. We tested each one inside the panel and tuned the hub until it looked right there — always on our side: their code stays exactly as their authors wrote it.</p>
+    <table class="works">
+      <tr><th>Extension</th><th>Inside the panel</th></tr>
+      <tr><td><a href="https://extensions.gnome.org/extension/1319/gsconnect/">GSConnect</a><br><small>with "device indicators" on</small></td><td>Each phone with its battery, signal and actions. The hub keeps its menu as tall as its items, and its icon leaves the tray without a gap when the phone disconnects.</td></tr>
+      <tr><td><a href="https://extensions.gnome.org/extension/9329/wifi-signal-plus/">WiFi Signal Plus</a></td><td>The details of the Wi-Fi connection, the signal graph and the nearby networks, with the backgrounds of its cards blended into the panel.</td></tr>
+      <tr><td><a href="https://extensions.gnome.org/extension/615/appindicator-support/">AppIndicator and KStatusNotifierItem Support</a></td><td>The tray icons of your apps and their menus, sub-menus included — for example KTailctl (Tailscale) and Cachy-Update.</td></tr>
+    </table>
+  </section>
+
+  <section class="block" id="developers">
+    <h2>For extension developers</h2>
+    <div class="dev">
+      <div>
+        <p>If your extension has a top bar icon, it already works: Smart Calendar Hub shows your menu inside the panel as it is.</p>
+        <p>To do more, add one optional property to your button. Only the hub reads it, so nothing changes for users without it.</p>
+        <ul>
+          <li><strong>title</strong> — the title above your menu.</li>
+          <li><strong>buildPage</strong> — a page of your own instead of the menu.</li>
+          <li><strong>keepStyle</strong> — keep your own backgrounds.</li>
+          <li>Inside the hub your content has the class <code>sch-hub-page</code>.</li>
+        </ul>
+        <p><a href="https://github.com/bria-bria/smart-calendar-hub/tree/main/examples/hello-hub@bria-bria.github.io">See the complete example →</a></p>
+      </div>
+<pre><code>this._button.smartCalendarHub = {
+    title: 'My extension',
+
+    // optional: a page of your own,
+    // built at every visit, destroyed after
+    buildPage: () => {
+        const page = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+        });
+        page.add_child(new St.Label({text: 'Hello'}));
+        return page;
+    },
+
+    keepStyle: false,
+};</code></pre>
+    </div>
+  </section>
+
+  <footer>
+    Smart Calendar Hub · free software (GPL-2.0-or-later) ·
+    <a href="https://github.com/bria-bria/smart-calendar-hub">GitHub</a> ·
+    <a href="https://github.com/bria-bria/smart-calendar-hub/issues">Report a problem</a>
+  </footer>
+</div>
+</body>
+</html>
