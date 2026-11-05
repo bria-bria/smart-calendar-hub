@@ -147,6 +147,10 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         this._ipView = null;
 
+        if (this._trayLayoutId) {
+            GLib.source_remove(this._trayLayoutId);
+            this._trayLayoutId = 0;
+        }
         if (this._idleId) {
             GLib.source_remove(this._idleId);
             this._idleId = 0;
@@ -1722,6 +1726,17 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     // Puts the moved icons in rows that fit the panel width.
+    // _layoutTray() once the current destruction is over
+    _queueTrayLayout() {
+        if (this._trayLayoutId)
+            return;
+        this._trayLayoutId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._trayLayoutId = 0;
+            this._layoutTray();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     _layoutTray() {
         if (!this._trayBox)
             return;
@@ -1729,11 +1744,16 @@ export default class SmartCalendarHubExtension extends Extension {
         this._showTraySection(cells.length > 0);
         // first child: the spacer that packs the icons on the right
         const current = this._trayBox.get_children().slice(1);
+        // cells left empty by icons that were destroyed
+        const wanted = new Set(cells);
+        for (const cell of current.filter(c => !wanted.has(c)))
+            cell.destroy();
         // Nothing to do if the order is the same (re-adding every icon makes
         // AppIndicator reload them)
-        if (current.length === cells.length && current.every((c, i) => c === cells[i]))
+        const kept = current.filter(c => wanted.has(c));
+        if (kept.length === cells.length && kept.every((c, i) => c === cells[i]))
             return;
-        for (const cell of current)
+        for (const cell of kept)
             this._trayBox.remove_child(cell);
         for (const cell of cells) {
             cell.get_parent()?.remove_child(cell);
@@ -1794,10 +1814,15 @@ export default class SmartCalendarHubExtension extends Extension {
         container.y_align = Clutter.ActorAlign.CENTER;
         info.cell.set_child(container);
 
+        // The icon is being destroyed (e.g. AppIndicator removes it). Its cell
+        // must NOT be destroyed here: the icon is still its child, in the
+        // middle of its own destruction, and destroying the parent now trips
+        // a Clutter assertion that crashes GNOME Shell. The empty cell is
+        // removed by the next layout, after the icon is gone.
         info.destroyId = container.connect('destroy', () => {
             this._movedTrayItems?.delete(indicator);
-            info.cell.destroy();
             this._showTraySection(this._movedTrayItems?.size > 0);
+            this._queueTrayLayout();
         });
         this._movedTrayItems.set(indicator, info);
     }
