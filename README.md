@@ -33,13 +33,17 @@ icon by icon (Settings → Tray).
 The other extensions need no change: Smart Calendar Hub takes their menu as
 it is, and never modifies their code.
 
-### Already integrated
+### Extensions we recommend
 
-| Extension or app | What it shows inside the panel |
+We like these extensions and recommend them alongside Smart Calendar Hub. We
+tested each one inside the panel and tuned the hub until it looked right
+there — always on our side: their code stays exactly as their authors wrote it.
+
+| Extension | Inside the panel |
 |---|---|
-| [GSConnect](https://extensions.gnome.org/extension/1319/gsconnect/) (with "device indicators" on) | each phone: battery, signal, actions |
-| WiFi Signal Plus | details of the Wi-Fi connection, signal graph, nearby networks |
-| [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) | the menus of the tray icons of applications, e.g. KTailctl (Tailscale) and Cachy-Update |
+| [GSConnect](https://extensions.gnome.org/extension/1319/gsconnect/) (with "device indicators" on) | each phone with its battery, signal and actions |
+| [WiFi Signal Plus](https://extensions.gnome.org/extension/9329/wifi-signal-plus/) | details of the Wi-Fi connection, signal graph, nearby networks |
+| [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) | the tray icons of your apps and their menus, e.g. KTailctl (Tailscale) and Cachy-Update |
 
 ## Screenshots
 
