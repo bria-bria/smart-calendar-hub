@@ -2680,7 +2680,7 @@ export default class SmartCalendarHubExtension extends Extension {
             shown[key] = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
                 shown[key] = 0;
                 if (this._insideMenu === shown)
-                    adjustment.value = Math.min(value, adjustment.upper - adjustment.page_size);
+                    adjustment.value = Math.max(adjustment.lower, Math.min(value, adjustment.upper - adjustment.page_size));
                 return GLib.SOURCE_REMOVE;
             });
         };

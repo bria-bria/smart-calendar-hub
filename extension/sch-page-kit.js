@@ -129,6 +129,8 @@ function row({icon = null, title = '', subtitle = '', trailing = null, onActivat
         onActivate?.();
     });
     actor.setTrailing = piece => {
+        if (piece && piece === current)
+            return;
         current?.destroy();
         current = piece ?? null;
         if (current)
