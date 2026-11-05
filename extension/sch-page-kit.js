@@ -9,7 +9,6 @@
 // Exposed to other extensions as `stateObj.pageKit` (see README, "Page model").
 
 import Clutter from 'gi://Clutter';
-import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 
@@ -23,7 +22,7 @@ function iconOf(icon, size) {
     const params = {icon_size: size, y_align: Clutter.ActorAlign.CENTER};
     if (typeof icon === 'string')
         params.icon_name = icon;
-    else if (icon instanceof Gio.Icon)
+    else if (typeof icon?.to_string === 'function') // any Gio.Icon
         params.gicon = icon;
     else
         return null;
@@ -56,6 +55,22 @@ function page(...children) {
         }
     };
     visit(box);
+    // pieces added later follow the same rule
+    box.connect('child-added', (_box, child) => {
+        const added = [child];
+        const all = actor => {
+            for (const c of actor.get_children())
+                added.push(c), all(c);
+        };
+        all(child);
+        for (const c of added) {
+            if (!c.has_style_class_name?.('sch-kit-button-primary'))
+                continue;
+            if (primary)
+                c.remove_style_class_name('sch-kit-button-primary');
+            primary = true;
+        }
+    });
     return box;
 }
 

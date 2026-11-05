@@ -278,13 +278,13 @@ const page = kit.page(
     kit.section('Shared audio'),
     kit.card(
         kit.row({icon: 'audio-headphones-symbolic', title: 'Headphones', subtitle: 'Connected · 80%',
-            trailing: kit.toggle({active: true, onToggle: on => log(on)})}),
+            trailing: kit.toggle({active: true, onToggle: on => console.log(on)})}),
         kit.row({icon: 'input-gaming-symbolic', title: 'Gamepad', subtitle: 'Not connected',
-            trailing: kit.chevron(), onActivate: () => log('open')}),
+            trailing: kit.chevron(), onActivate: () => console.log('open')}),
     ),
     kit.buttons(
-        kit.button({label: 'Search devices', primary: true, onClick: () => log('search')}),
-        kit.button({label: 'Settings', onClick: () => log('settings')}),
+        kit.button({label: 'Search devices', primary: true, onClick: () => console.log('search')}),
+        kit.button({label: 'Settings', onClick: () => console.log('settings')}),
     ),
 );
 // nothing to list: kit.empty({icon: 'bluetooth-disabled-symbolic', text: 'No other devices'})
