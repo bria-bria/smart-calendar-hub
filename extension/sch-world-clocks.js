@@ -28,6 +28,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {_} from './sch-i18n.js';
+import {logError} from './sch-log.js';
 
 const DIAL = 34; // px, before the screen scale
 const TICK_SECONDS = 30;
@@ -82,7 +83,7 @@ function notifyFinished(run) {
         }));
         global.display.get_sound_player().play_from_theme('alarm-clock-elapsed', _('Timer finished'), null);
     } catch (e) {
-        console.error(`Smart Calendar Hub: timer: ${e}`);
+        logError(`timer: ${e}`);
     }
 }
 
@@ -274,7 +275,7 @@ export class WorldClocksCard {
                     list.push({name: loc.get_city_name() || loc.get_name(), tz});
             }
         } catch (e) {
-            console.error(`Smart Calendar Hub: world clocks: ${e}`);
+            logError(`world clocks: ${e}`);
         }
         const now = GLib.DateTime.new_now_utc();
         const offset = c => now.to_timezone(c.tz).get_utc_offset();
@@ -395,7 +396,7 @@ export class WorldClocksCard {
             }
             this._syncTimers();
         } catch (e) {
-            console.error(`Smart Calendar Hub: alarms and timers: ${e}`);
+            logError(`alarms and timers: ${e}`);
         }
         this.actor.visible = this._clocks.length > 0 || this._chips.length > 0;
         this._syncArrows();
@@ -587,7 +588,7 @@ export class WorldClocksCard {
             cr.arc(cx, cy, Math.max(1.5, r * 0.08), 0, 2 * Math.PI);
             cr.fill();
         } catch (e) {
-            console.error(`Smart Calendar Hub: world clock: ${e}`);
+            logError(`world clock: ${e}`);
         } finally {
             cr.$dispose();
         }

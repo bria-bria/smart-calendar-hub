@@ -11,7 +11,7 @@
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-export const GNOME_DEFAULT_SPACING = 12;
+const GNOME_DEFAULT_SPACING = 12;
 
 // set_style() alone does not make the panel button read its padding again:
 // switching the style class away and back forces it (the same trick as

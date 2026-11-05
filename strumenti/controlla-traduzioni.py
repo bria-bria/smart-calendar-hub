@@ -60,7 +60,7 @@ def used_sentences():
 
 def italian_table():
     text = I18N.read_text(encoding='utf-8')
-    body = re.search(r'export const IT = \{(.*?)\n\};', text, re.S).group(1)
+    body = re.search(r'(?:export )?const IT = \{(.*?)\n\};', text, re.S).group(1)
     # drop comment lines, so quoted examples in comments are not read as entries
     body = '\n'.join(l for l in body.splitlines() if not l.lstrip().startswith('//'))
     pairs = re.findall(STRING + r'\s*:\s*' + STRING, body)

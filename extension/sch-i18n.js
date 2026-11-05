@@ -15,6 +15,7 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import {logError} from './sch-log.js';
 
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
 Gio._promisify(Gio.File.prototype, 'replace_contents_async');
@@ -25,7 +26,7 @@ function translationsDir() {
     return GLib.build_filenamev([GLib.get_user_config_dir(), 'smart-calendar-hub', 'translations']);
 }
 
-export const README_KEY = '_README';
+const README_KEY = '_README';
 const README_TEXT =
     'Smart Calendar Hub translation file. Write your translation after each colon, between the quotes. ' +
     'Leave "" to keep the English text. Keep words in braces like {app} unchanged. ' +
@@ -34,7 +35,7 @@ const README_TEXT =
     'Please share your finished file at https://github.com/bria-bria/smart-calendar-hub/issues';
 
 // Italian: also the complete list of sentences (used for the users' files)
-export const IT = {
+const IT = {
     // --- Side panel (extension.js) ---
     "{app} (tray icon)":
         "{app} (icona del vassoio)",
@@ -479,7 +480,7 @@ let generation = 0;
 let cachedLanguage = null;
 
 // Code of the system language, e.g. 'it', 'en', 'fr'
-export function systemLanguage() {
+function systemLanguage() {
     for (const name of GLib.get_language_names()) {
         if (name !== 'C' && name !== 'POSIX')
             return name.split(/[_.@]/)[0].toLowerCase();
@@ -540,7 +541,7 @@ export async function loadUserTranslations({merge = false} = {}) {
             throw new Error('the file must contain a JSON object { "English": "translation" }');
     } catch (e) {
         if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND)) {
-            console.error(`Smart Calendar Hub: translation file ${path} not valid, using English (file left untouched): ${e}`);
+            logError(`translation file ${path} not valid, using English (file left untouched): ${e}`);
             if (myGeneration === generation)
                 userTable = null;
             return path;
@@ -561,7 +562,7 @@ export async function loadUserTranslations({merge = false} = {}) {
                     Gio.FileCreateFlags.REPLACE_DESTINATION, null);
                 existing = updated;
             } catch (e) {
-                console.error(`Smart Calendar Hub: cannot write translation file ${path}: ${e}`);
+                logError(`cannot write translation file ${path}: ${e}`);
             }
         }
     }

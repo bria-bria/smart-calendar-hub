@@ -17,6 +17,7 @@ import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import {MOON_HORIZON, SUN_HORIZON, moonAltitude, moonPhase, skyPass, sunAltitude} from './sch-astro.js';
+import {logError} from './sch-log.js';
 
 const WIDTH = 120;
 const HEIGHT = 62;
@@ -167,7 +168,7 @@ export class SkyView {
             else
                 this._drawMoon(cr, w / 2, h / 2, Math.min(w, h) * 0.32, moonPhase(now));
         } catch (e) {
-            console.error(`Smart Calendar Hub: sky: ${e}`);
+            logError(`sky: ${e}`);
         } finally {
             cr.$dispose();
         }

@@ -67,6 +67,9 @@ else
     cp -rL "$INSTALLED/." "$DEST/"
 fi
 glib-compile-schemas "$DEST/schemas"
+# the copy on extensions.gnome.org runs only in the session and on the lock
+# screen; the login screen mode is added here, for this system copy only
+python3 -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p)); m=d.setdefault("session-modes", ["user"]); "gdm" in m or m.append("gdm"); open(p,"w").write(json.dumps(d, indent=2, ensure_ascii=False)+"\n")' "$DEST/metadata.json"
 chown -R root:root "$DEST"
 chmod -R a+rX,go-w "$DEST"
 

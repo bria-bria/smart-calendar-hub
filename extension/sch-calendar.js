@@ -21,6 +21,7 @@ import {formatDateWithCFormatString, formatTime} from 'resource:///org/gnome/she
 
 import {_} from './sch-i18n.js';
 import {FALLBACK_COLOR, loadCalendars} from './sch-eds.js';
+import {logError} from './sch-log.js';
 
 const MAX_DOTS = 3;
 const CALENDAR_APP = 'org.gnome.Calendar.desktop';
@@ -193,7 +194,7 @@ export class CalendarView {
     reloadCalendars() {
         this._loadCalendars().catch(e => {
             if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                console.error(`Smart Calendar Hub: cannot read the calendars: ${e}`);
+                logError(`cannot read the calendars: ${e}`);
         });
     }
 
@@ -553,10 +554,10 @@ export class CalendarView {
                     return;
                 }
             }
-            console.error('Smart Calendar Hub: GNOME Calendar window not found');
+            logError('GNOME Calendar window not found');
         } catch (e) {
             if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                console.error(`Smart Calendar Hub: cannot open a new event: ${e}`);
+                logError(`cannot open a new event: ${e}`);
         } finally {
             this._openingNewEvent = false;
         }
@@ -597,7 +598,7 @@ export class CalendarView {
                 Gio.SubprocessFlags.NONE);
             this._dateMenu.menu.close();
         } catch (e) {
-            console.error(`Smart Calendar Hub: cannot open GNOME Calendar: ${e}`);
+            logError(`cannot open GNOME Calendar: ${e}`);
         }
     }
 

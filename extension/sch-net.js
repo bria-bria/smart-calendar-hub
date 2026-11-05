@@ -22,6 +22,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {_} from './sch-i18n.js';
+import {logError, logWarning} from './sch-log.js';
 
 Gio._promisify(NM.Client, 'new_async');
 Gio._promisify(Soup.Session.prototype, 'send_and_read_async');
@@ -32,10 +33,12 @@ const PUBLIC_REFRESH_SECONDS = 30 * 60;
 
 // Globe of the public address: shipped with the extension, since icon themes
 // draw "web-browser" as a compass and have no common globe icon
-const GLOBE_ICON = new Gio.FileIcon({
-    file: Gio.File.new_for_uri(import.meta.url).get_parent()
-        .get_child('icons').get_child('sch-globe-symbolic.svg'),
-});
+function globeIcon() {
+    return new Gio.FileIcon({
+        file: Gio.File.new_for_uri(import.meta.url).get_parent()
+            .get_child('icons').get_child('sch-globe-symbolic.svg'),
+    });
+}
 
 // One VPN: the shield, as in the top bar. Several VPNs: a different icon
 // for each one (shield, key, padlock, …), so they are told apart at a glance.
@@ -63,7 +66,7 @@ class IpIndicator extends PanelMenu.Button {
         this._lanBox.add_child(this._lanIcon);
         this._lanBox.add_child(this._lanLabel);
         this._pubBox = new St.BoxLayout({style_class: 'sch-ip-part'});
-        this._pubBox.add_child(new St.Icon({gicon: GLOBE_ICON, style_class: 'system-status-icon'}));
+        this._pubBox.add_child(new St.Icon({gicon: globeIcon(), style_class: 'system-status-icon'}));
         this._pubLabel = new St.Label({y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-label'});
         this._pubBox.add_child(this._pubLabel);
         // [shield] VPN address, only while a VPN (e.g. Tailscale) is active
@@ -154,7 +157,7 @@ export class IpView {
             this._schedulePublic();
         this._initNetwork().catch(e => {
             if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                console.error(`Smart Calendar Hub: network: ${e}`);
+                logError(`network: ${e}`);
         });
     }
 
@@ -221,7 +224,7 @@ export class IpView {
             try {
                 callback();
             } catch (e) {
-                console.error(`Smart Calendar Hub: IP addresses: ${e}`);
+                logError(`IP addresses: ${e}`);
             }
         }
     }
@@ -378,7 +381,7 @@ export class IpView {
             if (e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED) || request !== this._publicRequest)
                 return;
             this.publicIp = null;
-            console.warn(`Smart Calendar Hub: public IP not available: ${e.message}`);
+            logWarning(`public IP not available: ${e.message}`);
         }
         this._sync();
     }
@@ -503,7 +506,7 @@ export class PanelIpBox {
         if (on('panel-ip-public')) {
             items.push({
                 key: 'public',
-                gicon: GLOBE_ICON,
+                gicon: globeIcon(),
                 text: ip.publicIp ?? '…',
                 copy: ip.publicIp,
                 name: _('Public address'),

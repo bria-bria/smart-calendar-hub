@@ -13,6 +13,7 @@ import GWeather from 'gi://GWeather';
 import St from 'gi://St';
 
 import {formatTime} from 'resource:///org/gnome/shell/misc/dateUtils.js';
+import {logError} from './sch-log.js';
 
 const MAX_FORECASTS = 5;
 const REFRESH_SECONDS = 15 * 60;
@@ -54,7 +55,7 @@ export class CityWeather {
                     this._locations.push(loc);
             }
         } catch (e) {
-            console.error(`Smart Calendar Hub: weather cities: ${e}`);
+            logError(`weather cities: ${e}`);
         }
         if (selectedCity >= this._locations.length)
             selectedCity = 0;

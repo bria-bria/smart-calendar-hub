@@ -27,6 +27,7 @@ import {ClockWeather} from './sch-clock-weather.js';
 import {WorldClocksCard, stopTimerCountdowns} from './sch-world-clocks.js';
 import {pageKit} from './sch-page-kit.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
+import {logError, logWarning} from './sch-log.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
 // Inline style of the buttons in the tray (see _tightenTrayButton)
@@ -126,11 +127,11 @@ export default class SmartCalendarHubExtension extends Extension {
         try {
             this._enable();
         } catch (e) {
-            console.error(`Smart Calendar Hub: enable failed, restoring GNOME: ${e}`);
+            logError(`enable failed, restoring GNOME: ${e}`);
             try {
                 this._disableFull();
             } catch (e2) {
-                console.error(`Smart Calendar Hub: restore failed: ${e2}`);
+                logError(`restore failed: ${e2}`);
             }
             return e;
         }
@@ -181,7 +182,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 if (this._enableToken === token)
                     this._applyStaticTexts();
             })
-            .catch(e => console.error(`Smart Calendar Hub: translations: ${e}`));
+            .catch(e => logError(`translations: ${e}`));
     }
 
     // Texts set once when the panel is built (translated again after loading
@@ -213,14 +214,21 @@ export default class SmartCalendarHubExtension extends Extension {
             this._ipPanel = null;
             this._ipView?.destroy();
         } catch (e) {
-            console.error(`Smart Calendar Hub: cannot remove the IP indicator: ${e}`);
+            logError(`cannot remove the IP indicator: ${e}`);
         }
         this._ipView = null;
 
-        for (const id of ['_trayLayoutId', '_trayScrollbarId']) {
-            if (this[id])
-                GLib.source_remove(this[id]);
-            this[id] = 0;
+        if (this._trayLayoutId) {
+            GLib.source_remove(this._trayLayoutId);
+            this._trayLayoutId = 0;
+        }
+        if (this._trayScrollbarId) {
+            GLib.source_remove(this._trayScrollbarId);
+            this._trayScrollbarId = 0;
+        }
+        if (this._pageMessageId) {
+            GLib.source_remove(this._pageMessageId);
+            this._pageMessageId = 0;
         }
         if (this._idleId) {
             GLib.source_remove(this._idleId);
@@ -289,7 +297,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 actor.get_parent()?.remove_child(actor);
                 parent.insert_child_at_index(actor, index);
             } catch (e) {
-                console.error(`Smart Calendar Hub: cannot restore a widget: ${e}`);
+                logError(`cannot restore a widget: ${e}`);
             }
         }
         this._savedParents = null;
@@ -298,7 +306,7 @@ export default class SmartCalendarHubExtension extends Extension {
         try {
             this._setBottomCompact(false); // texts back on GNOME's buttons
         } catch (e) {
-            console.error(`Smart Calendar Hub: cannot restore the bottom buttons: ${e}`);
+            logError(`cannot restore the bottom buttons: ${e}`);
         }
         if (this._clearButton) {
             this._clearButton.remove_style_class_name('sch-clear-button');
@@ -333,8 +341,68 @@ export default class SmartCalendarHubExtension extends Extension {
         this._calendarView?.destroy();
         this._skyView?.destroy();
         this._skyView = null;
+        // Our own pieces of the panel (GNOME's widgets are back in their
+        // places already): destroyed and forgotten one by one, then the panel
+        this._trayMenuHost?.destroy();
+        this._trayMenuHost = null;
+        this._trayMenuContent?.destroy();
+        this._trayMenuContent = null;
+        this._trayMenuScroll?.destroy();
+        this._trayMenuScroll = null;
+        this._trayMenuTitle?.destroy();
+        this._trayMenuTitle = null;
+        this._pageMessage?.destroy();
+        this._pageMessage = null;
+        this._traySection?.destroy();
+        this._traySection = null;
+        this._traySpacer?.destroy();
+        this._traySpacer = null;
+        this._trayBox?.destroy();
+        this._trayBox = null;
+        this._trayEndSpacer?.destroy();
+        this._trayEndSpacer = null;
+        this._trayScroll?.destroy();
+        this._trayScroll = null;
+        this._gearButton?.destroy();
+        this._gearButton = null;
+        this._ipPanelBin?.destroy();
+        this._ipPanelBin = null;
+        this._weatherSummary?.destroy();
+        this._weatherSummary = null;
+        this._weatherSummaryIcon?.destroy();
+        this._weatherSummaryIcon = null;
+        this._weatherArrow?.destroy();
+        this._weatherArrow = null;
+        this._weatherBody?.destroy();
+        this._weatherBody = null;
+        this._citySelector?.destroy();
+        this._citySelector = null;
+        this._cityCard?.destroy();
+        this._cityCard = null;
+        this._cityCardBox?.destroy();
+        this._cityCardBox = null;
+        this._gnomeWeatherBin?.destroy();
+        this._gnomeWeatherBin = null;
+        this._dateRow?.destroy();
         this._dateRow = null;
+        this._calendarLabel?.destroy();
+        this._calendarLabel = null;
+        this._calendarArrow?.destroy();
+        this._calendarArrow = null;
+        this._calendarBox?.destroy();
+        this._calendarBox = null;
+        this._calendarScroll?.destroy();
+        this._calendarScroll = null;
+        this._todayBin?.destroy();
         this._todayBin = null;
+        this._bottomRow?.destroy();
+        this._bottomRow = null;
+        this._clearBox?.destroy();
+        this._clearBox = null;
+        this._newEventButton?.destroy();
+        this._newEventButton = null;
+        this._newEventLabel?.destroy();
+        this._newEventLabel = null;
         this._sidebar?.destroy();
         this._sidebar = null;
         this._traySection = null;
@@ -518,7 +586,7 @@ export default class SmartCalendarHubExtension extends Extension {
             }
             this._writeTopBarOrganizer(lists);
         } catch (e) {
-            console.error(`Smart Calendar Hub: Top Bar Organizer sync failed: ${e}`);
+            logError(`Top Bar Organizer sync failed: ${e}`);
         }
     }
 
@@ -534,7 +602,7 @@ export default class SmartCalendarHubExtension extends Extension {
             }
             this._writeTopBarOrganizer(lists);
         } catch (e) {
-            console.error(`Smart Calendar Hub: Top Bar Organizer restore failed: ${e}`);
+            logError(`Top Bar Organizer restore failed: ${e}`);
         }
         this._tboOrig = undefined;
     }
@@ -561,7 +629,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 box.set_child_at_index(container, index);
             }
         } catch (e) {
-            console.error(`Smart Calendar Hub: cannot move the clock: ${e}`);
+            logError(`cannot move the clock: ${e}`);
         } finally {
             this._positioning = false;
         }
@@ -606,7 +674,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // on the left of the time
         clockBox.insert_child_below(this._alertDot, clock);
         // Another extension may destroy the box we live in (see the weather badge).
-        this._alertDot.connect('destroy', () => {
+        this._connect(this._alertDot, 'destroy', () => {
             this._alertDot = null;
         });
 
@@ -716,7 +784,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 if (message)
                     ext._addMuteButton(message, notification, this.source);
             } catch (e) {
-                console.error(`Smart Calendar Hub: cannot add the silence button: ${e}`);
+                logError(`cannot add the silence button: ${e}`);
             }
             return result;
         };
@@ -735,7 +803,7 @@ export default class SmartCalendarHubExtension extends Extension {
         if (this._origAddNotification && proto?._addNotification === this._addNotificationWrapper)
             proto._addNotification = this._origAddNotification;
         else if (this._origAddNotification)
-            console.warn('Smart Calendar Hub: _addNotification patched by someone else, left as is');
+            logWarning('_addNotification patched by someone else, left as is');
         this._origAddNotification = null;
         this._addNotificationWrapper = null;
         for (const actor of this._muteButtons ?? []) {
@@ -1165,7 +1233,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // At logout GNOME Shell destroys the panel without calling disable():
         // from then on nothing may touch the tray widgets (icons still being
         // destroyed queue a layout)
-        this._sidebar.connect('destroy', () => {
+        this._connect(this._sidebar, 'destroy', () => {
             this._disabling = true;
             this._trayBox = null;
             this._traySection = null;
@@ -1267,11 +1335,11 @@ export default class SmartCalendarHubExtension extends Extension {
         this._traySection.add_child(this._trayLeft);
         this._traySection.add_child(trayScroll);
         this._traySection.add_child(this._trayRight);
-        trayScroll.connect('notify::width', () => this._queueTrayScrollbar());
+        this._connect(trayScroll, 'notify::width', () => this._queueTrayScrollbar());
         // the arrow at the end of the row is dimmed
         const adjustment = this._trayBox.hadjustment;
         for (const prop of ['value', 'upper', 'page-size'])
-            adjustment.connect(`notify::${prop}`, () => this._syncTrayArrowEnds());
+            this._connect(adjustment, `notify::${prop}`, () => this._syncTrayArrowEnds());
         trayRow.add_child(this._traySection);
         trayRow.add_child(this._traySpacer);
         const gear = this._gearButton = new St.Button({
@@ -1377,7 +1445,7 @@ export default class SmartCalendarHubExtension extends Extension {
             x_expand: true,
         });
         this._cityCard.set_child(this._cityCardBox);
-        this._cityCard.connect('clicked', () => {
+        this._connect(this._cityCard, 'clicked', () => {
             this._weatherClient?.activateApp?.();
             Main.overview.hide();
             dm.menu.close();
@@ -1562,7 +1630,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._newEventLabel = new St.Label({text: _('New event'), y_align: Clutter.ActorAlign.CENTER});
         newEventLine.add_child(this._newEventLabel);
         this._newEventButton.set_child(newEventLine);
-        this._newEventButton.connect('clicked', () => {
+        this._connect(this._newEventButton, 'clicked', () => {
             dm.menu.close();
             this._calendarView?.openNewEvent();
         });
@@ -1858,7 +1926,7 @@ export default class SmartCalendarHubExtension extends Extension {
             // a card not drawn yet measures nothing useful
             return width >= 280 && width <= 900 ? width : null;
         } catch (e) {
-            console.warn(`Smart Calendar Hub: cannot measure GNOME's menu: ${e.message}`);
+            logWarning(`cannot measure GNOME's menu: ${e.message}`);
             return null;
         }
     }
@@ -2126,7 +2194,7 @@ export default class SmartCalendarHubExtension extends Extension {
             }
             this._publishTrayItems();
         } catch (e) {
-            console.error(`Smart Calendar Hub: tray sync failed: ${e}`);
+            logError(`tray sync failed: ${e}`);
         } finally {
             this._syncingTray = false;
         }
@@ -2391,7 +2459,7 @@ export default class SmartCalendarHubExtension extends Extension {
             const n = info.parent.get_n_children();
             info.parent.insert_child_at_index(info.container, Math.min(info.index, n));
         } catch (e) {
-            console.error(`Smart Calendar Hub: cannot restore a tray icon: ${e}`);
+            logError(`cannot restore a tray icon: ${e}`);
         }
     }
 
@@ -2467,7 +2535,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._pageMessage.clutter_text.line_wrap = true;
         this._trayMenuHost.add_child(this._pageMessage);
         // Esc: back to our cards (not the whole panel closed)
-        this._trayMenuHost.connect('key-press-event', (_actor, event) => {
+        this._connect(this._trayMenuHost, 'key-press-event', (_actor, event) => {
             if (event.get_key_symbol() !== Clutter.KEY_Escape)
                 return Clutter.EVENT_PROPAGATE;
             this._closeTrayMenu();
@@ -2492,7 +2560,7 @@ export default class SmartCalendarHubExtension extends Extension {
             try {
                 shown.page = hub.buildPage();
             } catch (e) {
-                console.error(`Smart Calendar Hub: page of ${info.role}: ${e}`);
+                logError(`page of ${info.role}: ${e}`);
             }
         }
         // a page still inside something else cannot be shown: the menu instead
@@ -2578,7 +2646,7 @@ export default class SmartCalendarHubExtension extends Extension {
         try {
             page = buildPage();
         } catch (e) {
-            console.error(`Smart Calendar Hub: external page ${id}: ${e}`);
+            logError(`external page ${id}: ${e}`);
             return false;
         }
         // a page still inside something else cannot be shown
@@ -2589,7 +2657,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 dm.menu.open();
             this._closeTrayMenu();
         } catch (e) {
-            console.error(`Smart Calendar Hub: external page ${id}: ${e}`);
+            logError(`external page ${id}: ${e}`);
         }
         // the panel did not open: the page goes, the caller uses its fallback
         if (!dm.menu.isOpen) {
@@ -2668,7 +2736,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 const actor = fn();
                 return actor instanceof Clutter.Actor && !actor.get_parent() ? actor : null;
             } catch (e) {
-                console.error(`Smart Calendar Hub: external page ${id}: ${e}`);
+                logError(`external page ${id}: ${e}`);
                 return null;
             }
         };
@@ -2737,7 +2805,7 @@ export default class SmartCalendarHubExtension extends Extension {
         try {
             page = buildSidePage();
         } catch (e) {
-            console.error(`Smart Calendar Hub: side page ${shown.externalId}: ${e}`);
+            logError(`side page ${shown.externalId}: ${e}`);
             return;
         }
         if (!(page instanceof Clutter.Actor) || page.get_parent())
@@ -2806,7 +2874,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 try {
                     action.onClick();
                 } catch (e) {
-                    console.error(`Smart Calendar Hub: side page action: ${e}`);
+                    logError(`side page action: ${e}`);
                 }
             });
             header.add_child(btn);
@@ -2824,7 +2892,7 @@ export default class SmartCalendarHubExtension extends Extension {
         try {
             side.scroll.destroy(); // the page with it: the extension frees it on 'destroy'
         } catch (e) {
-            console.error(`Smart Calendar Hub: side page ${shown.externalId}: ${e}`);
+            logError(`side page ${shown.externalId}: ${e}`);
         }
         if (this._calendarCard)
             this._calendarCard.height = -1;
@@ -2905,7 +2973,7 @@ export default class SmartCalendarHubExtension extends Extension {
                     try {
                         dbus.sendAboutToShow()?.catch?.(() => {});
                     } catch (e) {
-                        console.error(`Smart Calendar Hub: tray sub-menu: ${e}`);
+                        logError(`tray sub-menu: ${e}`);
                     }
                 }
                 visit(sub);
@@ -2995,7 +3063,7 @@ export default class SmartCalendarHubExtension extends Extension {
         try {
             shown.menu?.close();
         } catch (e) {
-            console.error(`Smart Calendar Hub: tray menu: ${e}`);
+            logError(`tray menu: ${e}`);
         }
         this._hideTrayMenu();
     }
@@ -3037,7 +3105,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 shown.page.disconnect(shown.pageDestroyId);
                 shown.page.destroy();
             } catch (e) {
-                console.error(`Smart Calendar Hub: page of ${shown.info?.role ?? shown.externalId}: ${e}`);
+                logError(`page of ${shown.info?.role ?? shown.externalId}: ${e}`);
             }
         }
         // the menu of an extension that showed a page of its own goes back
@@ -3051,7 +3119,7 @@ export default class SmartCalendarHubExtension extends Extension {
                         shown.heldBin.add_child(shown.heldBox);
                 }
             } catch (e) {
-                console.error(`Smart Calendar Hub: cannot give a tray menu back: ${e}`);
+                logError(`cannot give a tray menu back: ${e}`);
             }
         }
         try {
@@ -3067,7 +3135,7 @@ export default class SmartCalendarHubExtension extends Extension {
                     shown.bin.add_child(shown.box);
             }
         } catch (e) {
-            console.error(`Smart Calendar Hub: cannot give a tray menu back: ${e}`);
+            logError(`cannot give a tray menu back: ${e}`);
         }
         for (const {child, wanted, id} of shown.hidden) {
             try {

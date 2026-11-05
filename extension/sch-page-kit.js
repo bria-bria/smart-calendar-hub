@@ -226,7 +226,7 @@ function notice({icon = 'dialog-information-symbolic', text = ''} = {}) {
     return box;
 }
 
-export const PAGE_KIT_VERSION = 2;
+const PAGE_KIT_VERSION = 2;
 
 export const pageKit = Object.freeze({
     version: PAGE_KIT_VERSION,

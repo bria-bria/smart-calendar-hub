@@ -15,6 +15,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {CircleBattery} from './sch-battery.js';
 import {PanelSpacing} from './sch-spacing.js';
+import {logError} from './sch-log.js';
 
 // The clock goes right before GNOME's system menu: second from the right.
 // Every icon left in the top bar (clipboard, emoji, usage meters…) stays on
@@ -129,7 +130,7 @@ export class TopBarStyle {
                 box.set_child_at_index(container, index);
             }
         } catch (e) {
-            console.error(`Smart Calendar Hub: cannot move the clock: ${e}`);
+            logError(`cannot move the clock: ${e}`);
         } finally {
             this._placingClock = false;
         }
