@@ -147,9 +147,10 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         this._ipView = null;
 
-        if (this._trayLayoutId) {
-            GLib.source_remove(this._trayLayoutId);
-            this._trayLayoutId = 0;
+        for (const id of ['_trayLayoutId', '_trayScrollbarId']) {
+            if (this[id])
+                GLib.source_remove(this[id]);
+            this[id] = 0;
         }
         if (this._idleId) {
             GLib.source_remove(this._idleId);
@@ -255,6 +256,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._sidebar = null;
         this._traySection = null;
         this._traySpacer = null;
+        this._trayScroll = null;
         this._ipPanelBin = null;
         this._trayBox = null;
         this._calendarBox = null;
@@ -1150,10 +1152,12 @@ export default class SmartCalendarHubExtension extends Extension {
         // icons than room a scrollbar appears under the row.
         this._trayBox = new St.BoxLayout({style_class: 'sch-tray-box', x_expand: true});
         this._trayBox.add_child(new St.Widget({x_expand: true}));
-        const trayScroll = new St.ScrollView({
+        // The scrollbar is switched on only when the icons are wider than
+        // the box (_syncTrayScrollbar): AUTOMATIC showed it even when they fit.
+        const trayScroll = this._trayScroll = new St.ScrollView({
             style_class: 'sch-tray-scroll',
             x_expand: true,
-            hscrollbar_policy: St.PolicyType.AUTOMATIC,
+            hscrollbar_policy: St.PolicyType.NEVER,
             vscrollbar_policy: St.PolicyType.NEVER,
             overlay_scrollbars: false,
             child: this._trayBox,
@@ -1177,6 +1181,7 @@ export default class SmartCalendarHubExtension extends Extension {
             return Clutter.EVENT_STOP;
         });
         this._traySection.add_child(trayScroll);
+        trayScroll.connect('notify::width', () => this._queueTrayScrollbar());
         trayRow.add_child(this._traySection);
         trayRow.add_child(this._traySpacer);
         const gear = this._gearButton = new St.Button({
@@ -1726,6 +1731,25 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     // Puts the moved icons in rows that fit the panel width.
+    // Scrollbar only when the icons do not fit (checked after the layout)
+    _queueTrayScrollbar() {
+        if (this._trayScrollbarId)
+            return;
+        this._trayScrollbarId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._trayScrollbarId = 0;
+            const scroll = this._trayScroll;
+            if (!scroll || !this._trayBox)
+                return GLib.SOURCE_REMOVE;
+            // natural width of the icons (the spacer in front has none)
+            const [, natural] = this._trayBox.get_preferred_width(-1);
+            const overflow = natural > scroll.width + 1;
+            const policy = overflow ? St.PolicyType.AUTOMATIC : St.PolicyType.NEVER;
+            if (scroll.hscrollbar_policy !== policy)
+                scroll.hscrollbar_policy = policy;
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     // _layoutTray() once the current destruction is over
     _queueTrayLayout() {
         if (this._trayLayoutId)
@@ -1751,14 +1775,17 @@ export default class SmartCalendarHubExtension extends Extension {
         // Nothing to do if the order is the same (re-adding every icon makes
         // AppIndicator reload them)
         const kept = current.filter(c => wanted.has(c));
-        if (kept.length === cells.length && kept.every((c, i) => c === cells[i]))
+        if (kept.length === cells.length && kept.every((c, i) => c === cells[i])) {
+            this._queueTrayScrollbar();
             return;
+        }
         for (const cell of kept)
             this._trayBox.remove_child(cell);
         for (const cell of cells) {
             cell.get_parent()?.remove_child(cell);
             this._trayBox.add_child(cell);
         }
+        this._queueTrayScrollbar();
     }
 
     // The tray box only with icons; the spacer keeps the settings button on
