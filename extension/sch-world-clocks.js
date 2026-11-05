@@ -95,7 +95,7 @@ export class WorldClocksCard {
 
         this._settings = new Gio.Settings({schema_id: 'org.gnome.shell.world-clocks'});
         this._settingsId = this._settings.connect('changed::locations', () => this._load());
-        // 12 or 24 hours, as GNOME's clock: AM/PM on the dials with 12 hours
+        // 12 or 24 hours, as GNOME's clock, for the times in the labels
         this._interface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
         this._formatId = this._interface.connect('changed::clock-format', () => {
             this._loadChips();
@@ -360,8 +360,9 @@ export class WorldClocksCard {
                 cr.lineTo(cx + Math.sin(a) * r * 0.92, cy - Math.cos(a) * r * 0.92);
             }
             cr.stroke();
-            // 12 hours: AM or PM in the lower half, under the hands
-            if (this._twelveHours()) {
+            // AM or PM in the lower half, under the hands: the hands show only
+            // 12 hours (the labels follow GNOME's 12/24-hour format)
+            {
                 const layout = PangoCairo.create_layout(cr);
                 const font = Pango.FontDescription.from_string('Sans Bold');
                 font.set_absolute_size(r * 0.42 * Pango.SCALE);
