@@ -25,6 +25,7 @@ import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
 import {MENU_TAIL_ROLES, TopBarStyle, clockSlot} from './sch-topbar-style.js';
 import {ClockWeather} from './sch-clock-weather.js';
 import {WorldClocksCard, stopTimerCountdowns} from './sch-world-clocks.js';
+import {pageKit} from './sch-page-kit.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -2551,7 +2552,10 @@ export default class SmartCalendarHubExtension extends Extension {
     // The page is built now and destroyed when the visit ends. Returns false
     // when the panel is not available (extension switched off, lock screen)
     // or the page cannot be shown, so the caller can use its own fallback.
-    showExternalPage({id = null, title = '', buildPage, keepStyle = false, buildSidePage = null} = {}) {
+    showExternalPage({
+        id = null, title = '', buildPage, keepStyle = false,
+        buildSidePage = null, sideTitle = '', sideCount = null, sideActions = [],
+    } = {}) {
         const dm = this._dateMenu;
         if (!dm?.menu || this._disabling || !this._trayMenuHost || typeof buildPage !== 'function')
             return false;
@@ -2595,20 +2599,25 @@ export default class SmartCalendarHubExtension extends Extension {
         });
         this._enterTrayPage(shown, typeof title === 'string' && title ? title : String(id ?? ''));
         if (typeof buildSidePage === 'function')
-            this._showSidePage(shown, buildSidePage);
+            this._showSidePage(shown, buildSidePage, {sideTitle, sideCount, sideActions});
         return true;
+    }
+
+    // The standard pieces for the pages of other extensions (sch-page-kit.js)
+    get pageKit() {
+        return pageKit;
     }
 
     // What showExternalPage supports beyond the page itself (read only):
     // 'side' = buildSidePage, a card beside the panel
     get externalPageFeatures() {
-        return Object.freeze(['side']);
+        return Object.freeze(['side', 'side-header', 'kit']);
     }
 
     // The second page of an extension in the card beside the panel (the one
     // of the calendar): the calendar steps aside for the visit, the page
     // scrolls if long. When it cannot be shown, the main page stays alone.
-    _showSidePage(shown, buildSidePage) {
+    _showSidePage(shown, buildSidePage, {sideTitle = '', sideCount = null, sideActions = []} = {}) {
         let page;
         try {
             page = buildSidePage();
@@ -2644,11 +2653,48 @@ export default class SmartCalendarHubExtension extends Extension {
             y_expand: true,
             child: inner,
         });
+        // the header is ours, as the calendar's month header: title, a
+        // count, at most two round buttons; it stays while the list scrolls
+        if (typeof sideTitle === 'string' && sideTitle) {
+            side.header = this._sideHeader(sideTitle, sideCount, sideActions);
+            card.add_child(side.header);
+        }
         card.add_child(side.scroll);
         // as tall as the panel, so a long list scrolls inside the card
         card.height = this._sidebar.height;
         shown.side = side;
         this._tidyTrayMenu();
+    }
+
+    _sideHeader(title, count, actions) {
+        const header = new St.BoxLayout({style_class: 'sch-cal-header sch-side-header', x_expand: true});
+        header.add_child(new St.Label({text: title, style_class: 'sch-cal-month', y_align: Clutter.ActorAlign.CENTER}));
+        header.add_child(new St.Label({
+            text: count === null || count === undefined ? '' : String(count),
+            style_class: 'sch-cal-year',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+        for (const action of (Array.isArray(actions) ? actions : []).slice(0, 2)) {
+            if (!action?.icon || typeof action.onClick !== 'function')
+                continue;
+            const btn = new St.Button({
+                style_class: 'sch-cal-arrow',
+                can_focus: true,
+                accessible_name: action.label ?? '',
+                y_align: Clutter.ActorAlign.CENTER,
+                child: new St.Icon({icon_name: action.icon, icon_size: 16}),
+            });
+            btn.connect('clicked', () => {
+                try {
+                    action.onClick();
+                } catch (e) {
+                    console.error(`Smart Calendar Hub: side page action: ${e}`);
+                }
+            });
+            header.add_child(btn);
+        }
+        return header;
     }
 
     // The calendar back in its card, or back inside the panel as it was
@@ -2657,6 +2703,7 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!side)
             return;
         shown.side = null;
+        side.header?.destroy();
         try {
             side.scroll.destroy(); // the page with it: the extension frees it on 'destroy'
         } catch (e) {
@@ -2811,7 +2858,8 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!container && (widget.height < 24 || widget instanceof St.Label || widget instanceof St.Icon))
             return false;
         const classes = widget.get_style_class_name() ?? '';
-        if (/popup-menu-item|popup-sub-menu|button|toggle|slider|switch/.test(classes))
+        // the pieces of our page kit already have the panel's look
+        if (/popup-menu-item|popup-sub-menu|button|toggle|slider|switch|sch-kit-/.test(classes))
             return false;
         try {
             const node = widget.get_theme_node();

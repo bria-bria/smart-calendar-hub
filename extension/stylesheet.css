@@ -904,3 +904,89 @@
     font-weight: 700;
     color: rgba(255, 255, 255, 0.55);
 }
+
+/* The page kit (sch-page-kit.js): the standard pieces of the pages of other
+   extensions, with the measures and colours of the panel */
+.sch-kit-page {
+    spacing: 8px;
+    padding: 2px 2px 6px 2px;
+}
+
+.sch-kit-section {
+    font-size: 0.85em;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.55);
+    padding: 4px 8px 0 8px;
+}
+
+.sch-kit-card {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 4px;
+}
+
+.sch-kit-row {
+    padding: 8px 10px;
+    border-radius: 10px;
+}
+
+.sch-kit-row:hover,
+.sch-kit-row:focus {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sch-kit-row-line {
+    spacing: 10px;
+}
+
+.sch-kit-row-title {
+    font-weight: 700;
+}
+
+.sch-kit-row-subtitle {
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.sch-kit-value {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.sch-kit-buttons {
+    spacing: 8px;
+}
+
+.sch-kit-button {
+    padding: 7px 14px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.1);
+    font-weight: 700;
+}
+
+.sch-kit-button:hover,
+.sch-kit-button:focus {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.sch-kit-button-primary,
+.sch-kit-button-primary:hover,
+.sch-kit-button-primary:focus {
+    background-color: -st-accent-color;
+    color: -st-accent-fg-color;
+}
+
+.sch-kit-empty {
+    padding: 16px;
+    spacing: 6px;
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    border-radius: 14px;
+}
+
+.sch-kit-empty-text {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* the header of a side page: the calendar's month header (sch-cal-header) */
+.sch-calendar-card .sch-side-header {
+    margin: 0 12px 8px 12px;
+}

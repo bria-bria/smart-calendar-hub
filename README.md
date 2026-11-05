@@ -246,6 +246,53 @@ if (!shown)
 - `hub.stateObj.externalPageFeatures` (read only) lists what this version
   supports beyond the main page: `['side']` means `buildSidePage`.
 
+### Page model
+
+Pages shown in the hub follow one model, so every extension looks like part
+of the panel:
+
+1. **The header is the hub's**: back arrow and title. Never draw your own.
+2. **Section titles** small and grey, above groups of rows.
+3. **Rows**, all alike, inside rounded cards: icon, title, one line of detail,
+   and on the right one thing only — a switch, a value or a chevron.
+4. **Pill buttons**, and **one** primary (accent colour) button per page.
+5. **The card beside the panel** is the calendar's card: same width, height
+   and alignment, which you cannot change. Use it only for long lists or
+   details. Its header is drawn by the hub like the calendar's month header:
+   `sideTitle`, an optional `sideCount`, at most two round `sideActions`
+   (`{icon, label, onClick}`).
+6. **Scrolling is the hub's**, in the column and in the side card.
+7. **Empty state**: an icon and one sentence.
+
+Only theme colours and GNOME's accent colour, no backgrounds of your own, no
+windows or menus popping out of the panel.
+
+The **page kit** gives you these pieces ready made, with the look of the
+panel; if the look changes, your page follows:
+
+```js
+const hubState = Main.extensionManager.lookup('smart-calendar-hub@bria-bria.github.io')?.stateObj;
+const kit = hubState?.pageKit;   // check hubState.externalPageFeatures includes 'kit'
+
+const page = kit.page(
+    kit.section('Shared audio'),
+    kit.card(
+        kit.row({icon: 'audio-headphones-symbolic', title: 'Headphones', subtitle: 'Connected · 80%',
+            trailing: kit.toggle({active: true, onToggle: on => log(on)})}),
+        kit.row({icon: 'input-gaming-symbolic', title: 'Gamepad', subtitle: 'Not connected',
+            trailing: kit.chevron(), onActivate: () => log('open')}),
+    ),
+    kit.buttons(
+        kit.button({label: 'Search devices', primary: true, onClick: () => log('search')}),
+        kit.button({label: 'Settings', onClick: () => log('settings')}),
+    ),
+);
+// nothing to list: kit.empty({icon: 'bluetooth-disabled-symbolic', text: 'No other devices'})
+```
+
+Pieces: `page`, `section`, `card`, `row`, `toggle`, `value`, `chevron`,
+`button`, `buttons`, `empty` (`kit.version` = 1).
+
 ## License
 
 GPL-2.0-or-later. See [LICENSE](LICENSE).

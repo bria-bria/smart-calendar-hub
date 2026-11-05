@@ -458,6 +458,7 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
           <li>Inside the hub your content carries the style class <code>sch-hub-page</code>.</li>
         </ul>
         <p><strong>No top bar icon?</strong> Call <code>showExternalPage({id, title, buildPage, keepStyle})</code> on the hub (<code>Main.extensionManager.lookup('smart-calendar-hub@bria-bria.github.io')?.stateObj</code>): the panel opens on your page. Need more room? Add <code>buildSidePage</code> for a second page in a card beside the panel. It returns <code>false</code> when the hub isn't available, so you can fall back to your own window. <a href="https://github.com/bria-bria/smart-calendar-hub#open-a-page-without-a-tray-icon">Details →</a></p>
+        <p><strong>One page model for everyone.</strong> The header and scrolling are the hub's; pages are built from standard pieces — section titles, cards of rows, one primary button, an empty state — and the side card is always the calendar's card, same size and alignment. The <code>pageKit</code> gives you those pieces ready made. <a href="https://github.com/bria-bria/smart-calendar-hub#page-model">Read the page model →</a></p>
         <p><a href="https://github.com/bria-bria/smart-calendar-hub/tree/main/examples/hello-hub@bria-bria.github.io">See the complete example →</a></p>
       </div>
 <pre><code>// Optional integration metadata on your PanelMenu.Button
