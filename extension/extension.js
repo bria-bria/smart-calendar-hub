@@ -25,6 +25,10 @@ import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
+// Tray icons: size of each cell and space between cells (stylesheet.css
+// .sch-tray-row spacing must match)
+const TRAY_CELL = 32;
+const TRAY_SPACING = 4;
 // An icon counts as "normal" for an app only after being shown this long
 const NORMAL_ICON_MIN_SECONDS = 600;
 const TBO_KEYS = ['left-box-order', 'center-box-order', 'right-box-order'];
@@ -1700,9 +1704,9 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!this._trayBox)
             return;
         // panel padding + section padding/margins ≈ 48 px, settings button
-        // on the right ≈ 46 px; one icon ≈ 34 px
-        const perRow = Math.max(1,
-            Math.floor((this._settings.get_int('sidebar-width') - 48 - 46) / 34));
+        // on the right ≈ 46 px; one cell + spacing
+        const perRow = Math.max(1, Math.floor(
+            (this._settings.get_int('sidebar-width') - 48 - 46) / (TRAY_CELL + TRAY_SPACING)));
         const containers = [...this._movedTrayItems.values()].map(i => i.container);
         this._showTraySection(containers.length > 0);
 
@@ -1783,6 +1787,10 @@ export default class SmartCalendarHubExtension extends Extension {
         container.add_style_class_name('sch-tray-item');
         container.y_expand = false;
         container.x_expand = false;
+        // Every icon in a cell of the same size: buttons of other extensions
+        // have different widths (padding, two icons, labels) and the gaps
+        // looked random. The panel button centres its icon in the cell.
+        container.set_size(TRAY_CELL, TRAY_CELL);
 
         // The empty slot is filled at the next layout (next time the panel opens).
         info.destroyId = container.connect('destroy', () => {
@@ -1805,6 +1813,7 @@ export default class SmartCalendarHubExtension extends Extension {
         info.container.remove_style_class_name('sch-tray-item');
         info.container.y_expand = info.yExpand;
         info.container.x_expand = info.xExpand;
+        info.container.set_size(-1, -1); // its own size again in the top bar
     }
 
     _restoreTrayItem(indicator, info) {

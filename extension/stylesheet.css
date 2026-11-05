@@ -29,7 +29,8 @@
 
 .sch-tray-box,
 .sch-tray-row {
-    spacing: 2px;
+    /* TRAY_SPACING in extension.js */
+    spacing: 4px;
 }
 
 .sch-tray-item {
@@ -37,15 +38,13 @@
     padding: 0;
 }
 
-/* Icons packed from left to right with minimal spacing */
+/* Icons in cells of the same size (TRAY_CELL in extension.js), centred */
 .sch-tray-box .panel-button {
-    min-height: 30px;
-    min-width: 30px;
-    padding: 4px;
+    padding: 0;
     border-radius: 8px;
     margin: 0;
-    -natural-hpadding: 4px;
-    -minimum-hpadding: 4px;
+    -natural-hpadding: 0;
+    -minimum-hpadding: 0;
 }
 
 /* Outside the top bar GNOME gives these icons no size: set it here */
