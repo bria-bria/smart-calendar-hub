@@ -171,8 +171,8 @@ export default class SmartCalendarHubExtension extends Extension {
         for (const [source, ids] of this._alertSources ?? [])
             ids.forEach(id => safeDisconnect(source, id));
         this._alertSources = null;
-        for (const policy of this._bannerPolicies ?? [])
-            delete policy.showBanners; // back to the getter of its class
+        for (const source of [...this._bannerPolicies?.keys() ?? []])
+            this._releaseBanners(source);
         this._bannerPolicies = null;
         this._unpatchNotificationMessages();
         for (const [sni, ids] of this._alertTray ?? []) {
@@ -528,6 +528,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._connect(Main.messageTray, 'source-removed', (_t, source) => {
             this._alertSources.get(source)?.forEach(id => source.disconnect(id));
             this._alertSources.delete(source);
+            this._releaseBanners(source);
             this._updateAlertDot();
         });
         for (const source of Main.messageTray.getSources())
@@ -581,6 +582,8 @@ export default class SmartCalendarHubExtension extends Extension {
     // to low, it moved the message to a wrong place and the message vanished.
     _holdBanners(source) {
         const policy = source.policy;
+        if (this._bannerPolicies?.get(source) !== policy)
+            this._releaseBanners(source); // the source got a new policy
         if (!policy || Object.prototype.hasOwnProperty.call(policy, 'showBanners'))
             return;
         let proto = Object.getPrototypeOf(policy);
@@ -594,8 +597,16 @@ export default class SmartCalendarHubExtension extends Extension {
             get: () => (!this._settings || !this._isMuted(this._sourceKey(source))) &&
                 original.call(policy),
         });
-        this._bannerPolicies ??= new Set();
-        this._bannerPolicies.add(policy);
+        this._bannerPolicies ??= new Map();
+        this._bannerPolicies.set(source, policy);
+    }
+
+    // The policy goes back to the getter of its class
+    _releaseBanners(source) {
+        const policy = this._bannerPolicies?.get(source);
+        if (policy)
+            delete policy.showBanners;
+        this._bannerPolicies?.delete(source);
     }
 
     _mutedEntry(key) {
@@ -668,8 +679,19 @@ export default class SmartCalendarHubExtension extends Extension {
         });
         header.insert_child_below(bell, header.closeButton);
         message._schMuteBell = bell;
+        // Handlers on GNOME's message: the message outlives the extension
+        // (disabled on screen lock, enabled again on unlock), so they go away
+        // with the bell instead of touching destroyed widgets later.
+        const messageIds = [];
         bell.connect('destroy', () => {
             delete message._schMuteBell;
+            for (const id of messageIds) {
+                try {
+                    message.disconnect(id);
+                } catch (_e) {
+                    // the message is already gone
+                }
+            }
         });
 
         // The notification itself is a button: a click in the gaps of the row
@@ -679,7 +701,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // The message's own "clicked" is stopped instead when the pointer is
         // on the row (it runs before GNOME's default handler, vfunc_clicked).
         const row = new St.BoxLayout({style_class: 'sch-mute-row', visible: false, x_expand: true});
-        message.connect('clicked', () => {
+        messageIds.push(message.connect('clicked', () => {
             if (!row.visible || !row.mapped)
                 return;
             const [x, y] = global.get_pointer();
@@ -687,7 +709,7 @@ export default class SmartCalendarHubExtension extends Extension {
             if (x >= box.get_x() && x < box.get_x() + box.get_width() &&
                 y >= box.get_y() && y < box.get_y() + box.get_height())
                 GObject.signal_stop_emission_by_name(message, 'clicked');
-        });
+        }));
         const hour = 3600;
         const choices = [
             [_('1 hour'), () => Date.now() / 1000 + hour],
@@ -755,10 +777,10 @@ export default class SmartCalendarHubExtension extends Extension {
         // the setting (the bell is also re-checked when the panel opens)
         const settingsId = this._settings.connect('changed::muted-apps', sync);
         bell.connect('destroy', () => this._settings?.disconnect(settingsId));
-        message.connect('notify::mapped', () => {
+        messageIds.push(message.connect('notify::mapped', () => {
             if (message.mapped)
                 sync();
-        });
+        }));
         sync();
 
         for (const actor of [bell, row, note]) {

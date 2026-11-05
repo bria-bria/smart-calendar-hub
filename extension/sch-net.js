@@ -42,6 +42,15 @@ const GLOBE_ICON = new Gio.FileIcon({
 const VPN_ICONS = ['network-vpn-symbolic', 'dialog-password-symbolic',
     'changes-prevent-symbolic', 'security-high-symbolic', 'channel-secure-symbolic'];
 
+// Icon of the local network address: Wi-Fi, cable, other, offline
+function lanIconName(kind, ip) {
+    if (kind === 'wifi')
+        return 'network-wireless-symbolic';
+    if (kind === 'wired')
+        return 'network-wired-symbolic';
+    return ip ? 'network-workgroup-symbolic' : 'network-offline-symbolic';
+}
+
 const IpIndicator = GObject.registerClass(
 class IpIndicator extends PanelMenu.Button {
     _init(owner) {
@@ -96,9 +105,7 @@ class IpIndicator extends PanelMenu.Button {
         this._lanBox.visible = show.lan && bar.lan;
         this._lanLabel.text = lanIp ?? _('offline');
         // the connection the traffic is going through right now
-        this._lanIcon.icon_name = kind === 'wifi' ? 'network-wireless-symbolic'
-            : kind === 'wired' ? 'network-wired-symbolic'
-                : lanIp ? 'network-workgroup-symbolic' : 'network-offline-symbolic';
+        this._lanIcon.icon_name = lanIconName(kind, lanIp);
         this._lanItem.visible = show.lan;
         this._lanItem.label.text = _('Local network: {ip}', {ip: lanIp ?? _('offline')});
         this._lanItem.reactive = !!lanIp;
@@ -441,12 +448,9 @@ export class PanelIpBox {
         const ip = this._ipView;
         const items = [];
         if (on('panel-ip-lan')) {
-            const kind = ip.lanKind;
             items.push({
                 key: 'lan',
-                icon: kind === 'wifi' ? 'network-wireless-symbolic'
-                    : kind === 'wired' ? 'network-wired-symbolic'
-                        : ip.lanIp ? 'network-workgroup-symbolic' : 'network-offline-symbolic',
+                icon: lanIconName(ip.lanKind, ip.lanIp),
                 text: ip.lanIp ?? _('offline'),
                 copy: ip.lanIp,
                 name: _('Local network'),
@@ -454,9 +458,10 @@ export class PanelIpBox {
         }
         if (on('panel-ip-vpn')) {
             ip.vpns.forEach((vpn, i) => items.push({
-                key: `vpn:${vpn.name}`,
+                // name and address: two VPNs may have the same name
+                key: `vpn:${vpn.name}:${vpn.ip}`,
                 icon: VPN_ICONS[i % VPN_ICONS.length],
-                tag: ip.vpns.length > 1 ? _('VPN {n}', {n: i + 1}) : 'VPN',
+                tag: ip.vpns.length > 1 ? _('VPN {n}', {n: i + 1}) : _('VPN'),
                 text: vpn.ip,
                 copy: vpn.ip,
                 name: vpn.name,
