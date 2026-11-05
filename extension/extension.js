@@ -1075,20 +1075,10 @@ export default class SmartCalendarHubExtension extends Extension {
     // another extension already shows it next to the clock.
     _buildWeatherBadge() {
         const dm = this._dateMenu;
-        const clockBox = dm._clockDisplay?.get_parent();
         const client = dm._weatherItem?._weatherClient;
-        if (!clockBox || !client)
+        if (!dm._clockDisplay?.get_parent() || !client)
             return;
-        const isWeather = actor => (actor.style_class ?? '').includes('weather');
-        // either it wrapped the clock in its own box (Weather O'Clock loaded
-        // after us) or a weather widget sits beside the clock
-        const isOther = () => {
-            const ours = this._clockWeather?.actor;
-            return dm._clockDisplay.get_parent() !== clockBox ||
-                clockBox.get_children().some(ch => ch !== ours &&
-                    (isWeather(ch) || ch.get_children().some(isWeather)));
-        };
-        this._clockWeather = new ClockWeather(dm, client, this._settings, isOther);
+        this._clockWeather = new ClockWeather(dm, client, this._settings);
     }
 
     // ------------------------------------------------------------------

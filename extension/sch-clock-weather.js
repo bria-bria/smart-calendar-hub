@@ -2,7 +2,9 @@
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
 // The weather next to the clock, inside the same pill: icon and temperature
-// in the font of the clock, before or after it. While GNOME Weather loads a
+// in the font of the clock, before or after it. GNOME draws the pill on the
+// clock label (style class "clock"): the class moves to a box of ours that
+// holds both the clock and the weather, so they are one indicator, not two. While GNOME Weather loads a
 // spinner is shown; after each update the description ("Cloudy") replaces
 // the temperature for a few seconds; when the width changes, clock and
 // weather slide to their new place instead of jumping. Hidden while offline,
@@ -27,13 +29,16 @@ const REFRESH_SECONDS = 600;
 const RETRY_SECONDS = [5, 5, 30, 30, 30];
 
 export class ClockWeather {
-    // isOther(): true when another extension already shows the weather
-    constructor(dateMenu, client, settings, isOther) {
+    constructor(dateMenu, client, settings) {
         this._clock = dateMenu._clockDisplay;
-        this._clockBox = this._clock.get_parent();
         this._client = client;
         this._settings = settings;
-        this._isOther = isOther;
+        // the pill: takes the place and the "clock" class of the clock label
+        this._pill = new St.BoxLayout({style_class: 'clock'});
+        const parent = this._clock.get_parent();
+        this._clock.remove_style_class_name('clock');
+        parent.replace_child(this._clock, this._pill);
+        this._pill.add_child(this._clock);
         this._monitor = Gio.NetworkMonitor.get_default();
         this._signals = [];
         this._timers = {};
@@ -77,8 +82,8 @@ export class ClockWeather {
         });
         this._on(client, 'changed', () => this._update());
         this._on(this._monitor, 'notify::connectivity', () => this._onConnectivity());
-        this._on(this._clockBox, 'child-added', () => this._update());
-        this._on(this._clockBox, 'child-removed', () => this._update());
+        this._on(this._pill, 'child-added', () => this._update());
+        this._on(this._pill, 'child-removed', () => this._update());
         this._on(settings, 'changed::clock-weather-position', () => this._place());
         this._on(settings, 'changed::clock-weather', () => {
             if (this._mode() === 'off') {
@@ -98,6 +103,26 @@ export class ClockWeather {
         this._restoreTranslation();
         this.actor?.destroy();
         this.actor = null;
+        // the clock label back in its place, with its own pill
+        const pill = this._pill;
+        this._pill = null;
+        if (this._clock.get_parent() === pill) {
+            pill.remove_child(this._clock);
+            this._clock.add_style_class_name('clock');
+            pill.get_parent()?.replace_child(pill, this._clock);
+        }
+        pill.destroy();
+    }
+
+    // Another extension shows the weather next to the clock: it took the
+    // clock out of our pill (Weather O'Clock wraps it in its own box) or put
+    // a weather widget in it
+    _isOther() {
+        if (this._clock.get_parent() !== this._pill)
+            return true;
+        const isWeather = a => (a.style_class ?? '').includes('weather');
+        return this._pill.get_children().some(ch => ch !== this.actor && ch !== this._clock &&
+            (isWeather(ch) || ch.get_children().some(isWeather)));
     }
 
     _on(obj, signal, callback) {
@@ -149,10 +174,12 @@ export class ClockWeather {
         const before = this._settings.get_string('clock-weather-position') === 'before';
         this.actor.remove_style_class_name(before ? 'sch-clock-weather-after' : 'sch-clock-weather-before');
         this.actor.add_style_class_name(before ? 'sch-clock-weather-before' : 'sch-clock-weather-after');
-        if (before)
-            this._clockBox.insert_child_below(this.actor, this._clock);
+        if (this._clock.get_parent() !== this._pill)
+            this._pill.add_child(this.actor);
+        else if (before)
+            this._pill.insert_child_below(this.actor, this._clock);
         else
-            this._clockBox.insert_child_above(this.actor, this._clock);
+            this._pill.insert_child_above(this.actor, this._clock);
     }
 
     // 'both', 'temperature' or 'off'
@@ -385,7 +412,7 @@ export class ClockWeather {
             }
         }
         const shift = share * delta;
-        const children = this._clockBox.get_children();
+        const children = this._pill.get_children();
         const before = children.indexOf(this.actor) < children.indexOf(this._clock);
         for (const [actor, from] of [[this.actor, shift], [this._clock, before ? shift - delta : shift]]) {
             actor.remove_transition('translation-x');
