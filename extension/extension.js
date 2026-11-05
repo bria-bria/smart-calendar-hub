@@ -2546,9 +2546,18 @@ export default class SmartCalendarHubExtension extends Extension {
         // a page still inside something else cannot be shown
         if (!(page instanceof Clutter.Actor) || page.get_parent())
             return false;
-        if (!dm.menu.isOpen)
-            dm.menu.open();
-        this._closeTrayMenu();
+        try {
+            if (!dm.menu.isOpen)
+                dm.menu.open();
+            this._closeTrayMenu();
+        } catch (e) {
+            console.error(`Smart Calendar Hub: external page ${id}: ${e}`);
+        }
+        // the panel did not open: the page goes, the caller uses its fallback
+        if (!dm.menu.isOpen) {
+            page.destroy();
+            return false;
+        }
         const shown = {
             externalId: id, menu: null, info: null, page,
             hub: {keepStyle: !!keepStyle},
@@ -2651,7 +2660,8 @@ export default class SmartCalendarHubExtension extends Extension {
     // items stay aligned with each other).
     _alignTrayMenuItems() {
         const shown = this._insideMenu;
-        if (!shown?.box)
+        const root = shown?.box ?? shown?.page;
+        if (!root)
             return;
         const ornaments = [];
         const visit = actor => {
@@ -2662,7 +2672,7 @@ export default class SmartCalendarHubExtension extends Extension {
                     visit(child);
             }
         };
-        visit(shown.box);
+        visit(root);
         const marked = ornaments.some(o => o.icon_name && (o.visible || shown.ornaments.has(o)));
         for (const ornament of ornaments) {
             if (marked && shown.ornaments.has(ornament)) {
@@ -2683,7 +2693,8 @@ export default class SmartCalendarHubExtension extends Extension {
     // drawing code (e.g. a graph) cannot be reached from outside.
     _clearTrayMenuCards() {
         const shown = this._insideMenu;
-        if (!shown?.box)
+        const root = shown?.box ?? shown?.page;
+        if (!root)
             return;
         const visit = actor => {
             for (const child of actor.get_children()) {
@@ -2694,7 +2705,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 visit(child);
             }
         };
-        visit(shown.box);
+        visit(root);
     }
 
     _isTrayMenuCard(widget) {
