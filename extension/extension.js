@@ -1663,6 +1663,16 @@ export default class SmartCalendarHubExtension extends Extension {
         }
     }
 
+    // GNOME's "Today" card: not while the calendar is open in the panel
+    // (the calendar has its own list of the day's events)
+    _syncToday() {
+        if (!this._todayBin)
+            return;
+        this._todayBin.visible = !!this._dateMenu?._eventsItem &&
+            this._settings.get_boolean('show-today-events') &&
+            !this._calendarBox?.visible;
+    }
+
     _setCalendarExpanded(expanded) {
         if (!this._calendarBox)
             return;
