@@ -271,6 +271,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._skyView?.destroy();
         this._skyView = null;
         this._dateRow = null;
+        this._todayBin = null;
         this._sidebar?.destroy();
         this._sidebar = null;
         this._traySection = null;
@@ -1370,6 +1371,19 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._skyView?.stop();
             }
         });
+
+        // 3b. GNOME's "Today" card (the events of the day; click = GNOME
+        // Calendar), above the notifications. GNOME keeps it on today every
+        // time the panel opens. In a box of ours, so it can be switched off.
+        this._todayBin = new St.Bin({style_class: 'sch-today-events', x_expand: true});
+        this._sidebar.add_child(this._todayBin);
+        this._adopt(dm._eventsItem, this._todayBin);
+        const syncToday = () => {
+            this._todayBin.visible = !!dm._eventsItem &&
+                this._settings.get_boolean('show-today-events');
+        };
+        this._connect(this._settings, 'changed::show-today-events', syncToday);
+        syncToday();
 
         // 4. Notifications
         if (dm._messageList) {

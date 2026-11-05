@@ -466,6 +466,14 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         }));
 
         // ---------------- Calendars ----------------
+        const today = new Adw.PreferencesGroup();
+        pageCalendars.add(today);
+        const todayRow = new Adw.SwitchRow({
+            title: _('Today’s events'),
+            subtitle: _('A card with the events of the day above the notifications; click it to open GNOME Calendar'),
+        });
+        settings.bind('show-today-events', todayRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        today.add(todayRow);
         pageCalendars.add(await calendarsGroup());
 
         // ---------------- Network ----------------

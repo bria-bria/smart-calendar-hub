@@ -379,6 +379,11 @@
     font-weight: 600;
 }
 
+/* GNOME's "Today" card, above the notifications */
+.sch-today-events {
+    margin: 2px 4px;
+}
+
 /* 4. Notifications */
 .sch-sidebar-box .message-list {
     width: 24.5em;
@@ -520,17 +525,6 @@
 
 .sch-ip-panel-address:hover,
 .sch-ip-panel-address:focus {
-    background-color: rgba(255, 255, 255, 0.12);
-}
-
-/* › / ⌄ at the end of the IP box */
-.sch-ip-panel-expander {
-    padding: 0 2px;
-    border-radius: 6px;
-}
-
-.sch-ip-panel-expander:hover,
-.sch-ip-panel-expander:focus {
     background-color: rgba(255, 255, 255, 0.12);
 }
 

@@ -9,8 +9,9 @@ From top to bottom the panel shows:
 2. weather, collapsed at login (it stays as you leave it until you log out),
 3. today's date,
 4. the calendar and events, collapsed by default,
-5. notifications,
-6. world clocks, next to the button that clears the notifications.
+5. GNOME's "Today" card with the events of the day (it can be switched off),
+6. notifications,
+7. world clocks, next to the button that clears the notifications.
 
 It also shows the weather inside the clock pill (icon and temperature, before
 or after the clock, with the description for a few seconds after each update;

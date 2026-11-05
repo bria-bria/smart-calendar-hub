@@ -136,6 +136,10 @@ export const IT = {
         "Data",
     "Off: no date in the panel, and no sun or moon either":
         "Spento: niente data nel pannello, e niente sole e luna",
+    "Today’s events":
+        "Impegni di oggi",
+    "A card with the events of the day above the notifications; click it to open GNOME Calendar":
+        "Una scheda con gli impegni del giorno sopra le notifiche; cliccala per aprire GNOME Calendar",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

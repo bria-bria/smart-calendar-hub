@@ -407,36 +407,35 @@ export class PanelIpBox {
             visible: false,
         });
         const row = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true});
-        const card = new St.BoxLayout({style_class: 'sch-calendar-expander sch-ip-panel', x_expand: true});
+        // The whole box opens and closes the list, as the weather row; the
+        // addresses are copied from the list
+        const card = new St.Button({
+            style_class: 'sch-calendar-expander',
+            x_expand: true,
+            can_focus: true,
+            accessible_name: _('All the addresses'),
+        });
+        const line = new St.BoxLayout({style_class: 'sch-ip-panel', x_expand: true});
+        card.set_child(line);
         this._icon = new St.Icon({icon_size: 16, y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-panel-icon'});
         this._tag = new St.Label({style_class: 'sch-ip-panel-tag', y_align: Clutter.ActorAlign.CENTER, visible: false});
-        this._address = new St.Button({
+        this._address = new St.Label({
             style_class: 'sch-ip-panel-address',
             x_expand: true,
-            x_align: Clutter.ActorAlign.START,
             y_align: Clutter.ActorAlign.CENTER,
-            can_focus: true,
-            label: '',
-        });
-        this._address.connect('clicked', () => {
-            const item = this._items[this._index];
-            if (item?.copy)
-                this._ipView.copy(item.copy);
         });
         // › / ⌄ at the end of the box, as in the weather row
-        this._expander = new St.Button({
-            style_class: 'sch-ip-panel-expander',
-            can_focus: true,
+        this._expandIcon = new St.Icon({
+            icon_size: 16,
+            style_class: 'sch-calendar-expander-arrow',
             y_align: Clutter.ActorAlign.CENTER,
-            accessible_name: _('All the addresses'),
-            child: new St.Icon({icon_size: 16, style_class: 'sch-calendar-expander-arrow'}),
         });
-        this._expander.connect('clicked', () => {
+        card.connect('clicked', () => {
             ipExpanded = !ipExpanded;
             this._show();
         });
-        for (const child of [this._icon, this._tag, this._address, this._expander])
-            card.add_child(child);
+        for (const child of [this._icon, this._tag, this._address, this._expandIcon])
+            line.add_child(child);
         this._arrows = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             style_class: 'sch-city-selector',
@@ -545,10 +544,9 @@ export class PanelIpBox {
             this._icon.icon_name = item.icon;
         this._tag.text = item.tag ?? '';
         this._tag.visible = !!item.tag;
-        this._address.label = item.text;
-        this._address.accessible_name = _('{name}: {ip} (click to copy)', {name: item.name, ip: item.text});
+        this._address.text = item.text;
         this._arrows.visible = items.length > 1;
-        this._expander.child.icon_name = ipExpanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
+        this._expandIcon.icon_name = ipExpanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
         this._list.visible = ipExpanded;
         this._list.destroy_all_children();
         if (!ipExpanded)

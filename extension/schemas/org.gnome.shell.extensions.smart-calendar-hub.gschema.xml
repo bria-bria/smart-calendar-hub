@@ -71,6 +71,11 @@
       <description>"identifier TAB name" of each app seen in the notification list; used by the preferences window.</description>
     </key>
 
+    <key name="show-today-events" type="b">
+      <default>true</default>
+      <summary>Show GNOME's "Today" card with the events of the day above the notifications</summary>
+    </key>
+
     <key name="show-date" type="b">
       <default>true</default>
       <summary>Show the date in the side panel (switched off, the sun and the moon go too)</summary>
