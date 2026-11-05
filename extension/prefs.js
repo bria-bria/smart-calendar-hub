@@ -405,7 +405,11 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
             positionRow.sensitive = on;
             descriptionRow.sensitive = on;
         };
-        settings.connect('changed::clock-weather', syncWeatherRows);
+        const weatherRowsId = settings.connect('changed::clock-weather', syncWeatherRows);
+        window.connect('close-request', () => {
+            settings.disconnect(weatherRowsId);
+            return false;
+        });
         syncWeatherRows();
 
         const sky = new Adw.PreferencesGroup({

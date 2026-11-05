@@ -4,8 +4,8 @@
 // The weather next to the clock, inside the same pill: icon and temperature
 // in the font of the clock, before or after it. GNOME draws the pill on the
 // clock label (style class "clock"): the class moves to a box of ours that
-// holds both the clock and the weather, so they are one indicator, not two. While GNOME Weather loads a
-// spinner is shown; after each update the description ("Cloudy") replaces
+// holds both the clock and the weather, so they are one indicator, not two.
+// While GNOME Weather loads a spinner is shown; after each update the description ("Cloudy") replaces
 // the temperature for a few seconds; when the width changes, clock and
 // weather slide to their new place instead of jumping. Hidden while offline,
 // it tries again by itself and asks for fresh data every 10 minutes.
@@ -223,6 +223,10 @@ export class ClockWeather {
     _update() {
         if (!this.actor)
             return;
+        // the clock is back in our pill (e.g. Weather O'Clock was turned off
+        // and gave it back with its own pill): one pill only, ours
+        if (this._clock.get_parent() === this._pill && this._clock.has_style_class_name('clock'))
+            this._clock.remove_style_class_name('clock');
         if (this._mode() === 'off' || this._isOther() ||
             !this._client.available || !this._client.hasLocation) {
             this._hide(true);

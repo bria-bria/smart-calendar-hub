@@ -27,8 +27,6 @@ import {ClockWeather} from './sch-clock-weather.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
-// Tray arrows: how far one click moves the view (one icon cell + spacing)
-const TRAY_STEP = 36;
 // Inline style of the buttons in the tray (see _tightenTrayButton)
 const TRAY_BUTTON_STYLE = '-natural-hpadding: 0px; -minimum-hpadding: 0px';
 // An icon counts as "normal" for an app only after being shown this long
@@ -345,6 +343,13 @@ export default class SmartCalendarHubExtension extends Extension {
 
     _onSettingChanged(key) {
         switch (key) {
+        case 'sidebar-side':
+            // the calendar card goes on the side away from the screen edge
+            if (calendarSide && this._calendarCard?.visible) {
+                this._unsetCalendarSide();
+                this._setCalendarSide(true);
+            }
+            break;
         case 'tray-mode':
         case 'tray-excluded':
             this._syncTray();
@@ -1117,6 +1122,19 @@ export default class SmartCalendarHubExtension extends Extension {
             y_expand: true,
         });
         menuBox.add_child(this._sidebar);
+        // At logout GNOME Shell destroys the panel without calling disable():
+        // from then on nothing may touch the tray widgets (icons still being
+        // destroyed queue a layout)
+        this._sidebar.connect('destroy', () => {
+            this._disabling = true;
+            this._trayBox = null;
+            this._traySection = null;
+            this._traySpacer = null;
+            this._trayEndSpacer = null;
+            this._trayScroll = null;
+            this._trayLeft = null;
+            this._trayRight = null;
+        });
         this._trayMenuManager = new PopupMenu.PopupMenuManager(this._sidebar);
 
         // 0. Tray icons, with the settings button on their right (outside the
@@ -1165,7 +1183,7 @@ export default class SmartCalendarHubExtension extends Extension {
             }
             if (!delta)
                 return Clutter.EVENT_PROPAGATE;
-            adj.value += delta * TRAY_STEP;
+            adj.value += delta * this._trayStep();
             return Clutter.EVENT_STOP;
         });
         const arrow = (icon, delta, name) => {
@@ -1180,7 +1198,7 @@ export default class SmartCalendarHubExtension extends Extension {
             btn.connect('clicked', () => {
                 const adj = this._trayBox.hadjustment;
                 const target = Math.max(adj.lower,
-                    Math.min(adj.upper - adj.page_size, adj.value + delta * TRAY_STEP));
+                    Math.min(adj.upper - adj.page_size, adj.value + delta * this._trayStep()));
                 adj.ease(target, {duration: 150, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
             });
             return btn;
@@ -1725,8 +1743,7 @@ export default class SmartCalendarHubExtension extends Extension {
     _measureGnomeMenu() {
         try {
             const card = this._gnomeMenuCard();
-            const ours = this._dateMenu?.menu?.box;
-            if (!card || !ours || !this._sidebar)
+            if (!card || !this._sidebar)
                 return null;
             this._watchGnomeCard(card);
             // the width it has on screen, or the one it asks for
@@ -1979,6 +1996,15 @@ export default class SmartCalendarHubExtension extends Extension {
             this._syncTrayArrowEnds();
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+    // How far one click of the tray arrows moves the view: one icon cell and
+    // the space after it, as the stylesheet draws them
+    _trayStep() {
+        const cell = this._trayBox?.get_child_at_index(1);
+        if (!cell || cell === this._trayEndSpacer || !(cell.width > 0))
+            return 36;
+        return cell.width + this._trayBox.get_theme_node().get_length('spacing');
     }
 
     _syncTrayArrowEnds() {

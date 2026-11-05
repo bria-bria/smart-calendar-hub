@@ -77,7 +77,7 @@ export class PanelSpacing {
         const button = this._buttonOf(actor);
         if (!button || this._buttons.has(button))
             return;
-        const entry = {style: button.get_style(), id: 0};
+        const entry = {style: button.get_style(), id: 0, destroyId: 0};
         this._buttons.set(button, entry);
         const set = () => {
             const theirs = entry.style ? `${entry.style}; ` : '';
@@ -94,7 +94,7 @@ export class PanelSpacing {
             entry.style = current || null;
             set();
         });
-        button.connect('destroy', () => this._buttons.delete(button));
+        entry.destroyId = button.connect('destroy', () => this._buttons?.delete(button));
     }
 
     _restore(actor) {
@@ -110,6 +110,7 @@ export class PanelSpacing {
         this._buttons.delete(button);
         try {
             button.disconnect(entry.id);
+            button.disconnect(entry.destroyId);
             button.set_style(entry.style ?? null);
             refresh(button);
         } catch (_e) {
