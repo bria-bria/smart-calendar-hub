@@ -19,12 +19,13 @@
 }
 
 /* 0. Tray icons */
+/* same look as the IP and weather rows (.sch-calendar-expander) */
 .sch-tray-section {
-    background-color: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 6px 10px;
-    margin: 2px 4px 0 4px;
+    background-color: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 2px 10px;
+    margin: 2px 4px;
 }
 
 .sch-tray-box {
