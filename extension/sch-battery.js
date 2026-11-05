@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
 // The battery in the top bar as a circle: a ring that empties with the
-// charge, the percentage inside (optional), a filled bolt while it is really
-// charging and an outlined bolt while plugged in but not charging (full, or
-// held by a charge threshold). It
+// charge, a bolt only while it is really charging; otherwise (on battery, or
+// plugged in but not charging: full or held by a charge threshold) the
+// percentage inside if switched on, else nothing. It
 // takes the place of GNOME's battery icon in the system indicator, has the
 // size of the other icons of the bar (it follows the screen scale) and the
 // colour of their text (also GNOME's accent colour, see sch-topbar-style.js):
@@ -240,8 +240,8 @@ export class CircleBattery {
         cr.arc(cx, cy, radius, start, start + 2 * Math.PI * (this._shown / 100));
         cr.stroke();
 
-        if (!onBattery) {
-            this._drawBolt(cr, cx, cy, size, rgb, power === 'charging');
+        if (power === 'charging') {
+            this._drawBolt(cr, cx, cy, size, rgb);
         } else if (this._settings.get_boolean('battery-circle-text')) {
             const layout = PangoCairo.create_layout(cr);
             const text = `${Math.round(level)}`;
@@ -267,9 +267,8 @@ export class CircleBattery {
         return this._fontDesc;
     }
 
-    // a small lightning bolt in the middle: filled while charging, only its
-    // outline while plugged in without charging
-    _drawBolt(cr, cx, cy, size, rgb, filled) {
+    // a small lightning bolt in the middle, while charging
+    _drawBolt(cr, cx, cy, size, rgb) {
         const s = size * 0.26;
         cr.setSourceRGBA(...rgb, 1);
         cr.moveTo(cx + s * 0.15, cy - s);
@@ -279,12 +278,6 @@ export class CircleBattery {
         cr.lineTo(cx + s * 0.55, cy - s * 0.12);
         cr.lineTo(cx + s * 0.02, cy - s * 0.12);
         cr.closePath();
-        if (filled) {
-            cr.fill();
-        } else {
-            cr.setLineWidth(Math.max(1, size * 0.07));
-            cr.setLineJoin(1); // round
-            cr.stroke();
-        }
+        cr.fill();
     }
 }
