@@ -39,6 +39,7 @@
     padding: 6px 10px; display: flex; justify-content: flex-end; gap: 6px; }
   .tray span { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
   .tray span i { width: 16px; height: 16px; border-radius: 4px; display: block; }
+  .tray .tgear { background: rgba(255,255,255,.08); font-size: 15px; }
   .row { display: flex; gap: 8px; align-items: center; }
   .row .expander { flex: 1; }
   .expander { flex: 0 0 auto; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.06);
@@ -250,11 +251,11 @@ function sky(mode) {
 }
 
 function tray() {
-  return `<div class="tray">${TRAY.map(c => `<span><i style="background:${c}"></i></span>`).join('')}</div>`;
+  return `<div class="tray">${TRAY.map(c => `<span><i style="background:${c}"></i></span>`).join('')}<span class="tgear">⚙</span></div>`;
 }
 
 function weatherRow(text, open) {
-  return `<div class="row"><div class="expander"><span>${text}</span><span>${open ? '⌄' : '›'}</span></div><div class="gear">⚙</div></div>`;
+  return `<div class="row"><div class="expander"><span>${text}</span><span>${open ? '⌄' : '›'}</span></div></div>`;
 }
 
 function dateRow(mode) {

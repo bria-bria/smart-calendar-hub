@@ -1129,12 +1129,12 @@ export default class SmartCalendarHubExtension extends Extension {
         menuBox.add_child(this._sidebar);
         this._trayMenuManager = new PopupMenu.PopupMenuManager(this._sidebar);
 
-        // 0. Tray icons
+        // 0. Tray icons, and the settings button as the last item. Always
+        // shown, even with no icons, so the settings button can be reached.
         this._traySection = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             style_class: 'sch-tray-section',
             x_expand: true,
-            visible: false,
         });
         // Rows of icons laid out by _layoutTray(). Clutter.FlowLayout is not
         // used: on GNOME 51 it gives panel buttons a height of 0.
@@ -1207,6 +1207,7 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         weatherRow.add_child(this._citySelector);
 
+        // placed at the end of the tray by _layoutTray()
         const gear = this._gearButton = new St.Button({
             style_class: 'sch-gear-button',
             can_focus: true,
@@ -1214,7 +1215,6 @@ export default class SmartCalendarHubExtension extends Extension {
             y_align: Clutter.ActorAlign.CENTER,
             child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 16}),
         });
-        weatherRow.add_child(gear);
         gear.connect('clicked', () => {
             dm.menu.close();
             this.openPreferences();
@@ -1711,8 +1711,10 @@ export default class SmartCalendarHubExtension extends Extension {
         // panel padding + section padding/margins ≈ 48 px; one icon ≈ 34 px
         const perRow = Math.max(1,
             Math.floor((this._settings.get_int('sidebar-width') - 48) / 34));
+        // the settings button closes the last row
         const containers = [...this._movedTrayItems.values()].map(i => i.container);
-        this._traySection.visible = containers.length > 0;
+        if (this._gearButton)
+            containers.push(this._gearButton);
 
         // Nothing to do if the rows already match (avoids re-mapping every icon,
         // which makes AppIndicator reload them).
@@ -1744,7 +1746,6 @@ export default class SmartCalendarHubExtension extends Extension {
             container.get_parent()?.remove_child(container);
             row.add_child(container);
         });
-        this._traySection.visible = containers.length > 0;
     }
 
     _moveToTray(role, indicator) {
@@ -1787,8 +1788,6 @@ export default class SmartCalendarHubExtension extends Extension {
         // The empty slot is filled at the next layout (next time the panel opens).
         info.destroyId = container.connect('destroy', () => {
             this._movedTrayItems?.delete(indicator);
-            if (this._traySection)
-                this._traySection.visible = this._movedTrayItems.size > 0;
         });
         this._movedTrayItems.set(indicator, info);
     }

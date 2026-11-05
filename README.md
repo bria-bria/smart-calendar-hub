@@ -4,9 +4,9 @@ A GNOME Shell extension that turns the clock menu into a side panel.
 
 From top to bottom the panel shows:
 
-1. tray icons of applications (optional),
+1. tray icons of applications (optional), with the button that opens the
+   settings at the end,
 2. weather, collapsed at login (it stays as you leave it until you log out),
-   next to the button that opens the settings,
 3. today's date,
 4. the calendar and events, collapsed by default,
 5. notifications,
@@ -36,7 +36,7 @@ the panel; the preferences window shows a warning when that extension is off.
 ## Settings
 
 Open the preferences (Extensions app → Smart Calendar Hub) or click the gear
-icon next to the weather. They are in five tabs:
+icon at the end of the tray. They are in five tabs:
 
 - **Panel**: panel side (right, left, under the clock), clock position in the
   top bar, Top Bar Organizer sync (off by default; turn it on if you use Top

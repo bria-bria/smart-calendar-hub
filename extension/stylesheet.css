@@ -541,3 +541,10 @@
 .sch-panel-weather-temp {
     font-weight: 600;
 }
+
+/* Settings button as the last item of the tray: same size as the icons */
+.sch-tray-row .sch-gear-button {
+    margin: 0;
+    padding: 7px;
+    border-radius: 8px;
+}
