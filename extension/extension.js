@@ -2483,6 +2483,18 @@ export default class SmartCalendarHubExtension extends Extension {
         if (shown.page instanceof Clutter.Actor && !shown.page.get_parent()) {
             this._trayMenuContent.add_child(shown.page);
             shown.page.add_style_class_name?.('sch-hub-page');
+            // its menu leaves the floating box for the visit (kept aside, put
+            // back after): an empty floating box never shows, as for the menus
+            // shown inside
+            const heldBox = menu.box;
+            const heldBin = heldBox?.get_parent();
+            if (heldBox && heldBin) {
+                if (heldBin instanceof St.Bin)
+                    heldBin.set_child(null);
+                else
+                    heldBin.remove_child(heldBox);
+                Object.assign(shown, {heldBox, heldBin});
+            }
             shown.pageDestroyId = shown.page.connect('destroy', () => {
                 if (this._insideMenu === shown) {
                     shown.page = null;
@@ -2783,6 +2795,20 @@ export default class SmartCalendarHubExtension extends Extension {
                 shown.page.destroy();
             } catch (e) {
                 console.error(`Smart Calendar Hub: page of ${shown.info?.role ?? shown.externalId}: ${e}`);
+            }
+        }
+        // the menu of an extension that showed a page of its own goes back
+        // into its floating box
+        if (shown.heldBox) {
+            try {
+                if (!shown.heldBox.get_parent()) {
+                    if (shown.heldBin instanceof St.Bin)
+                        shown.heldBin.set_child(shown.heldBox);
+                    else
+                        shown.heldBin.add_child(shown.heldBox);
+                }
+            } catch (e) {
+                console.error(`Smart Calendar Hub: cannot give a tray menu back: ${e}`);
             }
         }
         try {
