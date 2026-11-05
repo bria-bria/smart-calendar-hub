@@ -29,6 +29,9 @@ import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
 // Inline style of the buttons in the tray (see _tightenTrayButton)
+// what a card of an app loses inside our tray menu area (see
+// _clearTrayMenuCards)
+const TRAY_CARD_CLEAR = 'background-color: transparent; border-color: transparent; box-shadow: none;';
 const TRAY_BUTTON_STYLE = '-natural-hpadding: 0px; -minimum-hpadding: 0px';
 // An icon counts as "normal" for an app only after being shown this long
 const NORMAL_ICON_MIN_SECONDS = 600;
@@ -2444,8 +2447,11 @@ export default class SmartCalendarHubExtension extends Extension {
             bin.remove_child(box);
         this._trayMenuContent.add_child(box);
         box.add_style_class_name('sch-tray-menu-box');
+        // as tall as its items, at the top: an item asking for the free room
+        // (y_expand) would otherwise stretch to the bottom of the card
+        const shown = {menu, box, bin, info, hidden: [], cleared: new Map(), yExpand: box.y_expand};
+        box.y_expand = false;
         menu.actor.hide();
-        const shown = {menu, box, bin, info, hidden: []};
         shown.boxDestroyId = box.connect('destroy', () => {
             if (this._insideMenu === shown) {
                 shown.box = null;
@@ -2466,14 +2472,58 @@ export default class SmartCalendarHubExtension extends Extension {
             shown.hidden.push(entry);
         }
         this._insideMenu = shown;
-        this._trayMenuTitle.text = this._trayLabel(info.role, indicator);
+        // "Nothing Phone 2a Indicator" → "Nothing Phone 2a"
+        this._trayMenuTitle.text = this._trayLabel(info.role, indicator)
+            .replace(/\s+indicator$/i, '');
         info.cell.add_style_class_name('sch-tray-cell-open');
         this._trayMenuScroll.vadjustment.value = 0;
         this._trayMenuHost.show();
-        // the keys go to the menu (Esc: back); with nothing to focus, to
-        // the card itself, so Esc does not close the whole panel
-        if (!box.navigate_focus(null, St.DirectionType.TAB_FORWARD, false))
-            this._trayMenuHost.grab_key_focus();
+        this._clearTrayMenuCards();
+        // the apps rebuild parts of their menu while it is open (e.g. the
+        // list of networks): the new pieces get the same treatment
+        shown.cardsId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
+            this._clearTrayMenuCards();
+            return GLib.SOURCE_CONTINUE;
+        });
+        // the keys go to our card (Esc: back, arrows: into the menu); no item
+        // lit up at the start, as in a floating menu opened with the mouse
+        this._trayMenuHost.grab_key_focus();
+    }
+
+    // The cards drawn by the app inside its menu lose their background, so
+    // the menu looks part of ours: a container (it holds other widgets), not
+    // clickable, at least as tall as a line. Bars, graphs, buttons and the
+    // items of the menu keep their colours (they show something).
+    _clearTrayMenuCards() {
+        const shown = this._insideMenu;
+        if (!shown?.box)
+            return;
+        const visit = actor => {
+            for (const child of actor.get_children()) {
+                if (child instanceof St.Widget && !shown.cleared.has(child) && this._isTrayMenuCard(child)) {
+                    shown.cleared.set(child, child.get_style());
+                    child.set_style(`${child.get_style() ?? ''}; ${TRAY_CARD_CLEAR}`.replace(/^; /, ''));
+                }
+                visit(child);
+            }
+        };
+        visit(shown.box);
+    }
+
+    _isTrayMenuCard(widget) {
+        if (widget.reactive || widget instanceof St.Button || widget.height < 24 ||
+            !widget.get_children().some(c => c instanceof St.Widget))
+            return false;
+        const classes = widget.get_style_class_name() ?? '';
+        if (/popup-menu-item|popup-sub-menu|button|toggle|slider|switch/.test(classes))
+            return false;
+        try {
+            const node = widget.get_theme_node();
+            return node.get_background_color().alpha > 0 ||
+                node.get_border_width(St.Side.TOP) > 0 || node.get_box_shadow() !== null;
+        } catch (_e) {
+            return false; // not styled yet
+        }
     }
 
     // Close the menu shown inside (its 'open-state-changed' puts it back)
@@ -2495,8 +2545,18 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!shown)
             return;
         this._insideMenu = null;
+        if (shown.cardsId)
+            GLib.source_remove(shown.cardsId);
+        for (const [widget, style] of shown.cleared) {
+            try {
+                widget.set_style(style);
+            } catch (_e) {
+                // the app destroyed it
+            }
+        }
         try {
             if (shown.box) {
+                shown.box.y_expand = shown.yExpand;
                 shown.box.disconnect(shown.boxDestroyId);
                 shown.box.remove_style_class_name('sch-tray-menu-box');
                 shown.box.get_parent()?.remove_child(shown.box);
