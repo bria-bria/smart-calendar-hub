@@ -34,6 +34,12 @@ altre estensioni hanno larghezze diverse (con `set_size` sul contenitore non
 funzionava). NON usare `Clutter.FlowLayout`: su GNOME 51 dà altezza 0 ai
 pulsanti del pannello.
 
+Mai distruggere il **genitore** di un attore dentro il segnale `destroy` di
+quell'attore (05/11/2026: la casella del vassoio distrutta nel `destroy`
+dell'icona faceva crollare GNOME Shell con "clutter_actor_destroy_all_children:
+assertion failed", e dopo il crash GNOME spegne tutte le estensioni). Rimandare
+a un idle.
+
 Niente **margini negativi** nel CSS (es. `margin-top: -4px`): il 05/11/2026
 uno solo nei puntini delle città rendeva il pannello invisibile (si apriva ma
 GNOME non lo disegnava: "cogl_framebuffer_set_viewport: width > 0 && height > 0").
