@@ -2180,7 +2180,7 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!this._trayBox)
             return;
         const cells = [...this._movedTrayItems.values()].map(i => i.cell);
-        this._showTraySection(cells.length > 0);
+        this._showTraySection(this._anyTrayIconShown());
         // first and last children: the spacers that centre the icons
         const current = this._trayBox.get_children().slice(1, -1);
         // cells left empty by icons that were destroyed
@@ -2269,15 +2269,44 @@ export default class SmartCalendarHubExtension extends Extension {
         // removed by the next layout, after the icon is gone.
         info.destroyId = container.connect('destroy', () => {
             this._movedTrayItems?.delete(indicator);
-            this._showTraySection(this._movedTrayItems?.size > 0);
+            this._showTraySection(this._anyTrayIconShown());
             this._queueTrayLayout();
         });
         this._movedTrayItems.set(indicator, info);
+
+        // An app may hide its icon (GSConnect: device not connected): its
+        // cell goes too, no hole in the row
+        const syncCell = () => {
+            if (this._disabling || !info.cell)
+                return;
+            info.cell.visible = container.visible && indicator.visible;
+            if (!info.cell.visible && this._insideMenu?.info === info)
+                this._closeTrayMenu();
+            this._showTraySection(this._anyTrayIconShown());
+            this._queueTrayScrollbar();
+        };
+        info.visibleIds = [container, indicator]
+            .filter((actor, i, all) => all.indexOf(actor) === i)
+            .map(actor => [actor, actor.connect('notify::visible', syncCell)]);
+        syncCell();
+    }
+
+    // at least one icon of the tray is shown (else the name of the extension)
+    _anyTrayIconShown() {
+        return [...this._movedTrayItems?.values() ?? []].some(i => i.cell.visible);
     }
 
     // Undoes everything _moveToTray did except the position of the container.
     _releaseTrayItem(indicator, info) {
         info.container.disconnect(info.destroyId);
+        for (const [actor, id] of info.visibleIds ?? []) {
+            try {
+                actor.disconnect(id);
+            } catch (_e) {
+                // already gone
+            }
+        }
+        info.visibleIds = [];
         const menu = indicator.menu;
         if (menu && this._insideMenu?.menu === menu)
             this._closeTrayMenu();
