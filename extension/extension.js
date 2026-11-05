@@ -71,7 +71,14 @@ export default class SmartCalendarHubExtension extends Extension {
         this._styleSettings = this.getSettings();
         this._topBarStyle = new TopBarStyle(this._styleSettings);
         this._modeId = Main.sessionMode.connect('updated', () => this._syncSessionMode());
-        this._syncSessionMode();
+        const error = this._syncSessionMode();
+        // A failure while building the panel at enable time is reported to
+        // GNOME (the Extensions app shows the error): undo the top bar style
+        // too, since GNOME will not call disable() after a failed enable().
+        if (error) {
+            this.disable();
+            throw error;
+        }
     }
 
     disable() {
@@ -84,13 +91,16 @@ export default class SmartCalendarHubExtension extends Extension {
         this._styleSettings = null;
     }
 
+    // returns the error if the panel could not be built
     _syncSessionMode() {
         const session = !Main.sessionMode.isLocked && !Main.sessionMode.isGreeter;
+        let error = null;
         if (session && !this._dateMenu)
-            this._enableFull();
+            error = this._enableFull();
         else if (!session && this._dateMenu)
             this._disableFull();
         this._topBarStyle?.setLoginScreen(Main.sessionMode.isGreeter);
+        return error;
     }
 
     _enableFull() {
@@ -105,7 +115,9 @@ export default class SmartCalendarHubExtension extends Extension {
             } catch (e2) {
                 console.error(`Smart Calendar Hub: restore failed: ${e2}`);
             }
+            return e;
         }
+        return null;
     }
 
     _enable() {

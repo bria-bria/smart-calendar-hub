@@ -60,11 +60,16 @@ chmod -R a+rX "$DEST"
 
 # 2. your settings (dconf read works without a session bus); a key you
 # never changed is empty: then the default of the extension
+# -H: HOME of that user, so dconf reads HIS database (not root's)
 read_key() {
     local value
-    value=$(sudo -u "$SUDO_USER" dconf read "$1" 2>/dev/null || true)
+    value=$(sudo -H -u "$SUDO_USER" dconf read "$1" 2>/dev/null || true)
     echo "${value:-$2}"
 }
+if [ -z "$(sudo -H -u "$SUDO_USER" dconf read /org/gnome/desktop/interface/accent-color 2>/dev/null || true)" ]; then
+    echo "Attenzione: non riesco a leggere le impostazioni di $SUDO_USER (colore d'accento vuoto):"
+    echo "uso i valori predefiniti."
+fi
 S=/org/gnome/shell/extensions/smart-calendar-hub
 ACCENT_BAR=$(read_key "$S/accent-top-bar" "false")
 TONE=$(read_key "$S/accent-top-bar-tone" "'light'")
@@ -85,6 +90,14 @@ elif ! grep -q "^system-db:gdm" "$PROFILE"; then
     echo "Aggiungi a mano la riga 'system-db:gdm' dopo 'user-db:user'."
 fi
 mkdir -p "$(dirname "$KEYFILE")"
+# another keyfile may already choose the extensions of the login screen:
+# ours would replace that list
+OTHER=$(grep -l "enabled-extensions" "$(dirname "$KEYFILE")"/* 2>/dev/null | grep -v "$KEYFILE" || true)
+if [ -n "$OTHER" ]; then
+    echo "Attenzione: anche questi file scelgono le estensioni della schermata di accesso:"
+    echo "$OTHER"
+    echo "La nostra lista le sostituisce: aggiungi a mano le loro estensioni in $KEYFILE."
+fi
 cat > "$KEYFILE" <<EOF
 # Smart Calendar Hub on the login screen (installa-schermata-accesso.sh)
 [org/gnome/shell]
