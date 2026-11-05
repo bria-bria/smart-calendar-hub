@@ -57,8 +57,10 @@ export class CircleBattery {
             this._unhook();
             return;
         }
-        if (!this._area)
+        if (!this._area) {
+            this._tries = 0;
             this._hook();
+        }
         this._area?.queue_repaint();
     }
 
@@ -73,12 +75,24 @@ export class CircleBattery {
         this._system = system;
         this._toggle = system._systemItem.powerToggle;
         this._icon = system._indicator;
+        // as it was: another extension may keep it hidden too
+        this._iconWasVisible = this._icon.visible;
 
         this._area = new St.DrawingArea({
             style_class: 'system-status-icon sch-battery-circle',
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._area.connect('repaint', area => this._repaint(area));
+        // the colour comes from the bar (accent colour, light/dark style)
+        this._area.connect('style-changed', area => area.queue_repaint());
+        // destroyed with GNOME's indicator (e.g. at the end of the session):
+        // the animation stops and nothing touches it any more
+        this._area.connect('destroy', () => {
+            if (this._animId)
+                GLib.source_remove(this._animId);
+            this._animId = 0;
+            this._area = null;
+        });
         system.insert_child_above(this._area, this._icon);
 
         const theme = St.ThemeContext.get_for_stage(global.stage);
@@ -106,7 +120,7 @@ export class CircleBattery {
         this._ids = [];
         if (this._icon) {
             try {
-                this._icon.visible = true;
+                this._icon.visible = this._iconWasVisible ?? true;
             } catch (_e) {
                 // GNOME's indicator is gone (shell exit)
             }
@@ -222,11 +236,9 @@ export class CircleBattery {
             this._drawBolt(cr, cx, cy, size, rgb);
         } else if (this._settings.get_boolean('battery-circle-text')) {
             const layout = PangoCairo.create_layout(cr);
-            const font = Pango.FontDescription.from_string('Sans Bold');
             const text = `${Math.round(level)}`;
             // 100 needs three digits: a smaller size
-            font.set_absolute_size(size * (text.length > 2 ? 0.34 : 0.44) * Pango.SCALE);
-            layout.set_font_description(font);
+            layout.set_font_description(this._font(size * (text.length > 2 ? 0.34 : 0.44)));
             layout.set_text(text, -1);
             const [, logical] = layout.get_pixel_extents();
             cr.setSourceRGBA(...rgb, 1);
@@ -234,6 +246,17 @@ export class CircleBattery {
             PangoCairo.show_layout(cr, layout);
         }
         cr.$dispose();
+    }
+
+    // the font of the percentage, built once per size
+    _font(px) {
+        const key = Math.round(px * 10);
+        if (this._fontKey !== key) {
+            this._fontKey = key;
+            this._fontDesc = Pango.FontDescription.from_string('Sans Bold');
+            this._fontDesc.set_absolute_size(px * Pango.SCALE);
+        }
+        return this._fontDesc;
     }
 
     // a small lightning bolt in the middle
