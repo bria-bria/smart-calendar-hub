@@ -610,7 +610,7 @@ export default class SmartCalendarHubExtension extends Extension {
             try {
                 const message = this._notificationToMessage?.get(notification);
                 if (message)
-                    ext._addMuteButton(message, notification);
+                    ext._addMuteButton(message, notification, this.source);
             } catch (e) {
                 console.error(`Smart Calendar Hub: cannot add the silence button: ${e}`);
             }
@@ -621,7 +621,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const groups = this._dateMenu._messageList?._messageView?._notificationSourceToGroup;
         for (const group of groups?.values() ?? []) {
             for (const [notification, message] of group._notificationToMessage ?? [])
-                this._addMuteButton(message, notification);
+                this._addMuteButton(message, notification, group.source);
         }
     }
 
@@ -644,7 +644,10 @@ export default class SmartCalendarHubExtension extends Extension {
         this._muteButtons = null;
     }
 
-    _addMuteButton(message, notification) {
+    // groupSource: the source of GNOME's message group, which always knows
+    // the app (notification.source can be missing, e.g. with GSConnect)
+    _addMuteButton(message, notification, groupSource = null) {
+        const sourceOf = () => notification.source ?? groupSource;
         const header = message._header;
         const vbox = message.get_child();
         if (!header?.closeButton || !vbox || message._schMuteBell)
@@ -684,7 +687,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const note = new St.Label({style_class: 'sch-mute-note', visible: false});
         // Shows the current state: chosen duration in colour, note, bell in colour
         const sync = () => {
-            const source = notification.source;
+            const source = sourceOf();
             const entry = source ? this._mutedEntry(this._sourceKey(source)) : null;
             buttons.forEach((b, i) => {
                 if (entry && entry.choice === i)
@@ -710,7 +713,7 @@ export default class SmartCalendarHubExtension extends Extension {
         choices.forEach(([label, until], i) => {
             const btn = new St.Button({label, style_class: 'sch-mute-choice', x_expand: true, can_focus: true});
             btn.connect('clicked', () => {
-                const source = notification.source;
+                const source = sourceOf();
                 if (!source)
                     return;
                 // clicking the chosen duration again turns the silence off
@@ -802,7 +805,8 @@ export default class SmartCalendarHubExtension extends Extension {
         const names = new Set();
         for (const s of this._alertSources?.keys() ?? []) {
             const key = this._sourceKey(s);
-            if (s.count > 0 && wanted.has(key) && !this._isMuted(key))
+            // silenced apps: no banner, the red dot instead
+            if (s.count > 0 && (wanted.has(key) || this._isMuted(key)))
                 names.add(s.title || this._sourceKey(s));
         }
         for (const sni of this._alertTray?.keys() ?? []) {

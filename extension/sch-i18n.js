@@ -116,8 +116,8 @@ export const IT = {
         "Sempre",
     "Silenced apps":
         "App silenziate",
-    "Silenced with the bell of a notification: no pop-up, the notifications stay in the panel and do not light the red dot.":
-        "Silenziate con la campanella di una notifica: niente fumetto, le notifiche restano nel pannello e non accendono il puntino rosso.",
+    "Silenced with the bell of a notification: no pop-up; the notifications stay in the panel and light the red dot on the clock instead.":
+        "Silenziate con la campanella di una notifica: niente fumetto; le notifiche restano nel pannello e al loro posto si accende il puntino rosso sull'ora.",
     "No silenced apps":
         "Nessuna app silenziata",
     "Until {time}":

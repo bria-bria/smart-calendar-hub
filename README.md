@@ -49,7 +49,8 @@ icon next to the weather. They are in five tabs:
   Calendar uses, so a calendar turned off here is off there too (your online
   accounts are not changed). Calendars shared between two accounts appear once.
 - **Notifications**: apps silenced with the bell of a notification (1 hour,
-  8 hours, until tomorrow morning, always; "Unmute" to undo) and the apps that
+  8 hours, until tomorrow morning, always: no pop-up, the red dot lights up
+  instead; "Unmute" to undo) and the apps that
   light the red dot on the clock — for notifications, or when their tray icon
   changes from the usual one (e.g. an unread badge).
 - **Network**: IP addresses in the top bar (left, center or right), local
