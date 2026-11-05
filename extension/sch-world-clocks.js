@@ -248,9 +248,9 @@ export class WorldClocksCard {
                 .sort((a, b) => a.when.compare(b.when));
             for (const alarm of next) {
                 const today = alarm.when.format('%F') === now.format('%F');
-                // on the chip as GNOME's clock; in the label with AM/PM
+                // as GNOME's clock, on the chip and in the label
                 const chipTime = this._format(alarm.when, !today);
-                const time = this._format(alarm.when, !today, true);
+                const time = chipTime;
                 const tip = alarm.name
                     ? _('Alarm · {name} · {time}', {name: alarm.name, time})
                     : _('Alarm · {time}', {time});
