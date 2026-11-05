@@ -264,6 +264,18 @@ export const IT = {
         "Tornare alla schermata di accesso com'era",
     "In a terminal, in the folder of the script":
         "In un terminale, nella cartella dello script",
+    "Off · click to switch it on in GNOME Clocks":
+        "Spenta · clic per accenderla in GNOME Orologi",
+    "Click: start":
+        "Clic: avvia",
+    "Finished · click: reset":
+        "Finito · clic: azzera",
+    "{left} left · click: pause · right click: reset":
+        "Mancano {left} · clic: pausa · clic destro: azzera",
+    "Paused · {left} left · click: resume · right click: reset":
+        "In pausa · mancano {left} · clic: riprendi · clic destro: azzera",
+    "Timer finished":
+        "Timer finito",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

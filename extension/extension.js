@@ -24,7 +24,7 @@ import {SkyView} from './sch-sky.js';
 import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
 import {MENU_TAIL_ROLES, TopBarStyle, clockSlot} from './sch-topbar-style.js';
 import {ClockWeather} from './sch-clock-weather.js';
-import {WorldClocksCard} from './sch-world-clocks.js';
+import {WorldClocksCard, stopTimerCountdowns} from './sch-world-clocks.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -91,6 +91,7 @@ export default class SmartCalendarHubExtension extends Extension {
             Main.sessionMode.disconnect(this._modeId);
         this._modeId = 0;
         this._disableFull();
+        stopTimerCountdowns();
         this._topBarStyle?.destroy();
         this._topBarStyle = null;
         this._styleSettings = null;
