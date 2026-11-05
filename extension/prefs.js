@@ -478,7 +478,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         pageCalendars.add(today);
         const todayRow = new Adw.SwitchRow({
             title: _('Today’s events'),
-            subtitle: _('A card with the events of the day above the notifications; click it to open GNOME Calendar'),
+            subtitle: _('A card with the events of the day above the notifications; click it to open the calendar beside the panel'),
         });
         settings.bind('show-today-events', todayRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         today.add(todayRow);

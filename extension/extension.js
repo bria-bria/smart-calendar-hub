@@ -61,7 +61,7 @@ const MENU_TAIL_ROLES = ['quickSettings'];
 // Weather section open or closed. Module-level on purpose: it survives
 // disable/enable (screen lock) and goes back to closed at the next login.
 let weatherExpanded = false;
-// Calendar in its own card next to the panel (arrow in the calendar row):
+// Calendar in its own card next to the panel (click on the "Today" card):
 // like the weather, kept until the next login.
 let calendarSide = false;
 
@@ -276,7 +276,6 @@ export default class SmartCalendarHubExtension extends Extension {
         this._unsetCalendarSide();
         this._calendarCard?.destroy();
         this._calendarCard = null;
-        this._calendarSideButton = null;
         this._calendarView?.destroy();
         this._skyView?.destroy();
         this._skyView = null;
@@ -1339,22 +1338,7 @@ export default class SmartCalendarHubExtension extends Extension {
         });
         row.add_child(this._calendarArrow);
         expander.set_child(row);
-        // the row, and outside it on the right (same column as the arrows of
-        // the IP and weather rows) the button that puts the calendar in a
-        // card of its own beside the panel. Outside: a button inside the row
-        // button would get the click twice.
-        const calendarRow = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true});
-        calendarRow.add_child(expander);
-        this._calendarSideButton = new St.Button({
-            style_class: 'sch-calendar-side-button',
-            can_focus: true,
-            y_align: Clutter.ActorAlign.CENTER,
-            accessible_name: _('Calendar beside the panel'),
-            child: new St.Icon({icon_size: 14}),
-        });
-        this._calendarSideButton.connect('clicked', () => this._setCalendarSide(!calendarSide));
-        calendarRow.add_child(this._calendarSideButton);
-        this._sidebar.add_child(calendarRow);
+        this._sidebar.add_child(expander);
 
         this._calendarBox = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
@@ -1398,7 +1382,6 @@ export default class SmartCalendarHubExtension extends Extension {
             }
             this._setCalendarExpanded(!this._calendarBox.visible);
         });
-        this._syncCalendarSideIcon();
 
         this._connect(dm.menu, 'open-state-changed', (_m, isOpen) => {
             if (isOpen) {
@@ -1424,6 +1407,14 @@ export default class SmartCalendarHubExtension extends Extension {
         this._todayBin = new St.Bin({style_class: 'sch-today-events', x_expand: true});
         this._sidebar.add_child(this._todayBin);
         this._adopt(dm._eventsItem, this._todayBin);
+        // Its click opens the calendar beside the panel instead of an app:
+        // the handler runs before GNOME's own (vfunc_clicked) and stops it.
+        if (dm._eventsItem) {
+            this._connect(dm._eventsItem, 'clicked', () => {
+                GObject.signal_stop_emission_by_name(dm._eventsItem, 'clicked');
+                this._setCalendarSide(!calendarSide);
+            });
+        }
         const syncToday = () => {
             this._todayBin.visible = !!dm._eventsItem &&
                 this._settings.get_boolean('show-today-events');
@@ -1634,7 +1625,6 @@ export default class SmartCalendarHubExtension extends Extension {
         } else {
             this._unsetCalendarSide();
         }
-        this._syncCalendarSideIcon();
         this._updateSidebarSize();
     }
 
@@ -1654,17 +1644,6 @@ export default class SmartCalendarHubExtension extends Extension {
         if (host && this._hostOrientation !== undefined)
             host.orientation = this._hostOrientation;
         this._hostOrientation = undefined;
-    }
-
-    // Arrow towards the outside to open the card, towards the panel to close it
-    _syncCalendarSideIcon() {
-        const icon = this._calendarSideButton?.child;
-        if (!icon)
-            return;
-        const toLeft = this._settings.get_string('sidebar-side') !== 'left';
-        const out = toLeft ? 'pan-start-symbolic' : 'pan-end-symbolic';
-        const back = toLeft ? 'pan-end-symbolic' : 'pan-start-symbolic';
-        icon.icon_name = calendarSide ? back : out;
     }
 
     // Padding and border of the menu's content box around the panel
@@ -1787,7 +1766,8 @@ export default class SmartCalendarHubExtension extends Extension {
         const width = this._sidebarWidth(true);
         // with the calendar beside it the panel is a card of its own: its
         // padding and border are inside its width
-        this._sidebar.width = width + (calendarSide ? this._cardFrame ?? 22 : 0);
+        const frame = calendarSide ? this._cardFrame ?? 22 : 0;
+        this._sidebar.width = width + frame;
         // the calendar cells follow the width (only when it changed)
         if (this._calendarWidth !== width) {
             this._calendarWidth = width;
@@ -1795,7 +1775,7 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         // Fill the work area, but never be taller than it: 4 px gap at the
         // top plus the popup padding and border (about 24 px) and a margin.
-        this._sidebar.height = Math.max(0, workArea.height - 40);
+        this._sidebar.height = Math.max(0, workArea.height - 40) + frame;
         // "Clear" takes 2/5 of the bottom row (sidebar padding ≈ 4 px,
         // margins and spacing ≈ 14 px); the world clocks fill the rest.
         this._layoutBottomRow();
