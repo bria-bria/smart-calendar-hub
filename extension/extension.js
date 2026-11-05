@@ -1647,10 +1647,6 @@ export default class SmartCalendarHubExtension extends Extension {
             this._hostOrientation ??= host.orientation;
             host.orientation = Clutter.Orientation.HORIZONTAL;
             host.add_style_class_name('sch-cards-host');
-            // the space between the two cards: the one of GNOME's menu when
-            // another extension (LibPanel) splits it into cards, else ours
-            const gap = this._gnomeCardGap();
-            host.set_style(gap === null ? null : `spacing: ${gap}px`);
             this._sidebar.add_style_class_name('popup-menu-content');
             if (view.get_parent() !== this._calendarCard) {
                 view.get_parent()?.remove_child(view);
@@ -1829,9 +1825,51 @@ export default class SmartCalendarHubExtension extends Extension {
         this._gnomeCardIds = [];
     }
 
+    // The geometry of GNOME's system menu card (corner radius and padding):
+    // {radius, padding} in pixels, or null (then our stylesheet decides)
+    _gnomeCardShape() {
+        try {
+            const node = this._gnomeMenuCard()?.get_theme_node();
+            if (!node)
+                return null;
+            const radius = Math.round(node.get_border_radius(St.Corner.TOPLEFT));
+            const padding = Math.round(node.get_padding(St.Side.LEFT));
+            if (radius < 0 || radius > 80 || padding < 0 || padding > 60)
+                return null;
+            return {radius, padding};
+        } catch (_e) {
+            return null;
+        }
+    }
+
+    // Our cards with the same corners and padding as GNOME's menu card.
+    // One card: the menu's content box. With the calendar beside: the box
+    // is transparent (only the space between the cards, see _gnomeCardGap)
+    // and the panel and the calendar are the cards; the panel keeps its own
+    // 2 px inside, so nothing in it moves.
+    _applyCardShape() {
+        const host = this._dateMenu?.menu?.box;
+        if (!host || !this._sidebar)
+            return;
+        const shape = this._gnomeCardShape();
+        const card = pad => shape ? `padding: ${pad}px; border-radius: ${shape.radius}px` : null;
+        if (calendarSide) {
+            const gap = this._gnomeCardGap();
+            host.set_style(gap === null ? null : `spacing: ${gap}px`);
+            this._sidebar.set_style(card(shape?.padding + 2));
+            this._calendarCard?.set_style(card(shape?.padding));
+        } else {
+            host.set_style(card(shape?.padding));
+            this._sidebar.set_style(null);
+            this._calendarCard?.set_style(null);
+        }
+    }
+
     _updateSidebarSize() {
         if (!this._sidebar)
             return;
+        // first the shape: the width below depends on the frame of the cards
+        this._applyCardShape();
         const monitor = Main.layoutManager.findIndexForActor(this._dateMenu.container);
         const workArea = Main.layoutManager.getWorkAreaForMonitor(monitor);
         const width = this._sidebarWidth(true);
@@ -1845,8 +1883,10 @@ export default class SmartCalendarHubExtension extends Extension {
             this._calendarView?.setWidth(width);
         }
         // Fill the work area, but never be taller than it: 4 px gap at the
-        // top plus the popup padding and border (about 24 px) and a margin.
-        this._sidebar.height = Math.max(0, workArea.height - 40) + frame;
+        // top and a margin, minus the frame of the card (padding and border,
+        // which follow GNOME's menu)
+        const cardBorder = calendarSide ? cardFrame ?? 22 : this._measureCardFrame();
+        this._sidebar.height = Math.max(0, workArea.height - 18 - cardBorder) + frame;
         // "Clear" takes 2/5 of the bottom row (sidebar padding ≈ 4 px,
         // margins and spacing ≈ 14 px); the world clocks fill the rest.
         this._layoutBottomRow();
