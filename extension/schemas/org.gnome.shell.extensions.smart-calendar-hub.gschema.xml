@@ -153,6 +153,30 @@
       <description>12 is the GNOME default and leaves the top bar as it is; less brings the icons closer together.</description>
     </key>
 
+    <key name="clock-weather" type="s">
+      <choices>
+        <choice value="both"/>
+        <choice value="temperature"/>
+        <choice value="off"/>
+      </choices>
+      <default>'both'</default>
+      <summary>Weather next to the clock: icon and temperature, temperature only, or off</summary>
+    </key>
+
+    <key name="clock-weather-position" type="s">
+      <choices>
+        <choice value="after"/>
+        <choice value="before"/>
+      </choices>
+      <default>'after'</default>
+      <summary>Weather after or before the clock in the top bar</summary>
+    </key>
+
+    <key name="clock-weather-description" type="b">
+      <default>true</default>
+      <summary>Show the weather description for a few seconds after each update</summary>
+    </key>
+
     <key name="calendar-collapsed" type="b">
       <default>true</default>
       <summary>Collapse the calendar every time the panel opens</summary>

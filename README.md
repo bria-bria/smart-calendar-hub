@@ -12,9 +12,10 @@ From top to bottom the panel shows:
 5. notifications,
 6. world clocks, next to the button that clears the notifications.
 
-It also shows the current temperature next to the clock (unless another
-extension, such as Weather O'Clock, already does it) and lets you move the
-clock to a different spot of the top bar.
+It also shows the weather inside the clock pill (icon and temperature, before
+or after the clock, with the description for a few seconds after each update;
+unless another extension, such as Weather O'Clock, already does it) and lets
+you move the clock to a different spot of the top bar.
 
 ## Screenshots
 

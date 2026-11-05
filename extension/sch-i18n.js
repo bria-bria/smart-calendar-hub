@@ -104,6 +104,28 @@ export const IT = {
         "Spazio tra le icone della barra in alto (pixel)",
     "12 is the GNOME default; less brings the icons closer together":
         "12 è il valore di GNOME; meno avvicina le icone",
+    "Weather in the top bar":
+        "Meteo nella barra in alto",
+    "Next to the clock, from GNOME Weather":
+        "Accanto all'ora, da GNOME Meteo",
+    "Icon and temperature":
+        "Icona e temperatura",
+    "Temperature only":
+        "Solo temperatura",
+    "Off":
+        "Spento",
+    "Weather next to the clock":
+        "Meteo accanto all'ora",
+    "Icon and temperature in the same pill as the clock":
+        "Icona e temperatura nella stessa pillola dell'ora",
+    "After the clock":
+        "Dopo l'ora",
+    "Before the clock":
+        "Prima dell'ora",
+    "Weather description":
+        "Descrizione del meteo",
+    "After each update, “Cloudy”, “Light rain”… for a few seconds instead of the temperature":
+        "Dopo ogni aggiornamento, «Nuvoloso», «Pioggia debole»… per qualche secondo al posto della temperatura",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

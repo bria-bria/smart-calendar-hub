@@ -23,6 +23,7 @@ import {CalendarView} from './sch-calendar.js';
 import {SkyView} from './sch-sky.js';
 import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
 import {PanelSpacing} from './sch-spacing.js';
+import {ClockWeather} from './sch-clock-weather.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -213,10 +214,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._alertTip = null;
         this._alertDot = null;
 
-        this._weatherBox?.destroy();
-        this._weatherBox = null;
-        this._weatherIcon = null;
-        this._weatherTemp = null;
+        this._clockWeather?.destroy();
+        this._clockWeather = null;
 
         this._restoreAllTrayItems();
         this._movedTrayItems = null;
@@ -1072,65 +1071,24 @@ export default class SmartCalendarHubExtension extends Extension {
     // Temperature next to the clock
     // ------------------------------------------------------------------
 
+    // The weather inside the clock pill (sch-clock-weather.js), unless
+    // another extension already shows it next to the clock.
     _buildWeatherBadge() {
         const dm = this._dateMenu;
         const clockBox = dm._clockDisplay?.get_parent();
         const client = dm._weatherItem?._weatherClient;
         if (!clockBox || !client)
             return;
-
-        this._weatherIcon = new St.Icon({
-            style_class: 'sch-panel-weather-icon system-status-icon',
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._weatherTemp = new St.Label({
-            style_class: 'sch-panel-weather-temp',
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._weatherBox = new St.BoxLayout({
-            style_class: 'sch-panel-weather-box',
-            y_align: Clutter.ActorAlign.CENTER,
-            visible: false,
-        });
-        this._weatherBox.add_child(this._weatherIcon);
-        this._weatherBox.add_child(this._weatherTemp);
-        clockBox.add_child(this._weatherBox);
-        // Another extension may destroy the box we live in (Weather O'Clock
-        // wraps the clock in its own box and destroys it when turned off).
-        this._weatherBox.connect('destroy', () => {
-            this._weatherBox = null;
-            this._weatherIcon = null;
-            this._weatherTemp = null;
-        });
-
         const isWeather = actor => (actor.style_class ?? '').includes('weather');
-
-        const update = () => {
-            if (!this._weatherBox)
-                return;
-            // Another extension already shows the weather next to the clock:
-            // either it wrapped the clock in its own box (Weather O'Clock
-            // loaded after us) or a weather widget sits beside the clock.
-            const other = dm._clockDisplay.get_parent() !== clockBox ||
-                clockBox.get_children().some(ch => ch !== this._weatherBox &&
+        // either it wrapped the clock in its own box (Weather O'Clock loaded
+        // after us) or a weather widget sits beside the clock
+        const isOther = () => {
+            const ours = this._clockWeather?.actor;
+            return dm._clockDisplay.get_parent() !== clockBox ||
+                clockBox.get_children().some(ch => ch !== ours &&
                     (isWeather(ch) || ch.get_children().some(isWeather)));
-            const info = client.info;
-            const [ok, temp] = info?.is_valid()
-                ? info.get_value_temp(GWeather.TemperatureUnit.DEFAULT)
-                : [false, 0];
-            if (other || !client.hasLocation || !ok || !Number.isFinite(temp)) {
-                this._weatherBox.visible = false;
-                return;
-            }
-            this._weatherIcon.icon_name = info.get_symbolic_icon_name() || 'weather-clear-symbolic';
-            this._weatherTemp.text = `${Math.round(temp)}°`;
-            this._weatherBox.visible = true;
         };
-
-        this._connect(client, 'changed', update);
-        this._connect(clockBox, 'child-added', update);
-        this._connect(clockBox, 'child-removed', update);
-        update();
+        this._clockWeather = new ClockWeather(dm, client, this._settings, isOther);
     }
 
     // ------------------------------------------------------------------

@@ -545,16 +545,20 @@
 }
 
 /* Temperature next to the clock */
-.sch-panel-weather-box {
-    spacing: 4px;
-    margin-left: 6px;
-    margin-right: 2px;
+/* weather inside the clock pill (sch-clock-weather.js) */
+.sch-clock-weather-after {
+    margin-left: 0.7em;
 }
 
-.sch-panel-weather-icon {
-    icon-size: 15px;
+.sch-clock-weather-before {
+    margin-right: 0.7em;
 }
 
-.sch-panel-weather-temp {
-    font-weight: 600;
+.sch-clock-weather-icon {
+    padding: 0;
+    margin: 0;
+}
+
+.sch-clock-weather-label {
+    margin-left: 0.3em;
 }

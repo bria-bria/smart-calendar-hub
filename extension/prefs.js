@@ -355,6 +355,29 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('top-bar-spacing', spacingRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         look.add(spacingRow);
 
+        // the weather inside the clock pill
+        look.add(choiceRow(settings, 'clock-weather',
+            _('Weather in the top bar'),
+            _('Next to the clock, from GNOME Weather'),
+            [
+                ['both', _('Icon and temperature')],
+                ['temperature', _('Temperature only')],
+                ['off', _('Off')],
+            ]));
+        look.add(choiceRow(settings, 'clock-weather-position',
+            _('Weather next to the clock'),
+            _('Icon and temperature in the same pill as the clock'),
+            [
+                ['after', _('After the clock')],
+                ['before', _('Before the clock')],
+            ]));
+        const descriptionRow = new Adw.SwitchRow({
+            title: _('Weather description'),
+            subtitle: _('After each update, “Cloudy”, “Light rain”… for a few seconds instead of the temperature'),
+        });
+        settings.bind('clock-weather-description', descriptionRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        look.add(descriptionRow);
+
         const sky = new Adw.PreferencesGroup({
             title: _('Sky'),
             description: _('Next to the date. The two options can be used separately or together.'),
