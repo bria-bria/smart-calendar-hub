@@ -517,6 +517,13 @@
     spacing: 4px;
 }
 
+/* Texts and icons of the top bar in GNOME's accent colour (one more class
+   than the theme's own rules, so these win) */
+#panel.sch-accent-items .panel-button,
+#panel.sch-accent-items .panel-button.clock-display {
+    color: -st-accent-color;
+}
+
 /* IP addresses in the side panel, under the tray: the box takes the look
    of the weather row (sch-calendar-expander) */
 .sch-ip-panel {

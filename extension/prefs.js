@@ -370,6 +370,12 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('top-bar-spacing', spacingRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         look.add(spacingRow);
+        const accentRow = new Adw.SwitchRow({
+            title: _('Accent colour in the top bar'),
+            subtitle: _('Texts and icons of the top bar in the accent colour chosen in GNOME Settings, and they follow it when it changes'),
+        });
+        settings.bind('accent-top-bar', accentRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        look.add(accentRow);
 
         // Everything about the weather in one group
         const weather = new Adw.PreferencesGroup({

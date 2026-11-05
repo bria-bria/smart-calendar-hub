@@ -154,6 +154,10 @@ export const IT = {
         "Come l'avevi lasciato",
     "Open":
         "Aperto",
+    "Accent colour in the top bar":
+        "Colore d'accento nella barra in alto",
+    "Texts and icons of the top bar in the accent colour chosen in GNOME Settings, and they follow it when it changes":
+        "Scritte e icone della barra in alto nel colore d'accento scelto nelle Impostazioni di GNOME, e lo seguono quando cambia",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

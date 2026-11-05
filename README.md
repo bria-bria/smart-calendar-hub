@@ -47,7 +47,8 @@ icon next to the tray icons. They are in five tabs:
   (it can be switched off, with the sun and the moon), the sky next to the date (sun and moon of the day, moon phase: each can be switched
   on alone), calendar collapsed on opening, panel width (or "Align to GNOME's
   menu": as wide as the system menu, automatically), space between the
-  top bar icons (12 = GNOME default, less brings them closer).
+  top bar icons (12 = GNOME default, less brings them closer), texts and
+  icons of the top bar in GNOME's accent colour.
 - **Tray**: which top bar icons move inside the panel, and a switch for each
   app.
 - **Calendars**: which calendars are shown. This is the same switch GNOME

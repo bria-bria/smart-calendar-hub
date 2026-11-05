@@ -115,6 +115,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._ipView = new IpView(this._settings);
         // space between the icons of the top bar (one setting)
         this._panelSpacing = new PanelSpacing(this._settings);
+        this._syncAccentTopBar();
         // IP addresses in the side panel, under the tray (if switched on)
         this._ipPanel = new PanelIpBox(this._ipView, this._settings);
         this._ipPanelBin.set_child(this._ipPanel.actor);
@@ -161,6 +162,7 @@ export default class SmartCalendarHubExtension extends Extension {
             console.error(`Smart Calendar Hub: cannot restore the top bar spacing: ${e}`);
         }
         this._panelSpacing = null;
+        Main.panel.remove_style_class_name('sch-accent-items');
 
         // First, so its panel role is freed even if a later step fails
         try {
@@ -343,6 +345,9 @@ export default class SmartCalendarHubExtension extends Extension {
 
     _onSettingChanged(key) {
         switch (key) {
+        case 'accent-top-bar':
+            this._syncAccentTopBar();
+            break;
         case 'sidebar-side':
             // the calendar card goes on the side away from the screen edge
             if (calendarSide && this._calendarCard?.visible) {
@@ -1996,6 +2001,15 @@ export default class SmartCalendarHubExtension extends Extension {
             this._syncTrayArrowEnds();
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+    // Texts and icons of the top bar in GNOME's accent colour (stylesheet:
+    // #panel.sch-accent-items); they follow the accent colour when it changes
+    _syncAccentTopBar() {
+        if (this._settings.get_boolean('accent-top-bar'))
+            Main.panel.add_style_class_name('sch-accent-items');
+        else
+            Main.panel.remove_style_class_name('sch-accent-items');
     }
 
     // How far one click of the tray arrows moves the view: one icon cell and

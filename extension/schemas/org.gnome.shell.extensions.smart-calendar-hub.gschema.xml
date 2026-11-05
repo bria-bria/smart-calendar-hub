@@ -166,6 +166,11 @@
       <summary>Side panel: show the public address (asks api.ipify.org)</summary>
     </key>
 
+    <key name="accent-top-bar" type="b">
+      <default>false</default>
+      <summary>Texts and icons of the top bar in GNOME's accent colour</summary>
+    </key>
+
     <key name="top-bar-spacing" type="i">
       <range min="0" max="12"/>
       <default>12</default>
