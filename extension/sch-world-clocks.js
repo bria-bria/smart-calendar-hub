@@ -15,6 +15,7 @@ import 'cairo'; // makes the Cairo context of St.DrawingArea usable
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
+import PangoCairo from 'gi://PangoCairo';
 import GLib from 'gi://GLib';
 import GWeather from 'gi://GWeather';
 import Shell from 'gi://Shell';
@@ -94,6 +95,12 @@ export class WorldClocksCard {
 
         this._settings = new Gio.Settings({schema_id: 'org.gnome.shell.world-clocks'});
         this._settingsId = this._settings.connect('changed::locations', () => this._load());
+        // 12 or 24 hours, as GNOME's clock: AM/PM on the dials with 12 hours
+        this._interface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        this._formatId = this._interface.connect('changed::clock-format', () => {
+            this._loadChips();
+            this._repaintAll();
+        });
         // alarms and timers: only if GNOME Clocks is installed (its schema)
         this._chips = [];
         const schema = Gio.SettingsSchemaSource.get_default()?.lookup('org.gnome.clocks', true);
@@ -119,6 +126,10 @@ export class WorldClocksCard {
             this._settings?.disconnect(this._settingsId);
         this._settingsId = 0;
         this._settings = null;
+        if (this._formatId)
+            this._interface?.disconnect(this._formatId);
+        this._formatId = 0;
+        this._interface = null;
         for (const id of this._clocksAppIds ?? [])
             this._clocksApp?.disconnect(id);
         this._clocksAppIds = [];
@@ -238,7 +249,7 @@ export class WorldClocksCard {
                 .sort((a, b) => a.when.compare(b.when));
             for (const alarm of next) {
                 const today = alarm.when.format('%F') === now.format('%F');
-                const time = alarm.when.format(today ? '%H:%M' : '%a %H:%M');
+                const time = this._format(alarm.when, !today);
                 const tip = alarm.name
                     ? _('Alarm · {name} · {time}', {name: alarm.name, time})
                     : _('Alarm · {time}', {time});
@@ -281,6 +292,16 @@ export class WorldClocksCard {
         app.activate();
     }
 
+    _twelveHours() {
+        return this._interface?.get_string('clock-format') === '12h';
+    }
+
+    // "17:30" or "5:30 PM", as GNOME's clock
+    _format(time, withDay = false) {
+        const day = withDay ? '%a ' : '';
+        return time.format(this._twelveHours() ? `${day}%l:%M %p` : `${day}%H:%M`).replace(/\s+/g, ' ').trim();
+    }
+
     _time(clock) {
         return GLib.DateTime.new_now_utc().to_timezone(clock.tz);
     }
@@ -293,7 +314,7 @@ export class WorldClocksCard {
             this._tip.hide();
             return;
         }
-        text ??= `${clock.name} · ${this._time(clock).format('%H:%M')}`;
+        text ??= `${clock.name} · ${this._format(this._time(clock))}`;
         this._tip.text = text;
         actor.accessible_name = text;
         this._tip.show();
@@ -339,6 +360,18 @@ export class WorldClocksCard {
                 cr.lineTo(cx + Math.sin(a) * r * 0.92, cy - Math.cos(a) * r * 0.92);
             }
             cr.stroke();
+            // 12 hours: AM or PM in the lower half, under the hands
+            if (this._twelveHours()) {
+                const layout = PangoCairo.create_layout(cr);
+                const font = Pango.FontDescription.from_string('Sans Bold');
+                font.set_absolute_size(r * 0.42 * Pango.SCALE);
+                layout.set_font_description(font);
+                layout.set_text(hour < 12 ? 'AM' : 'PM', -1);
+                const [, ext] = layout.get_pixel_extents();
+                cr.setSourceRGBA(1, 1, 1, 0.55);
+                cr.moveTo(cx - ext.width / 2 - ext.x, cy + r * 0.32 - ext.y);
+                PangoCairo.show_layout(cr, layout);
+            }
             cr.setLineCap(1); // round
             // hour hand
             const hourAngle = ((hour % 12) + t.get_minute() / 60) * Math.PI / 6;
