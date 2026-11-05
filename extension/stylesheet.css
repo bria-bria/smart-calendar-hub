@@ -228,14 +228,19 @@
     margin-bottom: 6px;
 }
 
-/* In the card beside the panel: wider margins, the month name and the
-   arrows further inside */
+/* In the card beside the panel: narrow side bands, so the days are bigger
+   (SIDE_CALENDAR_EXTRA in extension.js); the month name and the arrows
+   further inside; the agenda keeps its margins */
 .sch-calendar-card .sch-cal-card {
-    padding: 14px 16px;
+    padding: 12px 4px;
 }
 
 .sch-calendar-card .sch-cal-header {
-    margin: 2px 6px 8px 6px;
+    margin: 0 12px 8px 12px;
+}
+
+.sch-calendar-card .sch-cal-card.sch-cal-agenda {
+    padding: 10px 14px;
 }
 
 .sch-cal-month {

@@ -59,6 +59,10 @@ let weatherExpanded = false;
 let calendarSide = false;
 // Frame of the menu's content box (see _measureCardFrame)
 let cardFrame = null;
+// Room the calendar days gain in the card beside the panel, where the side
+// bands are narrower (.sch-calendar-card .sch-cal-card in the stylesheet:
+// 4 px instead of 12 px each side, and no 2 px panel padding)
+const SIDE_CALENDAR_EXTRA = 40;
 
 export default class SmartCalendarHubExtension extends Extension {
     // Two levels. The look of the top bar (accent colour, space between the
@@ -1889,10 +1893,13 @@ export default class SmartCalendarHubExtension extends Extension {
         // to fit the longest line of the agenda and went off the screen
         if (this._calendarCard)
             this._calendarCard.width = calendarSide ? width + frame : -1;
-        // the calendar cells follow the width (only when it changed)
-        if (this._calendarWidth !== width) {
-            this._calendarWidth = width;
-            this._calendarView?.setWidth(width);
+        // the calendar cells follow the width (only when it changed). In the
+        // card beside the panel the side bands are narrower (stylesheet,
+        // .sch-calendar-card): the days get that room, bigger cells and digits
+        const calendarWidth = calendarSide ? width + SIDE_CALENDAR_EXTRA : width;
+        if (this._calendarWidth !== calendarWidth) {
+            this._calendarWidth = calendarWidth;
+            this._calendarView?.setWidth(calendarWidth);
         }
         // Fill the work area, but never be taller than it: 4 px gap at the
         // top and a margin, minus the frame of the card (padding and border,
