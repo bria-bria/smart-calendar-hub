@@ -49,7 +49,7 @@ there — always on our side: their code stays exactly as their authors wrote it
 
 ### Built for the hub
 
-[BlueHub](https://extensions.gnome.org/extension/11630/) ([source](https://github.com/bria-bria/bluehub)),
+[BlueHub](https://github.com/bria-bria/bluehub),
 our other extension, manages several Bluetooth devices at once and lives
 entirely inside the panel when Smart Calendar Hub is installed: its controls
 in the column, its device lists in the card beside it, built with the page
