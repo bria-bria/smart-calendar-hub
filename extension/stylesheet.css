@@ -228,6 +228,16 @@
     margin-bottom: 6px;
 }
 
+/* In the card beside the panel: wider margins, the month name and the
+   arrows further inside */
+.sch-calendar-card .sch-cal-card {
+    padding: 14px 16px;
+}
+
+.sch-calendar-card .sch-cal-header {
+    margin: 2px 6px 8px 6px;
+}
+
 .sch-cal-month {
     font-size: 1.15em;
     font-weight: 700;

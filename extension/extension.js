@@ -1885,6 +1885,10 @@ export default class SmartCalendarHubExtension extends Extension {
         // padding and border are inside its width
         const frame = calendarSide ? cardFrame ?? 22 : 0;
         this._sidebar.width = width + frame;
+        // the calendar card as wide as the panel card: without a width it grew
+        // to fit the longest line of the agenda and went off the screen
+        if (this._calendarCard)
+            this._calendarCard.width = calendarSide ? width + frame : -1;
         // the calendar cells follow the width (only when it changed)
         if (this._calendarWidth !== width) {
             this._calendarWidth = width;
