@@ -43,21 +43,31 @@ if [ "${1:-}" = "--rimuovi" ]; then
     exit 0
 fi
 
-if [ ! -f "$ZIP" ]; then
-    echo "Manca $ZIP: prima lancia ./installa-smart-calendar-hub.sh"
-    exit 1
-fi
 if [ -z "${SUDO_USER:-}" ]; then
     echo "Lancialo con sudo dal tuo utente (serve per leggere le tue impostazioni)."
+    exit 1
+fi
+
+# The extension to copy: the zip built from the project (dist/), or else the
+# one already installed for your user (e.g. from extensions.gnome.org)
+USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+INSTALLED="$USER_HOME/.local/share/gnome-shell/extensions/$UUID"
+if [ ! -f "$ZIP" ] && [ ! -f "$INSTALLED/metadata.json" ]; then
+    echo "Non trovo Smart Calendar Hub: installala prima per il tuo utente."
     exit 1
 fi
 
 # 1. the extension for all users
 rm -rf "$DEST"
 mkdir -p "$DEST"
-unzip -q "$ZIP" -d "$DEST"
+if [ -f "$ZIP" ]; then
+    unzip -q "$ZIP" -d "$DEST"
+else
+    cp -r "$INSTALLED/." "$DEST/"
+fi
 glib-compile-schemas "$DEST/schemas"
-chmod -R a+rX "$DEST"
+chown -R root:root "$DEST"
+chmod -R a+rX,go-w "$DEST"
 
 # 2. your settings (dconf read works without a session bus); a key you
 # never changed is empty: then the default of the extension

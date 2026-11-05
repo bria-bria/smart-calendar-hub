@@ -71,6 +71,11 @@ icon next to the tray icons. They are in five tabs:
   VPN, public), shaped like the weather row, one at a time with arrows;
   click one to copy it.
 
+- **By hand**: everything to be done outside the extension, with the
+  commands to copy — the apps and extensions it uses, the extensions to switch
+  off because they do the same things, calendar reminders that never show up,
+  and the login screen script.
+
 ### Privacy and network use
 
 Smart Calendar Hub asks for the public IP only if you switch on

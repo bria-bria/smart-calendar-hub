@@ -188,6 +188,80 @@ export const IT = {
         "Orologi precedenti",
     "Next clocks":
         "Orologi successivi",
+    "By hand":
+        "Da fare a mano",
+    "What it uses":
+        "Cosa usa",
+    "Install them from your distribution or from GNOME Software.":
+        "Installali dalla tua distribuzione o da GNOME Software.",
+    "AppIndicator and KStatusNotifierItem Support":
+        "AppIndicator and KStatusNotifierItem Support",
+    "Extension: it creates the tray icons that Smart Calendar Hub moves into the panel. Keep it on.":
+        "Estensione: crea le icone del vassoio che Smart Calendar Hub sposta nel pannello. Tienila accesa.",
+    "GNOME Weather":
+        "GNOME Meteo",
+    "The weather and its cities: add your cities there.":
+        "Il meteo e le sue città: aggiungi lì le tue città.",
+    "GNOME Clocks":
+        "GNOME Orologi",
+    "World clocks, alarms and timers shown at the bottom of the panel: add them there.":
+        "Orologi mondiali, sveglie e timer mostrati in fondo al pannello: aggiungili lì.",
+    "GNOME Calendar":
+        "GNOME Calendar",
+    "“New event” and the calendars of your online accounts (GNOME Settings → Online Accounts).":
+        "«Nuovo impegno» e i calendari dei tuoi account online (Impostazioni di GNOME → Account online).",
+    "Extensions to switch off":
+        "Estensioni da spegnere",
+    "They do the same things: with both on, the top bar may show them twice or they fight over it.":
+        "Fanno le stesse cose: con tutte e due accese la barra in alto può mostrarle due volte o se la contendono.",
+    "Weather inside the clock pill: Panel → Weather.":
+        "Meteo nella pillola dell'ora: Pannello → Meteo.",
+    "Battery as a circle: Panel → Battery.":
+        "Batteria circolare: Pannello → Batteria.",
+    "Space between the top bar icons: Panel → Appearance.":
+        "Spazio tra le icone della barra in alto: Pannello → Aspetto.",
+    "Only its \"Items Color\": accent colour in the top bar, Panel → Appearance.":
+        "Solo il suo «Items Color»: colore d'accento nella barra in alto, Pannello → Aspetto.",
+    "Calendar reminders":
+        "Promemoria del calendario",
+    "On some systems the reminders of your events never show up: the service that sends them (evolution-alarm-notify) does not start in GNOME. These two commands start it at every login, without the option that stops it.":
+        "Su alcuni sistemi i promemoria degli impegni non compaiono mai: il servizio che li manda (evolution-alarm-notify) in GNOME non parte. Questi due comandi lo avviano a ogni accesso, senza l'opzione che lo ferma.",
+    "1. In a terminal":
+        "1. In un terminale",
+    "2. Then":
+        "2. Poi",
+    "Copy the command":
+        "Copia il comando",
+    "Command copied":
+        "Comando copiato",
+    "Lock screen":
+        "Blocco schermo",
+    "Automatic: on the lock screen the top bar keeps the accent colour, the space between the icons, the clock position and the battery circle. The side panel, the notifications and the calendar are taken away while the screen is locked, so nothing personal shows.":
+        "Automatico: sul blocco schermo la barra in alto tiene il colore d'accento, lo spazio tra le icone, la posizione dell'ora e la batteria circolare. Pannello laterale, notifiche e calendario vengono tolti mentre lo schermo è bloccato, così non si vede niente di personale.",
+    "Login screen":
+        "Schermata di accesso",
+    "The screen where you choose the user belongs to the system: Smart Calendar Hub cannot change it by itself. A script, run by you in a terminal, installs the extension for all users and copies your accent colour, icon spacing, clock position and battery circle there.":
+        "La schermata dove scegli l'utente è del sistema: Smart Calendar Hub non può cambiarla da sola. Uno script, lanciato da te in un terminale, installa l'estensione per tutti gli utenti e ci copia il tuo colore d'accento, lo spazio delle icone, la posizione dell'ora e la batteria circolare.",
+    "It needs the administrator password":
+        "Serve la password di amministratore",
+    "It writes in /usr/share/gnome-shell/extensions and in /etc/dconf (settings of the gdm user). Read the script before running it.":
+        "Scrive in /usr/share/gnome-shell/extensions e in /etc/dconf (impostazioni dell'utente gdm). Leggi lo script prima di lanciarlo.",
+    "1. Download the script":
+        "1. Scarica lo script",
+    "From the project page on GitHub; save it in a folder of yours":
+        "Dalla pagina del progetto su GitHub; salvalo in una tua cartella",
+    "Open":
+        "Apri",
+    "2. In a terminal, in that folder":
+        "2. In un terminale, in quella cartella",
+    "3. Log out":
+        "3. Esci dalla sessione",
+    "The login screen shows the change. Run the script again after changing those settings or updating the extension.":
+        "La schermata di accesso mostra la modifica. Rilancia lo script dopo aver cambiato quelle impostazioni o aggiornato l'estensione.",
+    "Back to the login screen as it was":
+        "Tornare alla schermata di accesso com'era",
+    "In a terminal, in the folder of the script":
+        "In un terminale, nella cartella dello script",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

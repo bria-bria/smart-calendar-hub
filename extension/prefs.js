@@ -4,6 +4,7 @@
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Gdk from 'gi://Gdk';
 import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
@@ -243,6 +244,124 @@ function mutedGroup(window, settings) {
     return group;
 }
 
+const SCRIPT = 'installa-schermata-accesso.sh';
+const SCRIPT_URL = `https://github.com/bria-bria/smart-calendar-hub/blob/main/${SCRIPT}`;
+
+// A row with a command and a button that copies it
+function commandRow(window, title, command) {
+    const row = new Adw.ActionRow({title, subtitle: command, subtitle_selectable: true});
+    row.add_css_class('property');
+    const copy = new Gtk.Button({
+        icon_name: 'edit-copy-symbolic',
+        valign: Gtk.Align.CENTER,
+        tooltip_text: _('Copy the command'),
+    });
+    copy.add_css_class('flat');
+    copy.connect('clicked', () => {
+        Gdk.Display.get_default().get_clipboard().set(command);
+        window.add_toast(new Adw.Toast({title: _('Command copied'), timeout: 2}));
+    });
+    row.add_suffix(copy);
+    return row;
+}
+
+// Everything to be done outside the extension, by hand: apps and extensions
+// it relies on, extensions that do the same things, calendar reminders, the
+// login screen (a script run by the user in a terminal: the extension never
+// runs anything as administrator)
+function loginPage(window, page) {
+    const info = (group, icon, title, subtitle) => {
+        const row = new Adw.ActionRow({title, subtitle});
+        row.add_prefix(new Gtk.Image({icon_name: icon}));
+        group.add(row);
+    };
+
+    const needs = new Adw.PreferencesGroup({
+        title: _('What it uses'),
+        description: _('Install them from your distribution or from GNOME Software.'),
+    });
+    page.add(needs);
+    info(needs, 'application-x-addon-symbolic', _('AppIndicator and KStatusNotifierItem Support'),
+        _('Extension: it creates the tray icons that Smart Calendar Hub moves into the panel. Keep it on.'));
+    info(needs, 'weather-few-clouds-symbolic', _('GNOME Weather'),
+        _('The weather and its cities: add your cities there.'));
+    info(needs, 'alarm-symbolic', _('GNOME Clocks'),
+        _('World clocks, alarms and timers shown at the bottom of the panel: add them there.'));
+    info(needs, 'x-office-calendar-symbolic', _('GNOME Calendar'),
+        _('“New event” and the calendars of your online accounts (GNOME Settings → Online Accounts).'));
+
+    const overlap = new Adw.PreferencesGroup({
+        title: _('Extensions to switch off'),
+        description: _('They do the same things: with both on, the top bar may show them twice or they fight over it.'),
+    });
+    page.add(overlap);
+    info(overlap, 'weather-overcast-symbolic', "Weather O'Clock",
+        _('Weather inside the clock pill: Panel → Weather.'));
+    info(overlap, 'battery-good-symbolic', 'Battery Indicator Icon',
+        _('Battery as a circle: Panel → Battery.'));
+    info(overlap, 'view-more-horizontal-symbolic', 'Status Area Horizontal Spacing',
+        _('Space between the top bar icons: Panel → Appearance.'));
+    info(overlap, 'applications-graphics-symbolic', 'DashCraft',
+        _('Only its "Items Color": accent colour in the top bar, Panel → Appearance.'));
+
+    const reminders = new Adw.PreferencesGroup({
+        title: _('Calendar reminders'),
+        description: _('On some systems the reminders of your events never show up: the service that sends them (evolution-alarm-notify) does not start in GNOME. These two commands start it at every login, without the option that stops it.'),
+    });
+    page.add(reminders);
+    const dropIn = '~/.config/systemd/user/evolution-alarm-notify.service.d';
+    reminders.add(commandRow(window, _('1. In a terminal'),
+        `mkdir -p ${dropIn} && printf '[Service]\\nExecStart=\\nExecStart=/usr/lib/evolution-data-server/evolution-alarm-notify\\n' > ${dropIn}/senza-autostart.conf`));
+    reminders.add(commandRow(window, _('2. Then'),
+        'systemctl --user daemon-reload && systemctl --user restart evolution-alarm-notify.service'));
+
+    const lock = new Adw.PreferencesGroup({
+        title: _('Lock screen'),
+        description: _('Automatic: on the lock screen the top bar keeps the accent colour, the space between the icons, the clock position and the battery circle. The side panel, the notifications and the calendar are taken away while the screen is locked, so nothing personal shows.'),
+    });
+    page.add(lock);
+
+    const login = new Adw.PreferencesGroup({
+        title: _('Login screen'),
+        description: _('The screen where you choose the user belongs to the system: Smart Calendar Hub cannot change it by itself. A script, run by you in a terminal, installs the extension for all users and copies your accent colour, icon spacing, clock position and battery circle there.'),
+    });
+    page.add(login);
+
+    const warning = new Adw.ActionRow({
+        title: _('It needs the administrator password'),
+        subtitle: _('It writes in /usr/share/gnome-shell/extensions and in /etc/dconf (settings of the gdm user). Read the script before running it.'),
+    });
+    warning.add_prefix(new Gtk.Image({icon_name: 'dialog-warning-symbolic'}));
+    login.add(warning);
+
+    const download = new Adw.ActionRow({
+        title: _('1. Download the script'),
+        subtitle: _('From the project page on GitHub; save it in a folder of yours'),
+    });
+    const open = new Gtk.Button({
+        label: _('Open'),
+        valign: Gtk.Align.CENTER,
+    });
+    open.connect('clicked', () => {
+        new Gtk.UriLauncher({uri: SCRIPT_URL}).launch(window, null, null);
+    });
+    download.add_suffix(open);
+    login.add(download);
+
+    login.add(commandRow(window,
+        _('2. In a terminal, in that folder'),
+        `sudo bash ${SCRIPT}`));
+    login.add(new Adw.ActionRow({
+        title: _('3. Log out'),
+        subtitle: _('The login screen shows the change. Run the script again after changing those settings or updating the extension.'),
+    }));
+
+    const remove = new Adw.PreferencesGroup({title: _('Back to the login screen as it was')});
+    page.add(remove);
+    remove.add(commandRow(window, _('In a terminal, in the folder of the script'),
+        `sudo bash ${SCRIPT} --rimuovi`));
+}
+
 export default class SmartCalendarHubPreferences extends ExtensionPreferences {
     // async: GNOME 47+ waits for it, so the window is built already translated
     async fillPreferencesWindow(window) {
@@ -280,8 +399,13 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
             title: _('Network'),
             icon_name: 'network-workgroup-symbolic',
         });
-        for (const page of [pagePanel, pageTray, pageCalendars, pageNotifications, pageNetwork])
+        const pageLogin = new Adw.PreferencesPage({
+            title: _('By hand'),
+            icon_name: 'utilities-terminal-symbolic',
+        });
+        for (const page of [pagePanel, pageTray, pageCalendars, pageNotifications, pageNetwork, pageLogin])
             window.add(page);
+        loginPage(window, pageLogin);
 
         // ---------------- Panel ----------------
         const position = new Adw.PreferencesGroup({
