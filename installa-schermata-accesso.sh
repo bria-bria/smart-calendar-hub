@@ -63,7 +63,8 @@ mkdir -p "$DEST"
 if [ -f "$ZIP" ]; then
     unzip -q "$ZIP" -d "$DEST"
 else
-    cp -r "$INSTALLED/." "$DEST/"
+    # -L: the files themselves, not links to places the user can still change
+    cp -rL "$INSTALLED/." "$DEST/"
 fi
 glib-compile-schemas "$DEST/schemas"
 chown -R root:root "$DEST"

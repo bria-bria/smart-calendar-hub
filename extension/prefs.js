@@ -245,7 +245,8 @@ function mutedGroup(window, settings) {
 }
 
 const SCRIPT = 'installa-schermata-accesso.sh';
-const SCRIPT_URL = `https://github.com/bria-bria/smart-calendar-hub/blob/main/${SCRIPT}`;
+// the raw file: the browser shows the script itself, to be saved as it is
+const SCRIPT_URL = `https://raw.githubusercontent.com/bria-bria/smart-calendar-hub/main/${SCRIPT}`;
 
 // A row with a command and a button that copies it
 function commandRow(window, title, command) {
@@ -269,7 +270,7 @@ function commandRow(window, title, command) {
 // it relies on, extensions that do the same things, calendar reminders, the
 // login screen (a script run by the user in a terminal: the extension never
 // runs anything as administrator)
-function loginPage(window, page) {
+function byHandPage(window, page) {
     const info = (group, icon, title, subtitle) => {
         const row = new Adw.ActionRow({title, subtitle});
         row.add_prefix(new Gtk.Image({icon_name: icon}));
@@ -306,14 +307,16 @@ function loginPage(window, page) {
 
     const reminders = new Adw.PreferencesGroup({
         title: _('Calendar reminders'),
-        description: _('On some systems the reminders of your events never show up: the service that sends them (evolution-alarm-notify) does not start in GNOME. These two commands start it at every login, without the option that stops it.'),
+        description: _('On some systems the reminders of your events never show up: the service that sends them (evolution-alarm-notify) does not start in GNOME. These two commands start it at every login, without the option that stops it (the path of the service is taken from your system).'),
     });
     page.add(reminders);
     const dropIn = '~/.config/systemd/user/evolution-alarm-notify.service.d';
     reminders.add(commandRow(window, _('1. In a terminal'),
-        `mkdir -p ${dropIn} && printf '[Service]\\nExecStart=\\nExecStart=/usr/lib/evolution-data-server/evolution-alarm-notify\\n' > ${dropIn}/senza-autostart.conf`));
+        `mkdir -p ${dropIn} && printf '[Service]\\nExecStart=\\n%s\\n' "$(grep -m1 '^ExecStart=' "$(systemctl --user show -P FragmentPath evolution-alarm-notify.service)" | sed 's/ --autostart//')" > ${dropIn}/senza-autostart.conf`));
     reminders.add(commandRow(window, _('2. Then'),
         'systemctl --user daemon-reload && systemctl --user restart evolution-alarm-notify.service'));
+    reminders.add(commandRow(window, _('To undo it'),
+        `rm ${dropIn}/senza-autostart.conf && systemctl --user daemon-reload && systemctl --user restart evolution-alarm-notify.service`));
 
     const lock = new Adw.PreferencesGroup({
         title: _('Lock screen'),
@@ -336,7 +339,7 @@ function loginPage(window, page) {
 
     const download = new Adw.ActionRow({
         title: _('1. Download the script'),
-        subtitle: _('From the project page on GitHub; save it in a folder of yours'),
+        subtitle: _('It opens in the browser: save it with Ctrl+S in a folder of yours'),
     });
     const open = new Gtk.Button({
         label: _('Open'),
@@ -405,7 +408,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         for (const page of [pagePanel, pageTray, pageCalendars, pageNotifications, pageNetwork, pageLogin])
             window.add(page);
-        loginPage(window, pageLogin);
+        byHandPage(window, pageLogin);
 
         // ---------------- Panel ----------------
         const position = new Adw.PreferencesGroup({

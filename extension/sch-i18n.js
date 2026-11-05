@@ -207,7 +207,7 @@ export const IT = {
     "World clocks, alarms and timers shown at the bottom of the panel: add them there.":
         "Orologi mondiali, sveglie e timer mostrati in fondo al pannello: aggiungili lì.",
     "GNOME Calendar":
-        "GNOME Calendar",
+        "GNOME Calendario",
     "“New event” and the calendars of your online accounts (GNOME Settings → Online Accounts).":
         "«Nuovo impegno» e i calendari dei tuoi account online (Impostazioni di GNOME → Account online).",
     "Extensions to switch off":
@@ -224,8 +224,10 @@ export const IT = {
         "Solo il suo «Items Color»: colore d'accento nella barra in alto, Pannello → Aspetto.",
     "Calendar reminders":
         "Promemoria del calendario",
-    "On some systems the reminders of your events never show up: the service that sends them (evolution-alarm-notify) does not start in GNOME. These two commands start it at every login, without the option that stops it.":
-        "Su alcuni sistemi i promemoria degli impegni non compaiono mai: il servizio che li manda (evolution-alarm-notify) in GNOME non parte. Questi due comandi lo avviano a ogni accesso, senza l'opzione che lo ferma.",
+    "On some systems the reminders of your events never show up: the service that sends them (evolution-alarm-notify) does not start in GNOME. These two commands start it at every login, without the option that stops it (the path of the service is taken from your system).":
+        "Su alcuni sistemi i promemoria degli impegni non compaiono mai: il servizio che li manda (evolution-alarm-notify) in GNOME non parte. Questi due comandi lo avviano a ogni accesso, senza l'opzione che lo ferma (il percorso del servizio è preso dal tuo sistema).",
+    "To undo it":
+        "Per annullare",
     "1. In a terminal":
         "1. In un terminale",
     "2. Then":
@@ -248,8 +250,8 @@ export const IT = {
         "Scrive in /usr/share/gnome-shell/extensions e in /etc/dconf (impostazioni dell'utente gdm). Leggi lo script prima di lanciarlo.",
     "1. Download the script":
         "1. Scarica lo script",
-    "From the project page on GitHub; save it in a folder of yours":
-        "Dalla pagina del progetto su GitHub; salvalo in una tua cartella",
+    "It opens in the browser: save it with Ctrl+S in a folder of yours":
+        "Si apre nel browser: salvalo con Ctrl+S in una tua cartella",
     "Open":
         "Apri",
     "2. In a terminal, in that folder":
