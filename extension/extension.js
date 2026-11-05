@@ -165,6 +165,11 @@ export default class SmartCalendarHubExtension extends Extension {
         for (const [source, ids] of this._alertSources ?? [])
             ids.forEach(id => safeDisconnect(source, id));
         this._alertSources = null;
+        for (const notification of this._urgencyHolds ?? []) {
+            safeDisconnect(notification, notification._schUrgencyId);
+            delete notification._schUrgencyId;
+        }
+        this._urgencyHolds = null;
         this._unpatchNotificationMessages();
         for (const [sni, ids] of this._alertTray ?? []) {
             this._accountTrayIcon(sni); // last stretch of time of its icon
@@ -560,6 +565,30 @@ export default class SmartCalendarHubExtension extends Extension {
         if (until !== null)
             list.push(`${key}\t${label}\t${Math.round(until)}\t${choice}`);
         this._settings.set_strv('muted-apps', list);
+        this._mutedCache = null;
+        // notifications already there: no banner when they get updated
+        for (const notification of source.notifications ?? [])
+            this._holdLowUrgency(source, notification);
+    }
+
+    // Keeps a notification of a silenced app at low urgency. Some apps (and
+    // GSConnect, when a phone notification is updated) set the urgency back
+    // and ask for the banner again: the urgency is lowered again at once,
+    // before the banner request.
+    _holdLowUrgency(source, notification) {
+        const lower = () => {
+            if (this._settings && this._isMuted(this._sourceKey(source)) &&
+                notification.urgency !== MessageTray.Urgency.CRITICAL &&
+                notification.urgency !== MessageTray.Urgency.LOW)
+                notification.urgency = MessageTray.Urgency.LOW;
+        };
+        lower();
+        if (notification._schUrgencyId)
+            return;
+        notification._schUrgencyId = notification.connect('notify::urgency', lower);
+        this._urgencyHolds ??= new Set();
+        this._urgencyHolds.add(notification);
+        notification.connect('destroy', () => this._urgencyHolds?.delete(notification));
     }
 
     _mutedEntry(key) {
@@ -729,12 +758,11 @@ export default class SmartCalendarHubExtension extends Extension {
             }),
             // Silenced app: no banner (low urgency), the notification still
             // goes to the list. Emitted before GNOME decides about the banner.
-            source.connect('notification-added', (_s, notification) => {
-                if (this._isMuted(this._sourceKey(source)) &&
-                    notification.urgency !== MessageTray.Urgency.CRITICAL)
-                    notification.urgency = MessageTray.Urgency.LOW;
-            }),
+            source.connect('notification-added', (_s, notification) =>
+                this._holdLowUrgency(source, notification)),
         ]);
+        for (const notification of source.notifications ?? [])
+            this._holdLowUrgency(source, notification);
         this._rememberSource(source);
         this._updateAlertDot();
     }
