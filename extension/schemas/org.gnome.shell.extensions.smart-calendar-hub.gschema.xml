@@ -126,6 +126,26 @@
       <summary>Show the public address in the top bar (otherwise only in its menu)</summary>
     </key>
 
+    <key name="panel-ip" type="b">
+      <default>false</default>
+      <summary>Show the IP addresses in the side panel, under the tray</summary>
+    </key>
+
+    <key name="panel-ip-lan" type="b">
+      <default>true</default>
+      <summary>Side panel: show the local network address</summary>
+    </key>
+
+    <key name="panel-ip-vpn" type="b">
+      <default>true</default>
+      <summary>Side panel: show the address of every active VPN</summary>
+    </key>
+
+    <key name="panel-ip-public" type="b">
+      <default>false</default>
+      <summary>Side panel: show the public address (asks api.ipify.org)</summary>
+    </key>
+
     <key name="calendar-collapsed" type="b">
       <default>true</default>
       <summary>Collapse the calendar every time the panel opens</summary>

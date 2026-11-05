@@ -6,7 +6,8 @@
 // address (asked to api.ipify.org, the only network request made by the
 // extension). Left, center or right of the top bar. Clicking opens a menu
 // with every address switched on, each one can be copied; the settings choose
-// which of them are also shown in the bar.
+// which of them are also shown in the bar. PanelIpBox shows the chosen
+// addresses in the side panel, under the tray, one at a time with arrows.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -35,6 +36,11 @@ const GLOBE_ICON = new Gio.FileIcon({
     file: Gio.File.new_for_uri(import.meta.url).get_parent()
         .get_child('icons').get_child('sch-globe-symbolic.svg'),
 });
+
+// One VPN: the shield, as in the top bar. Several VPNs: a different icon
+// for each one (shield, key, padlock, …), so they are told apart at a glance.
+const VPN_ICONS = ['network-vpn-symbolic', 'dialog-password-symbolic',
+    'changes-prevent-symbolic', 'security-high-symbolic', 'channel-secure-symbolic'];
 
 const IpIndicator = GObject.registerClass(
 class IpIndicator extends PanelMenu.Button {
@@ -115,28 +121,54 @@ export class IpView {
         this._primarySignal = null;
         this._timerId = 0;
         this.lanIp = null;
+        this.lanKind = null;
         this.publicIp = null;
+        this.vpn = null;
+        this.vpns = [];
         this._indicator = null;
+        // called after every change of the addresses (PanelIpBox)
+        this._listeners = new Set();
 
         // Visibility and position rebuild the indicator; the rest only the label
         this._settingsIds = [
             ...['show-ip', 'ip-position'].map(key =>
                 settings.connect(`changed::${key}`, () => this._place())),
             ...['ip-show-lan', 'ip-show-public', 'ip-show-vpn',
-                'ip-bar-lan', 'ip-bar-public', 'ip-bar-vpn'].map(key =>
+                'ip-bar-lan', 'ip-bar-public', 'ip-bar-vpn',
+                'panel-ip', 'panel-ip-lan', 'panel-ip-vpn', 'panel-ip-public'].map(key =>
                 settings.connect(`changed::${key}`, () => {
                     this._sync();
                     this._schedulePublic();
                 })),
         ];
         this._place();
+        // the side panel may want the public address with the bar indicator off
+        if (!this._timerId)
+            this._schedulePublic();
         this._initNetwork().catch(e => {
             if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
                 console.error(`Smart Calendar Hub: network: ${e}`);
         });
     }
 
+    addListener(callback) {
+        this._listeners.add(callback);
+        return callback;
+    }
+
+    removeListener(callback) {
+        this._listeners.delete(callback);
+    }
+
+    // The public address is asked only if the bar or the side panel shows it
+    _wantPublic() {
+        const on = key => this._settings.get_boolean(key);
+        return (on('show-ip') && on('ip-show-public')) ||
+            (on('panel-ip') && on('panel-ip-public'));
+    }
+
     destroy() {
+        this._listeners.clear();
         this._cancellable.cancel();
         if (this._timerId)
             GLib.source_remove(this._timerId);
@@ -178,6 +210,13 @@ export class IpView {
             lanIp: this.lanIp, kind: this.lanKind, publicIp: this.publicIp,
             vpn: this.vpn, show: flags('ip-show'), bar: flags('ip-bar'),
         });
+        for (const callback of this._listeners) {
+            try {
+                callback();
+            } catch (e) {
+                console.error(`Smart Calendar Hub: IP addresses: ${e}`);
+            }
+        }
     }
 
     copy(text) {
@@ -260,18 +299,19 @@ export class IpView {
         return {ip: null, kind: null};
     }
 
-    // The first active VPN (Tailscale, WireGuard, OpenVPN…) with an address
-    _vpnConnection() {
+    // The active VPNs (Tailscale, WireGuard, OpenVPN…) with an address
+    _vpnConnections() {
         const isVpn = c => c.get_vpn?.() ||
             ['wireguard', 'tun', 'vpn'].includes(c.get_connection_type?.());
+        const vpns = [];
         for (const conn of (this._client?.get_active_connections() ?? []).filter(isVpn)) {
             const ip = conn.get_ip4_config()?.get_addresses()?.[0]?.get_address() ??
                 (conn.get_ip6_config()?.get_addresses() ?? []).map(a => a.get_address())
                     .find(a => a && !a.toLowerCase().startsWith('fe80'));
             if (ip)
-                return {ip, name: conn.get_id?.() || 'VPN'};
+                vpns.push({ip, name: conn.get_id?.() || 'VPN'});
         }
-        return null;
+        return vpns;
     }
 
     // networkChanged: the public address may have changed too
@@ -281,7 +321,8 @@ export class IpView {
         const lan = this._lanConnection();
         this.lanIp = lan.ip;
         this.lanKind = lan.kind;
-        this.vpn = this._vpnConnection();
+        this.vpns = this._vpnConnections();
+        this.vpn = this.vpns[0] ?? null;
         if (networkChanged)
             this.publicIp = null;
         this._sync();
@@ -305,7 +346,7 @@ export class IpView {
     }
 
     async _fetchPublic() {
-        if (!this._settings.get_boolean('show-ip') || !this._settings.get_boolean('ip-show-public'))
+        if (!this._wantPublic())
             return;
         if (!this.lanIp) {
             this.publicIp = null;
@@ -333,5 +374,148 @@ export class IpView {
             console.warn(`Smart Calendar Hub: public IP not available: ${e.message}`);
         }
         this._sync();
+    }
+}
+
+// The chosen addresses in the side panel, under the tray: icon and address,
+// one at a time; with two or more, dots and up/down arrows go through them.
+// Clicking the address copies it.
+export class PanelIpBox {
+    constructor(ipView, settings) {
+        this._ipView = ipView;
+        this._settings = settings;
+        this._index = 0;
+        this._key = null;
+
+        this.actor = new St.BoxLayout({style_class: 'sch-ip-panel', x_expand: true, visible: false});
+        this._icon = new St.Icon({icon_size: 16, y_align: Clutter.ActorAlign.CENTER, style_class: 'sch-ip-panel-icon'});
+        this._tag = new St.Label({style_class: 'sch-ip-panel-tag', y_align: Clutter.ActorAlign.CENTER, visible: false});
+        this._address = new St.Button({
+            style_class: 'sch-ip-panel-address',
+            x_expand: true,
+            x_align: Clutter.ActorAlign.START,
+            can_focus: true,
+            label: '',
+        });
+        this._address.connect('clicked', () => {
+            const item = this._items[this._index];
+            if (item?.copy)
+                this._ipView.copy(item.copy);
+        });
+        this._dots = new St.BoxLayout({style_class: 'sch-city-dots', y_align: Clutter.ActorAlign.CENTER});
+        this._arrows = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'sch-city-selector',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        for (const [icon, delta, name] of [['pan-up-symbolic', -1, _('Previous address')],
+            ['pan-down-symbolic', 1, _('Next address')]]) {
+            const btn = new St.Button({
+                style_class: 'sch-city-arrow',
+                can_focus: true,
+                accessible_name: name,
+                child: new St.Icon({icon_name: icon, icon_size: 12}),
+            });
+            btn.connect('clicked', () => this._move(delta));
+            this._arrows.add_child(btn);
+        }
+        for (const child of [this._icon, this._tag, this._address, this._dots, this._arrows])
+            this.actor.add_child(child);
+
+        this._items = [];
+        this._listener = ipView.addListener(() => this._update());
+        this.actor.connect('destroy', () => {
+            this._ipView?.removeListener(this._listener);
+            this._ipView = null;
+        });
+        this._update();
+    }
+
+    destroy() {
+        this.actor.destroy();
+    }
+
+    // [{key, icon | gicon, tag, text, copy}] of the chosen addresses
+    _collect() {
+        const on = key => this._settings.get_boolean(key);
+        const ip = this._ipView;
+        const items = [];
+        if (on('panel-ip-lan')) {
+            const kind = ip.lanKind;
+            items.push({
+                key: 'lan',
+                icon: kind === 'wifi' ? 'network-wireless-symbolic'
+                    : kind === 'wired' ? 'network-wired-symbolic'
+                        : ip.lanIp ? 'network-workgroup-symbolic' : 'network-offline-symbolic',
+                text: ip.lanIp ?? _('offline'),
+                copy: ip.lanIp,
+                name: _('Local network'),
+            });
+        }
+        if (on('panel-ip-vpn')) {
+            ip.vpns.forEach((vpn, i) => items.push({
+                key: `vpn:${vpn.name}`,
+                icon: VPN_ICONS[i % VPN_ICONS.length],
+                tag: ip.vpns.length > 1 ? _('VPN {n}', {n: i + 1}) : 'VPN',
+                text: vpn.ip,
+                copy: vpn.ip,
+                name: vpn.name,
+            }));
+        }
+        if (on('panel-ip-public')) {
+            items.push({
+                key: 'public',
+                gicon: GLOBE_ICON,
+                text: ip.publicIp ?? '…',
+                copy: ip.publicIp,
+                name: _('Public address'),
+            });
+        }
+        return items;
+    }
+
+    _move(delta) {
+        const n = this._items.length;
+        if (n < 2)
+            return;
+        this._index = (this._index + delta + n) % n;
+        this._key = this._items[this._index].key;
+        this._show();
+    }
+
+    _update() {
+        if (!this._ipView)
+            return;
+        this._items = this._collect();
+        // stay on the same address when the list changes (a VPN comes or goes)
+        const kept = this._items.findIndex(item => item.key === this._key);
+        this._index = kept >= 0 ? kept : Math.min(this._index, Math.max(0, this._items.length - 1));
+        this._key = this._items[this._index]?.key ?? null;
+        this._show();
+    }
+
+    _show() {
+        const items = this._items;
+        this.actor.visible = this._settings.get_boolean('panel-ip') && items.length > 0;
+        if (!this.actor.visible)
+            return;
+        const item = items[this._index];
+        if (item.gicon)
+            this._icon.gicon = item.gicon;
+        else
+            this._icon.icon_name = item.icon;
+        this._tag.text = item.tag ?? '';
+        this._tag.visible = !!item.tag;
+        this._address.label = item.text;
+        this._address.accessible_name = _('{name}: {ip} (click to copy)', {name: item.name, ip: item.text});
+        const many = items.length > 1;
+        this._arrows.visible = many;
+        this._dots.visible = many;
+        this._dots.destroy_all_children();
+        if (many) {
+            items.forEach((_item, i) => this._dots.add_child(new St.Widget({
+                style_class: i === this._index ? 'sch-city-dot sch-city-dot-on' : 'sch-city-dot',
+            })));
+        }
     }
 }

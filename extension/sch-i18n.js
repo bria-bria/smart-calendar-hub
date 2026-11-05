@@ -82,6 +82,32 @@ export const IT = {
         "Indirizzi IP nella barra in alto",
     "Click the addresses in the top bar: the menu lists every address switched on here, click one to copy it.":
         "Clicca sugli indirizzi nella barra in alto: il menu elenca tutti gli indirizzi accesi qui, cliccane uno per copiarlo.",
+    "IP addresses in the panel":
+        "Indirizzi IP nel pannello",
+    "A box under the tray icons. With more than one address, arrows go through them; click an address to copy it.":
+        "Un riquadro sotto le icone del vassoio. Con più indirizzi le frecce li fanno scorrere; clicca un indirizzo per copiarlo.",
+    "IP address in Smart Calendar Hub":
+        "Indirizzo IP in Smart Calendar Hub",
+    "Show the box in the side panel":
+        "Mostra il riquadro nel pannello laterale",
+    "Local network":
+        "Rete locale",
+    "The address in the network you are connected to now":
+        "L'indirizzo nella rete a cui sei collegato adesso",
+    "VPN":
+        "VPN",
+    "Every active one: VPN 1, 2, 3…":
+        "Tutte quelle attive: VPN 1, 2, 3…",
+    "Asks api.ipify.org, like the top bar":
+        "Chiede ad api.ipify.org, come la barra in alto",
+    "Previous address":
+        "Indirizzo precedente",
+    "Next address":
+        "Indirizzo successivo",
+    "VPN {n}":
+        "VPN {n}",
+    "{name}: {ip} (click to copy)":
+        "{name}: {ip} (clicca per copiare)",
     "Show in the top bar":
         "Mostra nella barra in alto",
     "Off: only in the menu that opens when you click the addresses":

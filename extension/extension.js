@@ -21,7 +21,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {_, loadUserTranslations, unloadUserTranslations} from './sch-i18n.js';
 import {CalendarView} from './sch-calendar.js';
 import {SkyView} from './sch-sky.js';
-import {IP_ROLE, IpView} from './sch-net.js';
+import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -98,6 +98,9 @@ export default class SmartCalendarHubExtension extends Extension {
         this._applyTopBarPosition();
         this._watchPanelBoxes();
         this._ipView = new IpView(this._settings);
+        // IP addresses in the side panel, under the tray (if switched on)
+        this._ipPanel = new PanelIpBox(this._ipView, this._settings);
+        this._ipPanelBin.set_child(this._ipPanel.actor);
 
         this._connect(this._settings, 'changed', (_s, key) => this._onSettingChanged(key));
 
@@ -136,6 +139,8 @@ export default class SmartCalendarHubExtension extends Extension {
 
         // First, so its panel role is freed even if a later step fails
         try {
+            this._ipPanel?.destroy();
+            this._ipPanel = null;
             this._ipView?.destroy();
         } catch (e) {
             console.error(`Smart Calendar Hub: cannot remove the IP indicator: ${e}`);
@@ -245,6 +250,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._sidebar?.destroy();
         this._sidebar = null;
         this._traySection = null;
+        this._ipPanelBin = null;
         this._trayBox = null;
         this._calendarBox = null;
         this._calendarScroll = null;
@@ -1117,6 +1123,10 @@ export default class SmartCalendarHubExtension extends Extension {
         });
         this._traySection.add_child(this._trayBox);
         this._sidebar.add_child(this._traySection);
+
+        // 0b. IP addresses (sch-net.js PanelIpBox, added once IpView exists)
+        this._ipPanelBin = new St.Bin({x_expand: true});
+        this._sidebar.add_child(this._ipPanelBin);
 
         // 1. Weather, collapsible; the settings button sits on the same row
         // (no title row, to save space).

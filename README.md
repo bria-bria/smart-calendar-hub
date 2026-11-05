@@ -57,7 +57,9 @@ icon next to the weather. They are in five tabs:
 - **Network**: IP addresses in the top bar (left, center or right): local
   network, VPN and public address. Each one switched on is listed in the menu
   that opens when you click the addresses; open its row to choose whether it
-  is shown in the bar too.
+  is shown in the bar too. **IP address in Smart Calendar Hub** adds a box
+  under the tray icons with the chosen addresses (local network, every active
+  VPN, public), one at a time with arrows; click one to copy it.
 
 ### Privacy and network use
 

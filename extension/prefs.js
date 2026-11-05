@@ -449,6 +449,32 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         for (const row of [ipPosition, lanRow, vpnRow, publicRow])
             settings.bind('show-ip', row, 'sensitive', Gio.SettingsBindFlags.GET);
 
+        // IP addresses in the side panel, under the tray
+        const panelIp = new Adw.PreferencesGroup({
+            title: _('IP addresses in the panel'),
+            description: _('A box under the tray icons. With more than one address, arrows go through them; click an address to copy it.'),
+        });
+        pageNetwork.add(panelIp);
+        const panelIpRow = new Adw.SwitchRow({
+            title: _('IP address in Smart Calendar Hub'),
+            subtitle: _('Show the box in the side panel'),
+        });
+        settings.bind('panel-ip', panelIpRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        panelIp.add(panelIpRow);
+        for (const [key, title, subtitle] of [
+            ['panel-ip-lan', _('Local network'), _('The address in the network you are connected to now')],
+            ['panel-ip-vpn', _('VPN'), _('Every active one: VPN 1, 2, 3…')],
+            ['panel-ip-public', _('Public address'), _('Asks api.ipify.org, like the top bar')],
+        ]) {
+            const row = new Adw.ActionRow({title, subtitle});
+            const check = new Gtk.CheckButton({valign: Gtk.Align.CENTER});
+            settings.bind(key, check, 'active', Gio.SettingsBindFlags.DEFAULT);
+            row.add_prefix(check);
+            row.activatable_widget = check;
+            settings.bind('panel-ip', row, 'sensitive', Gio.SettingsBindFlags.GET);
+            panelIp.add(row);
+        }
+
         // ---------------- Notifications ----------------
         pageNotifications.add(mutedGroup(window, settings));
         pageNotifications.add(appSwitchGroup(window, settings, {
