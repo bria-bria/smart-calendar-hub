@@ -43,7 +43,6 @@ there — always on our side: their code stays exactly as their authors wrote it
 
 | Extension | How the hub works with it |
 |---|---|
-| [GSConnect](https://extensions.gnome.org/extension/1319/gsconnect/) (with "device indicators" on) | each phone with its battery, signal and actions |
 | [WiFi Signal Plus](https://extensions.gnome.org/extension/9329/wifi-signal-plus/) | details of the Wi-Fi connection, signal graph, nearby networks |
 | [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) | the tray icons of your apps and their menus, e.g. KTailctl (Tailscale) and Cachy-Update |
 | [Top Bar Organizer](https://extensions.gnome.org/extension/4356/top-bar-organizer/) | with one switch, the clock position is written into its order so the two never fight (the old order comes back when switched off); the tray keeps its icons when it re-sorts them |
@@ -80,7 +79,7 @@ icon next to the tray icons. They are in five tabs:
   icons of the top bar in GNOME's accent colour, the battery as a circle that
   empties with the charge (percentage inside optional).
 - **Tray**: which top bar icons move inside the panel, and a switch for each
-  app. The menu of a tray icon (e.g. a GSConnect device) opens inside the
+  app. The menu of a tray icon (e.g. Cachy-Update) opens inside the
   panel, in place of the cards, instead of floating; it can be switched off,
   for all icons or icon by icon.
 - **Calendars**: which calendars are shown. This is the same switch GNOME
