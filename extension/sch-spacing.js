@@ -12,6 +12,15 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 export const GNOME_DEFAULT_SPACING = 12;
+
+// set_style() alone does not make the panel button read its padding again:
+// switching the style class away and back forces it (the same trick as
+// Status Area Horizontal Spacing and Dash to Panel).
+function refresh(button) {
+    const classes = button.get_style_class_name();
+    button.set_style_class_name('sch-spacing-refresh');
+    button.set_style_class_name(classes);
+}
 // marker of our style: an unknown property, ignored by St
 const MARK = '-sch-spacing: 1';
 
@@ -74,6 +83,7 @@ export class PanelSpacing {
             const theirs = entry.style ? `${entry.style}; ` : '';
             // ours last, so it wins over theirs
             button.set_style(`${theirs}${this._style}`);
+            refresh(button);
         };
         set();
         // another extension changed the style: keep theirs, ours again on top
@@ -101,6 +111,7 @@ export class PanelSpacing {
         try {
             button.disconnect(entry.id);
             button.set_style(entry.style ?? null);
+            refresh(button);
         } catch (_e) {
             // the button is already gone
         }

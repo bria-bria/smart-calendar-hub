@@ -77,6 +77,7 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     _enable() {
+        this._disabling = false;
         this._dateMenu = Main.panel.statusArea.dateMenu;
         if (!this._dateMenu)
             return;
@@ -142,6 +143,7 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
 
         this._enableToken = null;
+        this._disabling = true;
         unloadUserTranslations();
 
         try {
@@ -1773,7 +1775,7 @@ export default class SmartCalendarHubExtension extends Extension {
     // Puts the moved icons in rows that fit the panel width.
     // Arrows only when the icons do not fit (checked after the layout)
     _queueTrayScrollbar() {
-        if (this._trayScrollbarId)
+        if (this._trayScrollbarId || !this._trayBox || this._disabling)
             return;
         this._trayScrollbarId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this._trayScrollbarId = 0;
@@ -1805,7 +1807,8 @@ export default class SmartCalendarHubExtension extends Extension {
 
     // _layoutTray() once the current destruction is over
     _queueTrayLayout() {
-        if (this._trayLayoutId)
+        // not while the extension is being disabled (icons are destroyed then)
+        if (this._trayLayoutId || !this._trayBox || this._disabling)
             return;
         this._trayLayoutId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this._trayLayoutId = 0;
