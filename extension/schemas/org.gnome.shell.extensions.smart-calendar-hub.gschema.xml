@@ -56,7 +56,7 @@
     <key name="muted-apps" type="as">
       <default>[]</default>
       <summary>Silenced apps</summary>
-      <description>"identifier TAB name TAB until" (Unix seconds, 0 = always): no banner, notifications stay in the panel list, no red dot.</description>
+      <description>"identifier TAB name TAB until" (Unix seconds, 0 = always): no banner, notifications stay in the panel list and light the red dot instead.</description>
     </key>
 
     <key name="tray-icon-stats" type="as">
