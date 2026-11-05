@@ -48,6 +48,16 @@ I commit usano l'email anonima 301696067+bria-bria@users.noreply.github.com
 (configurata in questo repository). Il 04/11/2026 l'email personale è stata
 tolta anche dai primi 3 commit (storia riscritta prima di renderlo pubblico).
 
+## Schermate di blocco e di accesso (dal 05/11/2026)
+`session-modes`: user, unlock-dialog, gdm. Due livelli in `extension.js`:
+`TopBarStyle` (`sch-topbar-style.js`: colore d'accento, spazio icone, sulla
+schermata di accesso anche la posizione dell'ora) è sempre attivo; tutto il
+resto (`_enableFull`/`_disableFull`) solo nella sessione, spento al blocco
+schermo. Schermata di accesso: `sudo ./installa-schermata-accesso.sh` (copia
+l'estensione in /usr/share e le impostazioni di Michele nel dconf di gdm,
+`/etc/dconf/db/gdm.d/90-smart-calendar-hub`); `--rimuovi` per togliere.
+Da rilanciare dopo aver cambiato colore/spazio/posizione o aggiornato.
+
 ## Traduzioni (dal 04/11/2026, come BlueHub)
 Testi del codice in **inglese**, passati a `_()` di `extension/sch-i18n.js`, con i
 valori come segnaposto `{nome}` (mai pezzi di frase concatenati). L'italiano è

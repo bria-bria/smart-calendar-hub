@@ -22,7 +22,7 @@ import {_, loadUserTranslations, unloadUserTranslations} from './sch-i18n.js';
 import {CalendarView} from './sch-calendar.js';
 import {SkyView} from './sch-sky.js';
 import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
-import {PanelSpacing} from './sch-spacing.js';
+import {MENU_TAIL_ROLES, TopBarStyle, clockSlot} from './sch-topbar-style.js';
 import {ClockWeather} from './sch-clock-weather.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 
@@ -50,11 +50,6 @@ const ROLES_NEVER_IN_TRAY = new Set([
     'activities-icon-button',
 ]);
 
-// Items of the right box that are "GNOME menus": the clock goes just before them.
-// The clock goes right before GNOME's system menu: second from the right.
-// Every icon left in the top bar (clipboard, emoji, usage meters…) stays on
-// its left.
-const MENU_TAIL_ROLES = ['quickSettings'];
 
 // Weather section open or closed. Module-level on purpose: it survives
 // disable/enable (screen lock) and goes back to closed at the next login.
@@ -66,20 +61,50 @@ let calendarSide = false;
 let cardFrame = null;
 
 export default class SmartCalendarHubExtension extends Extension {
+    // Two levels. The look of the top bar (accent colour, space between the
+    // icons, on the login screen the clock position) is kept on every
+    // screen: session, lock screen, login screen (session-modes in
+    // metadata.json). Everything else (side panel, notifications, calendar,
+    // tray, IP addresses…) only in the user session: it is taken down when
+    // the screen locks, so nothing personal shows, and built again on unlock.
     enable() {
+        this._styleSettings = this.getSettings();
+        this._topBarStyle = new TopBarStyle(this._styleSettings);
+        this._modeId = Main.sessionMode.connect('updated', () => this._syncSessionMode());
+        this._syncSessionMode();
+    }
+
+    disable() {
+        if (this._modeId)
+            Main.sessionMode.disconnect(this._modeId);
+        this._modeId = 0;
+        this._disableFull();
+        this._topBarStyle?.destroy();
+        this._topBarStyle = null;
+        this._styleSettings = null;
+    }
+
+    _syncSessionMode() {
+        const session = !Main.sessionMode.isLocked && !Main.sessionMode.isGreeter;
+        if (session && !this._dateMenu)
+            this._enableFull();
+        else if (!session && this._dateMenu)
+            this._disableFull();
+        this._topBarStyle?.setLoginScreen(Main.sessionMode.isGreeter);
+    }
+
+    _enableFull() {
         // If a step fails, undo everything done so far instead of leaving the
-        // date menu half rebuilt (GNOME does not call disable() after a failed
-        // enable(), and it removes our stylesheet).
+        // date menu half rebuilt.
         try {
             this._enable();
         } catch (e) {
             console.error(`Smart Calendar Hub: enable failed, restoring GNOME: ${e}`);
             try {
-                this.disable();
+                this._disableFull();
             } catch (e2) {
                 console.error(`Smart Calendar Hub: restore failed: ${e2}`);
             }
-            throw e;
         }
     }
 
@@ -113,9 +138,6 @@ export default class SmartCalendarHubExtension extends Extension {
         this._applyTopBarPosition();
         this._watchPanelBoxes();
         this._ipView = new IpView(this._settings);
-        // space between the icons of the top bar (one setting)
-        this._panelSpacing = new PanelSpacing(this._settings);
-        this._syncAccentTopBar();
         // IP addresses in the side panel, under the tray (if switched on)
         this._ipPanel = new PanelIpBox(this._ipView, this._settings);
         this._ipPanelBin.set_child(this._ipPanel.actor);
@@ -148,21 +170,13 @@ export default class SmartCalendarHubExtension extends Extension {
             this._rememberTrayApp(sni);
     }
 
-    disable() {
+    _disableFull() {
         if (!this._dateMenu)
             return;
 
         this._enableToken = null;
         this._disabling = true;
         unloadUserTranslations();
-
-        try {
-            this._panelSpacing?.destroy();
-        } catch (e) {
-            console.error(`Smart Calendar Hub: cannot restore the top bar spacing: ${e}`);
-        }
-        this._panelSpacing = null;
-        this._unsyncAccentTopBar();
 
         // First, so its panel role is freed even if a later step fails
         try {
@@ -345,10 +359,6 @@ export default class SmartCalendarHubExtension extends Extension {
 
     _onSettingChanged(key) {
         switch (key) {
-        case 'accent-top-bar':
-        case 'accent-top-bar-tone':
-            this._syncAccentTopBar();
-            break;
         case 'sidebar-side':
             // the calendar card goes on the side away from the screen edge
             if (calendarSide && this._calendarCard?.visible) {
@@ -498,26 +508,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const mode = this._settings.get_string('top-bar-position');
         this._positioning = true;
         try {
-            let box, index;
-            if (mode === 'right-between-tray-and-menu') {
-                box = Main.panel._rightBox;
-                const tails = MENU_TAIL_ROLES
-                    .map(r => Main.panel.statusArea[r]?.container)
-                    .filter(Boolean);
-                const children = box.get_children().filter(c => c !== container);
-                index = children.findIndex(c => tails.includes(c));
-                if (index === -1)
-                    index = children.length;
-            } else if (mode === 'right-before-tray') {
-                box = Main.panel._rightBox;
-                index = 0;
-            } else if (mode === 'left-after-menu') {
-                box = Main.panel._leftBox;
-                index = box.get_children().filter(c => c !== container).length;
-            } else {
-                box = Main.panel._centerBox;
-                index = 0;
-            }
+            const {box, index} = clockSlot(mode, container);
 
             const parent = container.get_parent();
             if (parent !== box) {
@@ -2002,42 +1993,6 @@ export default class SmartCalendarHubExtension extends Extension {
             this._syncTrayArrowEnds();
             return GLib.SOURCE_REMOVE;
         });
-    }
-
-    // Texts and icons of the top bar in GNOME's accent colour, they follow it
-    // when it changes. Tone "light": the light tint of that colour from the
-    // GNOME palette (sch-accent-light-<colour> in the stylesheet), bright on
-    // the dark bar; "full": the accent colour itself (-st-accent-color), the
-    // one GNOME uses behind white text, duller as a text colour.
-    _syncAccentTopBar() {
-        for (const name of Main.panel.get_style_class_name()?.split(/\s+/) ?? []) {
-            if (name.startsWith('sch-accent'))
-                Main.panel.remove_style_class_name(name);
-        }
-        if (!this._settings?.get_boolean('accent-top-bar'))
-            return;
-        if (this._settings.get_string('accent-top-bar-tone') === 'full') {
-            Main.panel.add_style_class_name('sch-accent-items');
-            return;
-        }
-        this._interfaceSettings ??= new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
-        if (!this._accentId) {
-            this._accentId = this._interfaceSettings.connect('changed::accent-color',
-                () => this._syncAccentTopBar());
-        }
-        const accent = this._interfaceSettings.get_string('accent-color') || 'blue';
-        Main.panel.add_style_class_name(`sch-accent-light-${accent}`);
-    }
-
-    _unsyncAccentTopBar() {
-        if (this._accentId)
-            this._interfaceSettings?.disconnect(this._accentId);
-        this._accentId = 0;
-        this._interfaceSettings = null;
-        for (const name of Main.panel.get_style_class_name()?.split(/\s+/) ?? []) {
-            if (name.startsWith('sch-accent'))
-                Main.panel.remove_style_class_name(name);
-        }
     }
 
     // How far one click of the tray arrows moves the view: one icon cell and

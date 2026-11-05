@@ -81,6 +81,24 @@ GNOME uses for the first city (MET Norway, airport METAR stations), at most
 every 15 minutes while it is shown. Nothing else is sent
 anywhere; calendars, notifications and settings stay on your computer.
 
+## Lock screen and login screen
+
+The look of the top bar (accent colour, space between the icons) stays the
+same on the lock screen. Nothing else of the extension runs there: the side
+panel, notifications, calendar and tray are taken down while the screen is
+locked and built again when you unlock.
+
+For the login screen (GDM), which belongs to the system, run once, and again
+after changing those settings:
+
+```bash
+sudo ./installa-schermata-accesso.sh
+```
+
+It installs the extension for all users and copies your accent colour,
+tone, icon spacing and clock position to the login screen.
+`sudo ./installa-schermata-accesso.sh --rimuovi` takes it away.
+
 ## Install from source
 
 ```bash

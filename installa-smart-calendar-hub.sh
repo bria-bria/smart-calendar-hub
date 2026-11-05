@@ -48,6 +48,7 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-net.js" \
     --extra-source="sch-spacing.js" \
     --extra-source="sch-clock-weather.js" \
+    --extra-source="sch-topbar-style.js" \
     --extra-source="sch-weather.js" \
     --extra-source="icons" \
     --extra-source="$PROJ_DIR/LICENSE"
