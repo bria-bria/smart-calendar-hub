@@ -71,6 +71,10 @@ export class WorldClocksCard {
         this._tip = new St.Label({style_class: 'sch-alert-tip', visible: false});
         Main.uiGroup.add_child(this._tip);
 
+        // the dials follow the screen scale
+        this._theme = St.ThemeContext.get_for_stage(global.stage);
+        this._scaleId = this._theme.connect('notify::scale-factor', () => this._resize());
+
         this._settings = new Gio.Settings({schema_id: 'org.gnome.shell.world-clocks'});
         this._settingsId = this._settings.connect('changed::locations', () => this._load());
         this.actor.connect('destroy', () => this._cleanup());
@@ -90,6 +94,9 @@ export class WorldClocksCard {
             this._settings?.disconnect(this._settingsId);
         this._settingsId = 0;
         this._settings = null;
+        if (this._scaleId)
+            this._theme?.disconnect(this._scaleId);
+        this._scaleId = 0;
         this._tip?.destroy();
         this._tip = null;
         this._box = null;
@@ -116,8 +123,8 @@ export class WorldClocksCard {
 
     // The cities of GNOME Clocks, from west to east
     _load() {
-        for (const {area} of this._clocks)
-            area.destroy();
+        for (const {button} of this._clocks)
+            button.destroy();
         this._clocks = [];
         const world = GWeather.Location.get_world();
         let list = [];
@@ -135,27 +142,35 @@ export class WorldClocksCard {
         const offset = c => now.to_timezone(c.tz).get_utc_offset();
         list = list.sort((a, b) => offset(a) - offset(b));
 
-        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
         for (const clock of list) {
             const area = new St.DrawingArea({
                 style_class: 'sch-clock-dial',
-                reactive: true,
-                track_hover: true,
-                width: DIAL * scale,
-                height: DIAL * scale,
                 y_align: Clutter.ActorAlign.CENTER,
-                accessible_name: clock.name,
             });
             area.connect('repaint', a => this._repaint(a, clock));
-            area.connect('notify::hover', a => this._showTip(a, clock));
-            area.connect('button-release-event', () => {
-                this._openClocks();
-                return Clutter.EVENT_STOP;
+            // in a button: reachable with the keyboard, Enter opens GNOME Clocks
+            const button = new St.Button({
+                style_class: 'sch-clock-button',
+                can_focus: true,
+                child: area,
+                accessible_name: clock.name,
             });
-            this._box.insert_child_below(area, this._endSpacer);
-            this._clocks.push({...clock, area});
+            button.connect('notify::hover', () => this._showTip(button, clock, button.hover));
+            button.connect('key-focus-in', () => this._showTip(button, clock, true));
+            button.connect('key-focus-out', () => this._showTip(button, clock, false));
+            button.connect('clicked', () => this._openClocks());
+            this._box.insert_child_below(button, this._endSpacer);
+            this._clocks.push({...clock, area, button});
         }
+        this._resize();
         this.actor.visible = this._clocks.length > 0;
+        this._syncArrows();
+    }
+
+    _resize() {
+        const size = DIAL * this._theme.scale_factor;
+        for (const {area} of this._clocks)
+            area.set_size(size, size);
         this._syncArrows();
     }
 
@@ -164,31 +179,40 @@ export class WorldClocksCard {
             area.queue_repaint();
     }
 
+    // GNOME Clocks, if installed (else a click does nothing)
     _openClocks() {
         const app = Shell.AppSystem.get_default().lookup_app('org.gnome.clocks.desktop');
+        if (!app)
+            return;
         this._onOpen?.();
         Main.overview.hide();
-        app?.activate();
+        app.activate();
     }
 
     _time(clock) {
         return GLib.DateTime.new_now_utc().to_timezone(clock.tz);
     }
 
-    _showTip(area, clock) {
+    _showTip(actor, clock, show) {
         if (!this._tip)
             return;
-        if (!area.hover) {
+        if (!show) {
             this._tip.hide();
             return;
         }
-        this._tip.text = `${clock.name} · ${this._time(clock).format('%H:%M')}`;
+        const text = `${clock.name} · ${this._time(clock).format('%H:%M')}`;
+        this._tip.text = text;
+        actor.accessible_name = text;
         this._tip.show();
-        const [x, y] = area.get_transformed_position();
-        const [w] = area.get_transformed_size();
+        const [x, y] = actor.get_transformed_position();
+        const [w] = actor.get_transformed_size();
         const [, tipW] = this._tip.get_preferred_width(-1);
         const [, tipH] = this._tip.get_preferred_height(-1);
-        this._tip.set_position(Math.round(x + w / 2 - tipW / 2), Math.round(y - tipH - 6));
+        // centred on the clock, but inside the monitor
+        const monitor = Main.layoutManager.findMonitorForActor(actor) ?? Main.layoutManager.primaryMonitor;
+        const left = Math.max(monitor.x + 4,
+            Math.min(monitor.x + monitor.width - tipW - 4, x + w / 2 - tipW / 2));
+        this._tip.set_position(Math.round(left), Math.round(y - tipH - 6));
         Main.uiGroup.set_child_above_sibling(this._tip, null);
     }
 
@@ -277,7 +301,7 @@ export class WorldClocksCard {
 
     _scrollBy(delta) {
         const adj = this._box.hadjustment;
-        const first = this._clocks[0]?.area;
+        const first = this._clocks[0]?.button;
         const step = first?.width > 0
             ? first.width + this._box.get_theme_node().get_length('spacing') : 40;
         const target = Math.max(adj.lower, Math.min(adj.upper - adj.page_size, adj.value + delta * step));
