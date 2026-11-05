@@ -330,29 +330,37 @@
     border-radius: 14px;
 }
 
-/* Bottom row: world clocks (3/5) + Clear (2/5) */
+/* Bottom row: world clocks · New event · Clear, same shape and width
+   (widths set by _layoutBottomRow) */
 .sch-bottom-row {
     spacing: 6px;
+    margin: 0 4px;
 }
 
-.sch-bottom-row .sch-clear-button {
-    margin: 2px 4px 2px 0;
+.sch-bottom-row .sch-bottom-btn {
+    margin: 2px 0;
+    padding: 10px 8px;
+    min-height: 22px;
     border-radius: 14px;
+    background-color: rgba(255, 255, 255, 0.1);
+    font-weight: 700;
+    text-align: center;
 }
 
-/* "New event", in place of the world clocks while the calendar is open */
-.sch-new-event {
-    margin: 2px 0 2px 4px;
-    padding: 8px 12px;
-    border-radius: 14px;
+.sch-bottom-row .sch-bottom-btn:hover,
+.sch-bottom-row .sch-bottom-btn:focus {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+/* "New event" in the accent colour */
+.sch-bottom-row .sch-new-event {
     background-color: -st-accent-color;
     color: -st-accent-fg-color;
-    font-weight: 700;
 }
 
-.sch-new-event:hover,
-.sch-new-event:focus {
-    background-color: rgba(255, 255, 255, 0.2);
+.sch-bottom-row .sch-new-event:hover,
+.sch-bottom-row .sch-new-event:focus {
+    background-color: rgba(255, 255, 255, 0.25);
 }
 
 .sch-new-event StBoxLayout {

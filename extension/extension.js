@@ -198,11 +198,13 @@ export default class SmartCalendarHubExtension extends Extension {
         // Undo the bottom-row tweaks after the widgets are back in place.
         if (this._clearButton) {
             this._clearButton.remove_style_class_name('sch-clear-button');
+            this._clearButton.remove_style_class_name('sch-bottom-btn');
             Object.assign(this._clearButton, this._clearOrig);
             this._clearButton = null;
             this._clearOrig = null;
         }
         if (this._clocksOrig) {
+            this._dateMenu._clocksItem.remove_style_class_name('sch-bottom-btn');
             Object.assign(this._dateMenu._clocksItem, this._clocksOrig);
             this._clocksOrig = null;
         }
@@ -1139,21 +1141,23 @@ export default class SmartCalendarHubExtension extends Extension {
             this._adopt(dm._messageList, this._sidebar);
         }
 
-        // 5. Bottom row: world clocks (3/5) + "Clear" of the notifications (2/5)
+        // 5. Bottom row, three buttons of the same shape and width:
+        //    world clocks · New event · Clear (calendar open: only New event)
         this._bottomRow = new St.BoxLayout({style_class: 'sch-bottom-row', x_expand: true});
         this._sidebar.add_child(this._bottomRow);
         if (dm._clocksItem) {
-            this._clocksOrig = {x_expand: dm._clocksItem.x_expand, visible: dm._clocksItem.visible};
+            this._clocksOrig = {x_expand: dm._clocksItem.x_expand, visible: dm._clocksItem.visible, width: -1};
             dm._clocksItem.x_expand = true;
+            dm._clocksItem.add_style_class_name('sch-bottom-btn');
             this._adopt(dm._clocksItem, this._bottomRow);
         }
-        // With the calendar open, "New event" (GNOME Calendar) takes the
-        // place of the world clocks.
+        // "New event" (GNOME Calendar), in the middle; alone when the
+        // calendar is open. Hidden when GNOME Calendar is not installed.
         this._newEventButton = new St.Button({
-            style_class: 'sch-new-event',
+            style_class: 'sch-new-event sch-bottom-btn',
             x_expand: true,
             can_focus: true,
-            visible: false,
+            visible: !!this._calendarView?.hasCalendarApp,
         });
         const newEventLine = new St.BoxLayout({x_align: Clutter.ActorAlign.CENTER});
         newEventLine.add_child(new St.Icon({icon_name: 'list-add-symbolic', icon_size: 16}));
@@ -1164,7 +1168,7 @@ export default class SmartCalendarHubExtension extends Extension {
             dm.menu.close();
             this._calendarView?.openNewEvent();
         });
-        this._bottomRow.insert_child_at_index(this._newEventButton, 0);
+        this._bottomRow.add_child(this._newEventButton);
         const clear = dm._messageList?._clearButton;
         if (clear) {
             this._clearButton = clear;
@@ -1173,14 +1177,37 @@ export default class SmartCalendarHubExtension extends Extension {
             clear.x_expand = false;
             clear.x_align = Clutter.ActorAlign.FILL;
             clear.add_style_class_name('sch-clear-button');
+            clear.add_style_class_name('sch-bottom-btn');
             // In a box of ours: GNOME drives the button's own visibility (only
             // with notifications), we hide the box while the calendar is open.
             this._clearBox = new St.Bin({style_class: 'sch-clear-box'});
             this._bottomRow.add_child(this._clearBox);
             this._adopt(clear, this._clearBox);
+            // GNOME shows "Clear" only with notifications: share the row again
+            this._connect(clear, 'notify::visible', () => this._layoutBottomRow());
         }
 
         this._updateSidebarSize();
+    }
+
+    // The visible buttons of the bottom row share its width equally
+    _layoutBottomRow() {
+        if (!this._bottomRow)
+            return;
+        const items = [];
+        if (this._clocksOrig && this._dateMenu._clocksItem.visible)
+            items.push(this._dateMenu._clocksItem);
+        if (this._newEventButton?.visible)
+            items.push(this._newEventButton);
+        if (this._clearBox?.visible && this._clearButton?.visible)
+            items.push(this._clearButton);
+        if (!items.length)
+            return;
+        // panel padding (4) + row margins (8), 6 px between buttons
+        const inner = this._settings.get_int('sidebar-width') - 12;
+        const width = Math.floor((inner - 6 * (items.length - 1)) / items.length);
+        for (const item of items)
+            item.width = width;
     }
 
     // Same rule GNOME uses for the notification list (DateMenuButton._sessionUpdated)
@@ -1226,14 +1253,16 @@ export default class SmartCalendarHubExtension extends Extension {
         if (this._dateMenu._messageList)
             this._dateMenu._messageList.visible = !expanded && this._sessionShowsNotifications();
         this._calendarArrow.icon_name = expanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
-        const newEvent = expanded && this._calendarView?.hasCalendarApp;
+        const hasApp = !!this._calendarView?.hasCalendarApp;
         if (this._newEventButton)
-            this._newEventButton.visible = !!newEvent;
+            this._newEventButton.visible = hasApp;
+        // calendar open: only "New event" (the world clocks only if there is no Calendar app)
         if (this._clocksOrig)
-            this._dateMenu._clocksItem.visible = !newEvent;
+            this._dateMenu._clocksItem.visible = !(expanded && hasApp);
         // "Clear" is about the notifications, hidden while the calendar is open
         if (this._clearBox)
             this._clearBox.visible = !expanded;
+        this._layoutBottomRow();
         this._relayout();
     }
 
@@ -1248,8 +1277,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._sidebar.height = Math.max(0, workArea.height - 40);
         // "Clear" takes 2/5 of the bottom row (sidebar padding ≈ 4 px,
         // margins and spacing ≈ 14 px); the world clocks fill the rest.
-        if (this._clearButton)
-            this._clearButton.width = Math.round((this._sidebar.width - 18) * 2 / 5);
+        this._layoutBottomRow();
     }
 
     // ------------------------------------------------------------------
