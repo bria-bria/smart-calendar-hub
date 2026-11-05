@@ -162,7 +162,7 @@ export default class SmartCalendarHubExtension extends Extension {
             console.error(`Smart Calendar Hub: cannot restore the top bar spacing: ${e}`);
         }
         this._panelSpacing = null;
-        Main.panel.remove_style_class_name('sch-accent-items');
+        this._unsyncAccentTopBar();
 
         // First, so its panel role is freed even if a later step fails
         try {
@@ -346,6 +346,7 @@ export default class SmartCalendarHubExtension extends Extension {
     _onSettingChanged(key) {
         switch (key) {
         case 'accent-top-bar':
+        case 'accent-top-bar-tone':
             this._syncAccentTopBar();
             break;
         case 'sidebar-side':
@@ -2003,13 +2004,40 @@ export default class SmartCalendarHubExtension extends Extension {
         });
     }
 
-    // Texts and icons of the top bar in GNOME's accent colour (stylesheet:
-    // #panel.sch-accent-items); they follow the accent colour when it changes
+    // Texts and icons of the top bar in GNOME's accent colour, they follow it
+    // when it changes. Tone "light": the light tint of that colour from the
+    // GNOME palette (sch-accent-light-<colour> in the stylesheet), bright on
+    // the dark bar; "full": the accent colour itself (-st-accent-color), the
+    // one GNOME uses behind white text, duller as a text colour.
     _syncAccentTopBar() {
-        if (this._settings.get_boolean('accent-top-bar'))
+        for (const name of Main.panel.get_style_class_name()?.split(/\s+/) ?? []) {
+            if (name.startsWith('sch-accent'))
+                Main.panel.remove_style_class_name(name);
+        }
+        if (!this._settings?.get_boolean('accent-top-bar'))
+            return;
+        if (this._settings.get_string('accent-top-bar-tone') === 'full') {
             Main.panel.add_style_class_name('sch-accent-items');
-        else
-            Main.panel.remove_style_class_name('sch-accent-items');
+            return;
+        }
+        this._interfaceSettings ??= new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        if (!this._accentId) {
+            this._accentId = this._interfaceSettings.connect('changed::accent-color',
+                () => this._syncAccentTopBar());
+        }
+        const accent = this._interfaceSettings.get_string('accent-color') || 'blue';
+        Main.panel.add_style_class_name(`sch-accent-light-${accent}`);
+    }
+
+    _unsyncAccentTopBar() {
+        if (this._accentId)
+            this._interfaceSettings?.disconnect(this._accentId);
+        this._accentId = 0;
+        this._interfaceSettings = null;
+        for (const name of Main.panel.get_style_class_name()?.split(/\s+/) ?? []) {
+            if (name.startsWith('sch-accent'))
+                Main.panel.remove_style_class_name(name);
+        }
     }
 
     // How far one click of the tray arrows moves the view: one icon cell and

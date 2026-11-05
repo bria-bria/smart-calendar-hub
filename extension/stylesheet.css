@@ -524,6 +524,94 @@
     color: -st-accent-color;
 }
 
+/* the workspace selector (top left) is drawn with dots: their background */
+#panel.sch-accent-items .panel-button#panelActivities .workspace-dot {
+    background-color: -st-accent-color;
+}
+
+/* The light tint of each accent colour, from the GNOME palette: bright on
+   the dark top bar (tone "light", the default) */
+#panel.sch-accent-light-blue .panel-button,
+#panel.sch-accent-light-blue .panel-button.clock-display {
+    color: #99c1f1;
+}
+
+#panel.sch-accent-light-blue .panel-button#panelActivities .workspace-dot {
+    background-color: #99c1f1;
+}
+
+#panel.sch-accent-light-teal .panel-button,
+#panel.sch-accent-light-teal .panel-button.clock-display {
+    color: #93ddeb;
+}
+
+#panel.sch-accent-light-teal .panel-button#panelActivities .workspace-dot {
+    background-color: #93ddeb;
+}
+
+#panel.sch-accent-light-green .panel-button,
+#panel.sch-accent-light-green .panel-button.clock-display {
+    color: #8ff0a4;
+}
+
+#panel.sch-accent-light-green .panel-button#panelActivities .workspace-dot {
+    background-color: #8ff0a4;
+}
+
+#panel.sch-accent-light-yellow .panel-button,
+#panel.sch-accent-light-yellow .panel-button.clock-display {
+    color: #f9f06b;
+}
+
+#panel.sch-accent-light-yellow .panel-button#panelActivities .workspace-dot {
+    background-color: #f9f06b;
+}
+
+#panel.sch-accent-light-orange .panel-button,
+#panel.sch-accent-light-orange .panel-button.clock-display {
+    color: #ffbe6f;
+}
+
+#panel.sch-accent-light-orange .panel-button#panelActivities .workspace-dot {
+    background-color: #ffbe6f;
+}
+
+#panel.sch-accent-light-red .panel-button,
+#panel.sch-accent-light-red .panel-button.clock-display {
+    color: #f66151;
+}
+
+#panel.sch-accent-light-red .panel-button#panelActivities .workspace-dot {
+    background-color: #f66151;
+}
+
+#panel.sch-accent-light-pink .panel-button,
+#panel.sch-accent-light-pink .panel-button.clock-display {
+    color: #f5a8cc;
+}
+
+#panel.sch-accent-light-pink .panel-button#panelActivities .workspace-dot {
+    background-color: #f5a8cc;
+}
+
+#panel.sch-accent-light-purple .panel-button,
+#panel.sch-accent-light-purple .panel-button.clock-display {
+    color: #dc8add;
+}
+
+#panel.sch-accent-light-purple .panel-button#panelActivities .workspace-dot {
+    background-color: #dc8add;
+}
+
+#panel.sch-accent-light-slate .panel-button,
+#panel.sch-accent-light-slate .panel-button.clock-display {
+    color: #b0bccb;
+}
+
+#panel.sch-accent-light-slate .panel-button#panelActivities .workspace-dot {
+    background-color: #b0bccb;
+}
+
 /* IP addresses in the side panel, under the tray: the box takes the look
    of the weather row (sch-calendar-expander) */
 .sch-ip-panel {

@@ -158,6 +158,14 @@ export const IT = {
         "Colore d'accento nella barra in alto",
     "Texts and icons of the top bar in the accent colour chosen in GNOME Settings, and they follow it when it changes":
         "Scritte e icone della barra in alto nel colore d'accento scelto nelle Impostazioni di GNOME, e lo seguono quando cambia",
+    "Tone of the accent colour":
+        "Tonalità del colore d'accento",
+    "Light: bright on the dark bar. Full: the colour of GNOME’s buttons, duller as text.":
+        "Chiara: brillante sulla barra scura. Piena: il colore dei pulsanti di GNOME, più spento come testo.",
+    "Light":
+        "Chiara",
+    "Full":
+        "Piena",
     "Previous icons":
         "Icone precedenti",
     "Next icons":

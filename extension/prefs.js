@@ -376,6 +376,15 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('accent-top-bar', accentRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         look.add(accentRow);
+        const toneRow = choiceRow(settings, 'accent-top-bar-tone',
+            _('Tone of the accent colour'),
+            _('Light: bright on the dark bar. Full: the colour of GNOME’s buttons, duller as text.'),
+            [
+                ['light', _('Light')],
+                ['full', _('Full')],
+            ]);
+        settings.bind('accent-top-bar', toneRow, 'sensitive', Gio.SettingsBindFlags.GET);
+        look.add(toneRow);
 
         // Everything about the weather in one group
         const weather = new Adw.PreferencesGroup({

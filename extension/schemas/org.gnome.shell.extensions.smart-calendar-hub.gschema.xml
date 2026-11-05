@@ -171,6 +171,15 @@
       <summary>Texts and icons of the top bar in GNOME's accent colour</summary>
     </key>
 
+    <key name="accent-top-bar-tone" type="s">
+      <choices>
+        <choice value="light"/>
+        <choice value="full"/>
+      </choices>
+      <default>'light'</default>
+      <summary>Tone of the accent colour in the top bar: light tint (bright) or the full colour</summary>
+    </key>
+
     <key name="top-bar-spacing" type="i">
       <range min="0" max="12"/>
       <default>12</default>
