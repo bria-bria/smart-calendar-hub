@@ -162,6 +162,33 @@
     border-radius: 14px;
 }
 
+/* Calendar beside the panel: the menu's content box is transparent and
+   holds two cards (the panel and the calendar), each with the look of a
+   menu (popup-menu-content) */
+.sch-sidebar .popup-menu-content.sch-cards-host {
+    background-color: transparent;
+    border-width: 0;
+    box-shadow: none;
+    padding: 0;
+    spacing: 12px;
+}
+
+/* arrow in the calendar row that opens the calendar beside the panel */
+.sch-calendar-side-button {
+    /* as wide as the arrows of the IP and weather rows */
+    width: 26px;
+    height: 36px;
+    margin-right: 4px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.09);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.sch-calendar-side-button:hover,
+.sch-calendar-side-button:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
 /* 3. Collapsible calendar */
 .sch-calendar-expander {
     margin: 2px 4px;

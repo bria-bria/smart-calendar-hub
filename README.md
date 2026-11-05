@@ -8,7 +8,8 @@ From top to bottom the panel shows:
    settings on their right,
 2. weather, collapsed at login (it stays as you leave it until you log out),
 3. today's date,
-4. the calendar and events, collapsed by default,
+4. the calendar and events, collapsed by default (the arrow beside the row
+   opens the calendar in a card of its own next to the panel),
 5. GNOME's "Today" card with the events of the day (it can be switched off),
 6. notifications,
 7. world clocks, next to the button that clears the notifications.

@@ -61,6 +61,9 @@ const MENU_TAIL_ROLES = ['quickSettings'];
 // Weather section open or closed. Module-level on purpose: it survives
 // disable/enable (screen lock) and goes back to closed at the next login.
 let weatherExpanded = false;
+// Calendar in its own card next to the panel (arrow in the calendar row):
+// like the weather, kept until the next login.
+let calendarSide = false;
 
 export default class SmartCalendarHubExtension extends Extension {
     enable() {
@@ -268,7 +271,12 @@ export default class SmartCalendarHubExtension extends Extension {
         this._clearLabel = null;
         this._clocksGrid = null;
 
-        // Before the panel goes: it is connected to GNOME's calendar and events
+        // One card again (the menu's content box back as it was), then the
+        // panel goes: it is connected to GNOME's calendar and events
+        this._unsetCalendarSide();
+        this._calendarCard?.destroy();
+        this._calendarCard = null;
+        this._calendarSideButton = null;
         this._calendarView?.destroy();
         this._skyView?.destroy();
         this._skyView = null;
@@ -1331,7 +1339,22 @@ export default class SmartCalendarHubExtension extends Extension {
         });
         row.add_child(this._calendarArrow);
         expander.set_child(row);
-        this._sidebar.add_child(expander);
+        // the row, and outside it on the right (same column as the arrows of
+        // the IP and weather rows) the button that puts the calendar in a
+        // card of its own beside the panel. Outside: a button inside the row
+        // button would get the click twice.
+        const calendarRow = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true});
+        calendarRow.add_child(expander);
+        this._calendarSideButton = new St.Button({
+            style_class: 'sch-calendar-side-button',
+            can_focus: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            accessible_name: _('Calendar beside the panel'),
+            child: new St.Icon({icon_size: 14}),
+        });
+        this._calendarSideButton.connect('clicked', () => this._setCalendarSide(!calendarSide));
+        calendarRow.add_child(this._calendarSideButton);
+        this._sidebar.add_child(calendarRow);
 
         this._calendarBox = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
@@ -1358,12 +1381,32 @@ export default class SmartCalendarHubExtension extends Extension {
         this._calendarView = new CalendarView(dm, this._settings);
         this._calendarBox.add_child(this._calendarView.actor);
 
-        expander.connect('clicked', () => this._setCalendarExpanded(!this._calendarBox.visible));
+        // the card beside the panel (popup-menu-content: the look of a menu)
+        this._calendarCard = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'popup-menu-content sch-calendar-card',
+            y_align: Clutter.ActorAlign.START,
+            visible: false,
+        });
+
+        expander.connect('clicked', () => {
+            // with the calendar beside the panel, the row brings it back inside
+            if (calendarSide) {
+                this._setCalendarSide(false);
+                this._setCalendarExpanded(true);
+                return;
+            }
+            this._setCalendarExpanded(!this._calendarBox.visible);
+        });
+        this._syncCalendarSideIcon();
 
         this._connect(dm.menu, 'open-state-changed', (_m, isOpen) => {
             if (isOpen) {
                 if (this._settings.get_boolean('calendar-collapsed'))
                     this._setCalendarExpanded(false);
+                // the calendar beside the panel, as it was left
+                if (calendarSide && !this._calendarCard?.visible)
+                    this._setCalendarSide(true);
                 this._syncTray();
                 this._updateSidebarSize();
                 this._calendarView?.reloadCalendars();
@@ -1557,6 +1600,84 @@ export default class SmartCalendarHubExtension extends Extension {
         }
     }
 
+    // The calendar in its own card beside the panel, like the extra cards of
+    // Quick Settings Audio Panel. Both cards stay inside the same menu (so a
+    // click on the calendar does not close it): the menu's content box
+    // becomes transparent (sch-cards-host) and the panel and the calendar
+    // each get the look of a menu (popup-menu-content).
+    _setCalendarSide(on) {
+        const host = this._dateMenu?.menu?.box;
+        if (!host || !this._sidebar || !this._calendarCard || !this._calendarView)
+            return;
+        if (on && !host.has_style_class_name('sch-cards-host'))
+            this._cardFrame = this._measureCardFrame(); // before the change
+        calendarSide = on;
+        const view = this._calendarView.actor;
+        if (on) {
+            this._setCalendarExpanded(false);
+            this._hostOrientation ??= host.orientation;
+            host.orientation = Clutter.Orientation.HORIZONTAL;
+            host.add_style_class_name('sch-cards-host');
+            this._sidebar.add_style_class_name('popup-menu-content');
+            if (view.get_parent() !== this._calendarCard) {
+                view.get_parent()?.remove_child(view);
+                this._calendarCard.add_child(view);
+            }
+            if (!this._calendarCard.get_parent()) {
+                // on the side away from the screen edge
+                if (this._settings.get_string('sidebar-side') === 'left')
+                    host.insert_child_above(this._calendarCard, this._sidebar);
+                else
+                    host.insert_child_below(this._calendarCard, this._sidebar);
+            }
+            this._calendarCard.visible = true;
+        } else {
+            this._unsetCalendarSide();
+        }
+        this._syncCalendarSideIcon();
+        this._updateSidebarSize();
+    }
+
+    // Back to one card: the calendar inside the panel again
+    _unsetCalendarSide() {
+        const host = this._dateMenu?.menu?.box;
+        const view = this._calendarView?.actor;
+        if (this._calendarCard)
+            this._calendarCard.visible = false;
+        if (view && this._calendarBox && view.get_parent() !== this._calendarBox) {
+            view.get_parent()?.remove_child(view);
+            this._calendarBox.add_child(view);
+        }
+        this._calendarCard?.get_parent()?.remove_child(this._calendarCard);
+        this._sidebar?.remove_style_class_name('popup-menu-content');
+        host?.remove_style_class_name('sch-cards-host');
+        if (host && this._hostOrientation !== undefined)
+            host.orientation = this._hostOrientation;
+        this._hostOrientation = undefined;
+    }
+
+    // Arrow towards the outside to open the card, towards the panel to close it
+    _syncCalendarSideIcon() {
+        const icon = this._calendarSideButton?.child;
+        if (!icon)
+            return;
+        const toLeft = this._settings.get_string('sidebar-side') !== 'left';
+        const out = toLeft ? 'pan-start-symbolic' : 'pan-end-symbolic';
+        const back = toLeft ? 'pan-end-symbolic' : 'pan-start-symbolic';
+        icon.icon_name = calendarSide ? back : out;
+    }
+
+    // Padding and border of the menu's content box around the panel
+    _measureCardFrame() {
+        try {
+            const [, hostWidth] = this._dateMenu.menu.box.get_preferred_width(-1);
+            const frame = hostWidth - this._sidebar.width;
+            return frame >= 0 && frame < 80 ? frame : 22;
+        } catch (_e) {
+            return 22;
+        }
+    }
+
     _setCalendarExpanded(expanded) {
         if (!this._calendarBox)
             return;
@@ -1615,8 +1736,9 @@ export default class SmartCalendarHubExtension extends Extension {
             // the width it has on screen, or the one it asks for
             const [, preferred] = card.get_preferred_width(-1);
             const cardWidth = card.mapped && card.width > 0 ? card.width : preferred;
-            const [, ourPreferred] = ours.get_preferred_width(-1);
-            const frame = ourPreferred - this._sidebar.width;
+            // the frame of our content box (with the calendar beside the
+            // panel the box is transparent: the frame measured before)
+            const frame = calendarSide ? this._cardFrame ?? 22 : this._measureCardFrame();
             const width = Math.round(cardWidth - frame);
             // a card not drawn yet measures nothing useful
             return width >= 280 && width <= 900 ? width : null;
@@ -1663,7 +1785,9 @@ export default class SmartCalendarHubExtension extends Extension {
         const monitor = Main.layoutManager.findIndexForActor(this._dateMenu.container);
         const workArea = Main.layoutManager.getWorkAreaForMonitor(monitor);
         const width = this._sidebarWidth(true);
-        this._sidebar.width = width;
+        // with the calendar beside it the panel is a card of its own: its
+        // padding and border are inside its width
+        this._sidebar.width = width + (calendarSide ? this._cardFrame ?? 22 : 0);
         // the calendar cells follow the width (only when it changed)
         if (this._calendarWidth !== width) {
             this._calendarWidth = width;
