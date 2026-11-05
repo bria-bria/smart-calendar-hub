@@ -67,7 +67,7 @@ export class SkyView {
             y_align: Clutter.ActorAlign.CENTER,
         });
         this.actor.connect('repaint', area => this._repaint(area));
-        this._settingsIds = ['show-sun-moon', 'show-moon-phase'].map(key =>
+        this._settingsIds = ['show-date', 'show-sun-moon', 'show-moon-phase'].map(key =>
             settings.connect(`changed::${key}`, () => this._sync()));
         this._sync();
     }
@@ -83,7 +83,12 @@ export class SkyView {
     _sync() {
         this._showArc = this._settings.get_boolean('show-sun-moon');
         this._showPhase = this._settings.get_boolean('show-moon-phase');
-        this.actor.visible = this._showArc || this._showPhase;
+        // with the date switched off, the sky goes too (and start() runs
+        // no animation or timer while hidden)
+        this.actor.visible = this._settings.get_boolean('show-date') &&
+            (this._showArc || this._showPhase);
+        if (!this.actor.visible)
+            this.stop();
         // Only the moon phase: a smaller, square area
         this.actor.width = this._showArc ? WIDTH : HEIGHT;
         this.actor.queue_repaint();

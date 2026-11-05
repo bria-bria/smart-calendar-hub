@@ -270,6 +270,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._calendarView?.destroy();
         this._skyView?.destroy();
         this._skyView = null;
+        this._dateRow = null;
         this._sidebar?.destroy();
         this._sidebar = null;
         this._traySection = null;
@@ -1286,8 +1287,14 @@ export default class SmartCalendarHubExtension extends Extension {
         this._updateWeatherSummary(client);
 
         // 2. Sky (sun, moon, moon phase) on the left, date on the right
-        const dateRow = new St.BoxLayout({style_class: 'sch-date-row', x_expand: true});
+        const dateRow = this._dateRow = new St.BoxLayout({style_class: 'sch-date-row', x_expand: true});
         this._sidebar.add_child(dateRow);
+        // the whole row can be switched off (date, sun and moon)
+        const syncDate = () => {
+            dateRow.visible = this._settings.get_boolean('show-date');
+        };
+        this._connect(this._settings, 'changed::show-date', syncDate);
+        syncDate();
         this._skyView = new SkyView(dm._weatherItem?._weatherClient ?? null, this._settings);
         dateRow.add_child(this._skyView.actor);
         this._adopt(dm._date, dateRow);

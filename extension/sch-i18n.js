@@ -128,6 +128,14 @@ export const IT = {
         "Descrizione del meteo",
     "After each update, “Cloudy”, “Light rain”… for a few seconds instead of the temperature":
         "Dopo ogni aggiornamento, «Nuvoloso», «Pioggia debole»… per qualche secondo al posto della temperatura",
+    "Date and sky":
+        "Data e cielo",
+    "The date, and next to it the sun and the moon. The two sky options can be used separately or together.":
+        "La data e, accanto, il sole e la luna. Le due opzioni del cielo si possono usare da sole o insieme.",
+    "Date":
+        "Data",
+    "Off: no date in the panel, and no sun or moon either":
+        "Spento: niente data nel pannello, e niente sole e luna",
     "Previous icons":
         "Icone precedenti",
     "Next icons":
@@ -222,10 +230,6 @@ export const IT = {
         "Notifiche",
     "Appearance":
         "Aspetto",
-    "Sky":
-        "Cielo",
-    "Next to the date. The two options can be used separately or together.":
-        "Accanto alla data. Le due opzioni si possono usare da sole o insieme.",
     "Sun and moon of the day":
         "Sole e luna del giorno",
     "The sun moves along an arc from sunrise to sunset, then the moon until the next sunrise":

@@ -71,6 +71,11 @@
       <description>"identifier TAB name" of each app seen in the notification list; used by the preferences window.</description>
     </key>
 
+    <key name="show-date" type="b">
+      <default>true</default>
+      <summary>Show the date in the side panel (switched off, the sun and the moon go too)</summary>
+    </key>
+
     <key name="show-sun-moon" type="b">
       <default>true</default>
       <summary>Show the sun and the moon moving along an arc next to the date</summary>

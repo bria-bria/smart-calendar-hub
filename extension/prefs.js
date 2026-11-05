@@ -393,10 +393,16 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         syncWeatherRows();
 
         const sky = new Adw.PreferencesGroup({
-            title: _('Sky'),
-            description: _('Next to the date. The two options can be used separately or together.'),
+            title: _('Date and sky'),
+            description: _('The date, and next to it the sun and the moon. The two sky options can be used separately or together.'),
         });
         pagePanel.add(sky);
+        const dateRow = new Adw.SwitchRow({
+            title: _('Date'),
+            subtitle: _('Off: no date in the panel, and no sun or moon either'),
+        });
+        settings.bind('show-date', dateRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        sky.add(dateRow);
         const sunMoonRow = new Adw.SwitchRow({
             title: _('Sun and moon of the day'),
             subtitle: _('The sun moves along an arc from sunrise to sunset, then the moon until the next sunrise'),
@@ -409,6 +415,9 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('show-moon-phase', phaseRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         sky.add(phaseRow);
+        // sun and moon only with the date
+        for (const row of [sunMoonRow, phaseRow])
+            settings.bind('show-date', row, 'sensitive', Gio.SettingsBindFlags.GET);
 
         // ---------------- Tray ----------------
         // Tray icons are created by the AppIndicator extension: warn if it is off.
