@@ -12,19 +12,13 @@ import {ExtensionState} from 'resource:///org/gnome/Shell/Extensions/js/misc/ext
 
 import {_, loadUserTranslations} from './sch-i18n.js';
 import {loadCalendars, setCalendarSelected} from './sch-eds.js';
+import {BII_UUID, biiRowTexts, settingsSections} from './sch-settings-model.js';
 
 // Extensions that provide tray icons (upstream and Ubuntu's build).
 const APPINDICATOR_UUIDS = [
     'appindicatorsupport@rgcjonas.gmail.com',
     'ubuntu-appindicators@ubuntu.com',
 ];
-
-// Battery Indicator Icon by Deminder, from which the idea of our battery
-// circle comes: while it is active it draws the battery and our circle steps
-// aside (sch-battery.js)
-const BII_UUID = 'battery-indicator-icon@Deminder';
-const BII_PROJECT_URL = 'https://github.com/Deminder/battery-indicator-icon';
-const BII_EGO_URL = 'https://extensions.gnome.org/extension/5718/battery-indicator-icon/';
 
 // GNOME Shell's own D-Bus interface for extensions (the one of the
 // Extensions app): state of another extension and switching it on
@@ -107,32 +101,115 @@ function batteryIndicatorIconRow(window, enable) {
     row.add_prefix(new Gtk.Image({icon_name: 'battery-good-symbolic'}));
     const button = new Gtk.Button({valign: Gtk.Align.CENTER});
     row.add_suffix(button);
-    let state = null;
+    let action = null;
     button.connect('clicked', () => {
-        if (state === 'off')
+        if (action === 'enable')
             enable();
-        else
-            new Gtk.UriLauncher({uri: state === 'active' ? BII_PROJECT_URL : BII_EGO_URL})
-                .launch(window, null, null);
+        else if (action)
+            new Gtk.UriLauncher({uri: action}).launch(window, null, null);
     });
     const set = s => {
-        state = s;
+        const texts = biiRowTexts(s);
+        action = texts.action;
         row.visible = true;
-        if (s === 'active') {
-            row.subtitle = _('Deminder’s extension, which gave us the idea of the circle, is drawing the battery: change its look in its own settings. Switch it off to get our circle back.');
-            button.label = _('Project page');
-            button.remove_css_class('suggested-action');
-        } else if (s === 'off') {
-            row.subtitle = _('Deminder’s extension, which gave us the idea of the circle, is installed but off. Turn it on and our circle steps aside.');
-            button.label = _('Turn on');
+        row.subtitle = texts.subtitle;
+        button.label = texts.button;
+        if (texts.primary)
             button.add_css_class('suggested-action');
-        } else {
-            row.subtitle = _('Deminder’s extension, which gave us the idea of the circle: a circle or a portrait, in several styles. With it on, our circle steps aside.');
-            button.label = _('Get it');
+        else
             button.remove_css_class('suggested-action');
-        }
     };
     return {row, set};
+}
+
+// A row described in sch-settings-model.js, as an Adw row; null when this
+// window does not build it. ctx: {syncs, env, customRows}
+function modelRow(settings, row, ctx) {
+    let widget = null;
+    switch (row.type) {
+    case 'switch':
+        if (row.children?.length) {
+            // the rows inside matter only while it is on: an expander with
+            // its own switch
+            widget = new Adw.ExpanderRow({title: row.title, subtitle: row.subtitle ?? '', show_enable_switch: true});
+            settings.bind(row.key, widget, 'enable-expansion', Gio.SettingsBindFlags.DEFAULT);
+            for (const child of row.children) {
+                const inner = modelRow(settings, child, ctx);
+                if (inner)
+                    widget.add_row(inner);
+            }
+        } else {
+            widget = new Adw.SwitchRow({title: row.title, subtitle: row.subtitle ?? ''});
+            settings.bind(row.key, widget, 'active', Gio.SettingsBindFlags.DEFAULT);
+        }
+        break;
+    case 'check': {
+        widget = new Adw.ActionRow({title: row.title, subtitle: row.subtitle ?? ''});
+        const check = new Gtk.CheckButton({valign: Gtk.Align.CENTER});
+        settings.bind(row.key, check, 'active', Gio.SettingsBindFlags.DEFAULT);
+        widget.add_prefix(check);
+        widget.activatable_widget = check;
+        break;
+    }
+    case 'choice':
+        widget = choiceRow(settings, row.key, row.title, row.description, row.options);
+        break;
+    case 'number':
+        widget = new Adw.SpinRow({
+            title: row.title,
+            subtitle: row.subtitle ?? '',
+            adjustment: new Gtk.Adjustment({
+                lower: row.min,
+                upper: row.max,
+                step_increment: row.step,
+                page_increment: row.page,
+            }),
+        });
+        settings.bind(row.key, widget, 'value', Gio.SettingsBindFlags.DEFAULT);
+        break;
+    case 'custom':
+        widget = ctx.customRows[row.id]?.() ?? null;
+        break;
+    }
+    if (widget && (row.enabledWhen || row.visibleWhen)) {
+        ctx.syncs.push(() => {
+            if (row.enabledWhen)
+                widget.sensitive = row.enabledWhen(settings);
+            if (row.visibleWhen)
+                widget.visible = row.visibleWhen(settings, ctx.env);
+        });
+    }
+    return widget;
+}
+
+// The groups of a section of sch-settings-model.js on `page`; the custom
+// groups come from ctx.customGroups
+function modelGroups(settings, page, section, ctx) {
+    for (const group of section.groups ?? []) {
+        if (group.custom) {
+            const custom = ctx.customGroups[group.custom]?.();
+            if (custom)
+                page.add(custom);
+            continue;
+        }
+        const params = {};
+        if (group.title)
+            params.title = group.title;
+        if (typeof group.description === 'string')
+            params.description = group.description;
+        const widget = new Adw.PreferencesGroup(params);
+        if (typeof group.description === 'function') {
+            ctx.syncs.push(() => {
+                widget.description = group.description(settings, ctx.env);
+            });
+        }
+        for (const row of group.rows) {
+            const child = modelRow(settings, row, ctx);
+            if (child)
+                widget.add(child);
+        }
+        page.add(widget);
+    }
 }
 
 // A choice bound to a string key with a fixed list of values.
@@ -493,285 +570,67 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
 
         const settings = this.getSettings();
         window._settings = settings;
-        // Four tabs instead of one long page; the tab bar adapts to the width
+        // One tab per section instead of one long page; the tab bar adapts
+        // to the width
         window.set_default_size(640, 760);
         window.search_enabled = true;
 
-        const pagePanel = new Adw.PreferencesPage({
-            title: _('Panel'),
-            icon_name: 'view-dual-symbolic',
-        });
-        const pageTray = new Adw.PreferencesPage({
-            title: _('Tray'),
-            icon_name: 'view-app-grid-symbolic',
-        });
-        const pageCalendars = new Adw.PreferencesPage({
-            title: _('Calendars'),
-            icon_name: 'x-office-calendar-symbolic',
-        });
-        const pageNotifications = new Adw.PreferencesPage({
-            title: _('Notifications'),
-            icon_name: 'preferences-system-notifications-symbolic',
-        });
-        const pageNetwork = new Adw.PreferencesPage({
-            title: _('Network'),
-            icon_name: 'network-workgroup-symbolic',
-        });
-        const pageExtensions = new Adw.PreferencesPage({
-            title: _('Extensions'),
-            icon_name: 'application-x-addon-symbolic',
-        });
-        const pageLogin = new Adw.PreferencesPage({
-            title: _('By hand'),
-            icon_name: 'utilities-terminal-symbolic',
-        });
-        for (const page of [pagePanel, pageTray, pageCalendars, pageNotifications, pageNetwork, pageExtensions, pageLogin])
-            window.add(page);
-        byHandPage(window, pageLogin);
+        // The sections and most of their settings come from
+        // sch-settings-model.js, shared with the card beside the panel
+        const sections = settingsSections();
+        const pages = {};
+        for (const section of sections) {
+            pages[section.id] = new Adw.PreferencesPage({
+                title: section.title,
+                icon_name: section.icon,
+            });
+            window.add(pages[section.id]);
+        }
 
-        // ---------------- Extensions ----------------
-        // other extensions that Smart Calendar Hub works with: each setting
-        // matters only when that extension is installed
-        const tbo = new Adw.PreferencesGroup({
-            title: 'Top Bar Organizer',
-            description: _('Orders the icons of the top bar.'),
-        });
-        pageExtensions.add(tbo);
-        const tboRow = new Adw.SwitchRow({
-            title: _('Keep Top Bar Organizer in sync'),
-            subtitle: _('Also writes the clock position into the Top Bar Organizer extension settings; the previous order is restored when Smart Calendar Hub is turned off'),
-        });
-        settings.bind('sync-top-bar-organizer', tboRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        tbo.add(tboRow);
-
-        const vesperal = new Adw.PreferencesGroup({
-            title: 'Vesperal',
-            description: _('Sunrise, sunset and day length. With it installed, a click on the sun and moon of the panel opens its menu inside the panel.'),
-        });
-        pageExtensions.add(vesperal);
-        const vesperalRow = new Adw.SwitchRow({
-            title: _('Hide its icon in the top bar'),
-            subtitle: _('Its menu still opens from the sun and moon of the panel'),
-        });
-        settings.bind('vesperal-hide-icon', vesperalRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        vesperal.add(vesperalRow);
-
-        const freon = new Adw.PreferencesGroup({
-            title: 'Freon',
-            description: _('Temperatures of the processor, the disks and the graphics card, and the fans.'),
-        });
-        pageExtensions.add(freon);
-        const freonRow = new Adw.SwitchRow({
-            title: _('One thermometer icon'),
-            subtitle: _('Its button shows one thermometer instead of an icon and a temperature for each sensor; the temperatures stay in its menu'),
-        });
-        settings.bind('freon-single-icon', freonRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        freon.add(freonRow);
-
-        // Battery Indicator Icon: here and in Panel → Battery (followed
-        // there, see watchExtension)
-        const biiGroup = new Adw.PreferencesGroup({
-            title: 'Battery Indicator Icon',
-            description: _('The battery in the top bar as a circle or a portrait, by Deminder. While it is on, Smart Calendar Hub leaves the battery to it.'),
-        });
-        pageExtensions.add(biiGroup);
-        const biiExtRow = batteryIndicatorIconRow(window, () => enableBii());
-        biiGroup.add(biiExtRow.row);
-
-        // ---------------- Panel ----------------
-        const position = new Adw.PreferencesGroup({
-            title: _('Position'),
-            description: _('Where the side panel opens and where the clock sits in the top bar.'),
-        });
-        pagePanel.add(position);
-
-        position.add(choiceRow(settings, 'sidebar-side',
-            _('Panel side'),
-            _('Side of the screen where the panel appears when you click the clock'),
-            [
-                ['right', _('Right edge of the screen')],
-                ['left', _('Left edge of the screen')],
-                ['button', _('Under the clock button')],
-            ]));
-
-        position.add(choiceRow(settings, 'top-bar-position',
-            _('Clock in the top bar'),
-            _('Position of the clock and temperature in the GNOME top bar'),
-            [
-                ['right-between-tray-and-menu', _('Right, next to the system menu')],
-                ['right-before-tray', _('Right, before tray icons')],
-                ['left-after-menu', _('Left, after the menus')],
-                ['center', _('Center (GNOME default)')],
-            ]));
-
-        const look = new Adw.PreferencesGroup({
-            title: _('Appearance'),
-            description: _('From top to bottom: tray icons (with the settings button), IP addresses, weather (collapsed at login), date, calendar, notifications, world clocks.'),
-        });
-        pagePanel.add(look);
-
-        const collapseRow = new Adw.SwitchRow({
-            title: _('Calendar collapsed on opening'),
-            subtitle: _('Click “Calendar and events” to open it'),
-        });
-        settings.bind('calendar-collapsed', collapseRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        look.add(collapseRow);
-        look.add(choiceRow(settings, 'calendar-side-reopen',
-            _('Calendar beside the panel'),
-            _('When the panel opens again (it opens with a click on the “Today” card)'),
-            [
-                ['closed', _('Closed')],
-                ['last', _('As it was left')],
-                ['open', _('Open')],
-            ]));
-
-        const alignRow = new Adw.SwitchRow({
-            title: _('Align to GNOME’s menu'),
-            subtitle: _('As wide as the system menu (Wi-Fi, volume…), kept the same automatically'),
-        });
-        settings.bind('sidebar-width-gnome', alignRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        look.add(alignRow);
-        const widthRow = new Adw.SpinRow({
-            title: _('Panel width (pixels)'),
-            adjustment: new Gtk.Adjustment({
-                lower: 320,
-                upper: 520,
-                step_increment: 10,
-                page_increment: 20,
-            }),
-        });
-        settings.bind('sidebar-width', widthRow, 'value', Gio.SettingsBindFlags.DEFAULT);
-        settings.bind('sidebar-width-gnome', widthRow, 'sensitive',
-            Gio.SettingsBindFlags.GET | Gio.SettingsBindFlags.INVERT_BOOLEAN);
-        look.add(widthRow);
-
-        // one setting for the space between the icons of the top bar
-        const spacingRow = new Adw.SpinRow({
-            title: _('Space between the top bar icons (pixels)'),
-            subtitle: _('12 is the GNOME default; less brings the icons closer together'),
-            adjustment: new Gtk.Adjustment({
-                lower: 0,
-                upper: 12,
-                step_increment: 1,
-                page_increment: 2,
-            }),
-        });
-        settings.bind('top-bar-spacing', spacingRow, 'value', Gio.SettingsBindFlags.DEFAULT);
-        look.add(spacingRow);
-        const accentRow = new Adw.SwitchRow({
-            title: _('Accent colour in the top bar'),
-            subtitle: _('Texts and icons of the top bar in the accent colour chosen in GNOME Settings, and they follow it when it changes'),
-        });
-        settings.bind('accent-top-bar', accentRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        look.add(accentRow);
-        const toneRow = choiceRow(settings, 'accent-top-bar-tone',
-            _('Tone of the accent colour'),
-            _('Light: bright on the dark bar. Full: the colour of GNOME’s buttons, duller as text.'),
-            [
-                ['light', _('Light')],
-                ['full', _('Full')],
-            ]);
-        settings.bind('accent-top-bar', toneRow, 'sensitive', Gio.SettingsBindFlags.GET);
-        look.add(toneRow);
-
-        // The battery as a circle in the top bar (also on the lock and login
-        // screens)
-        const batteryText = _('In the top bar, also on the lock screen and on the login screen.');
-        const battery = new Adw.PreferencesGroup({
-            title: _('Battery'),
-            description: batteryText,
-        });
-        pagePanel.add(battery);
-        const circleRow = new Adw.SwitchRow({
-            title: _('Battery as a circle'),
-            subtitle: _('A ring that empties with the charge, in the colour of the bar; yellow under 20%, red under 10%. A bolt only while it is really charging'),
-        });
-        settings.bind('battery-circle', circleRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        battery.add(circleRow);
-        const circleTextRow = new Adw.SwitchRow({
-            title: _('Percentage inside the circle'),
-        });
-        settings.bind('battery-circle-text', circleTextRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        settings.bind('battery-circle', circleTextRow, 'sensitive', Gio.SettingsBindFlags.GET);
-        battery.add(circleTextRow);
-        // while Battery Indicator Icon is active our two switches make no
-        // difference: only its row is shown (the settings are kept)
-        const biiBatteryRow = batteryIndicatorIconRow(window, () => enableBii());
-        battery.add(biiBatteryRow.row);
-        const enableBii = watchExtension(window, BII_UUID, state => {
-            biiExtRow.set(state);
-            biiBatteryRow.set(state);
-            circleRow.visible = circleTextRow.visible = state !== 'active';
-            battery.description = state === 'active' ? null : batteryText;
-        });
-
-        // Everything about the weather in one group
-        const weather = new Adw.PreferencesGroup({
-            title: _('Weather'),
-            description: _('From GNOME Weather: set your cities there. In the panel, the up and down arrows go through them.'),
-        });
-        pagePanel.add(weather);
-        weather.add(choiceRow(settings, 'clock-weather',
-            _('Weather in the top bar'),
-            _('Next to the clock, from GNOME Weather'),
-            [
-                ['both', _('Icon and temperature')],
-                ['temperature', _('Temperature only')],
-                ['off', _('Off')],
-            ]));
-        const positionRow = choiceRow(settings, 'clock-weather-position',
-            _('Position'),
-            _('In the same pill as the clock, before or after the time'),
-            [
-                ['after', _('After the clock')],
-                ['before', _('Before the clock')],
-            ]);
-        weather.add(positionRow);
-        const descriptionRow = new Adw.SwitchRow({
-            title: _('Weather description'),
-            subtitle: _('After each update, “Cloudy”, “Light rain”… for a few seconds instead of the temperature'),
-        });
-        settings.bind('clock-weather-description', descriptionRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        weather.add(descriptionRow);
-        // position and description only matter with the weather switched on
-        const syncWeatherRows = () => {
-            const on = settings.get_string('clock-weather') !== 'off';
-            positionRow.sensitive = on;
-            descriptionRow.sensitive = on;
+        // Battery Indicator Icon: in Panel → Battery and in Extensions,
+        // followed while the window is open (see watchExtension)
+        const biiRows = [];
+        let enableBii = () => {};
+        const ctx = {
+            syncs: [],
+            env: {bii: null},
+            customRows: {
+                bii: () => {
+                    const bii = batteryIndicatorIconRow(window, () => enableBii());
+                    biiRows.push(bii);
+                    return bii.row;
+                },
+            },
+            customGroups: {
+                'muted-apps': () => mutedGroup(window, settings),
+                'red-dot': () => appSwitchGroup(window, settings, {
+                    title: _('Red dot on the clock'),
+                    description: _('A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon changes from the usual one (for example a badge with unread messages).'),
+                    seenKey: 'notify-apps-seen',
+                    listKey: 'alert-apps',
+                    listMeansOn: true,
+                    emptyTitle: _('No notifications seen yet'),
+                    emptySubtitle: _('Apps appear here after they send a notification'),
+                }),
+            },
         };
-        const weatherRowsId = settings.connect('changed::clock-weather', syncWeatherRows);
+        for (const section of sections)
+            modelGroups(settings, pages[section.id], section, ctx);
+        // greyed out and hidden rows follow every change
+        const runSyncs = () => ctx.syncs.forEach(fn => fn());
+        runSyncs();
+        const syncsId = settings.connect('changed', runSyncs);
         window.connect('close-request', () => {
-            settings.disconnect(weatherRowsId);
+            settings.disconnect(syncsId);
             return false;
         });
-        syncWeatherRows();
+        enableBii = watchExtension(window, BII_UUID, state => {
+            ctx.env.bii = state;
+            biiRows.forEach(bii => bii.set(state));
+            runSyncs();
+        });
 
-        const sky = new Adw.PreferencesGroup({
-            title: _('Date and sky'),
-            description: _('The date, and next to it the sun and the moon. The two sky options can be used separately or together.'),
-        });
-        pagePanel.add(sky);
-        const dateRow = new Adw.SwitchRow({
-            title: _('Date'),
-            subtitle: _('Off: no date in the panel, and no sun or moon either'),
-        });
-        settings.bind('show-date', dateRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        sky.add(dateRow);
-        const sunMoonRow = new Adw.SwitchRow({
-            title: _('Sun and moon of the day'),
-            subtitle: _('The sun moves along an arc from sunrise to sunset, then the moon until the next sunrise'),
-        });
-        settings.bind('show-sun-moon', sunMoonRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        sky.add(sunMoonRow);
-        const phaseRow = new Adw.SwitchRow({
-            title: _('Moon phase'),
-            subtitle: _('The moon is drawn in its real phase; alone, it shows only the moon'),
-        });
-        settings.bind('show-moon-phase', phaseRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        sky.add(phaseRow);
-        // sun and moon only with the date
-        for (const row of [sunMoonRow, phaseRow])
-            settings.bind('show-date', row, 'sensitive', Gio.SettingsBindFlags.GET);
+        byHandPage(window, pages['by-hand']);
 
         // ---------------- Tray ----------------
         // Tray icons are created by the AppIndicator extension: warn if it is off.
@@ -794,7 +653,7 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         const bannerGroup = new Adw.PreferencesGroup();
         bannerGroup.add(banner);
-        pageTray.add(bannerGroup);
+        pages.tray.add(bannerGroup);
 
         const trayGroup = new Adw.PreferencesGroup();
         trayGroup.add(choiceRow(settings, 'tray-mode',
@@ -805,9 +664,9 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
                 ['all-right-icons', _('All icons on the right side')],
                 ['disabled', _('None, leave them in the top bar')],
             ]));
-        pageTray.add(trayGroup);
+        pages.tray.add(trayGroup);
 
-        pageTray.add(appSwitchGroup(window, settings, {
+        pages.tray.add(appSwitchGroup(window, settings, {
             title: _('Apps inside the panel'),
             description: _('Choose, among the icons present now, which ones move inside the panel and which stay in the top bar.'),
             seenKey: 'tray-items-seen',
@@ -838,8 +697,8 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('tray-menu-fill', fillRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         menusGroup.add(fillRow);
-        pageTray.add(menusGroup);
-        pageTray.add(appSwitchGroup(window, settings, {
+        pages.tray.add(menusGroup);
+        pages.tray.add(appSwitchGroup(window, settings, {
             title: _('Menu inside the panel, icon by icon'),
             description: _('Switch off an icon to keep its menu floating (e.g. an app whose menu does not look right inside).'),
             seenKey: 'tray-items-seen',
@@ -854,113 +713,13 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
 
         // ---------------- Calendars ----------------
         const today = new Adw.PreferencesGroup();
-        pageCalendars.add(today);
+        pages.calendars.add(today);
         const todayRow = new Adw.SwitchRow({
             title: _('Today’s events'),
             subtitle: _('A card with the events of the day above the notifications; click it to open the calendar beside the panel'),
         });
         settings.bind('show-today-events', todayRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         today.add(todayRow);
-        pageCalendars.add(await calendarsGroup());
-
-        // ---------------- Network ----------------
-        const ip = new Adw.PreferencesGroup({
-            title: _('IP addresses in the top bar'),
-            description: _('Click the addresses in the top bar: the menu lists every address switched on here, click one to copy it.'),
-        });
-        pageNetwork.add(ip);
-        const showIp = new Adw.SwitchRow({title: _('Show the IP addresses')});
-        settings.bind('show-ip', showIp, 'active', Gio.SettingsBindFlags.DEFAULT);
-        ip.add(showIp);
-        const ipPosition = choiceRow(settings, 'ip-position',
-            _('Position in the top bar'),
-            _('Where the IP addresses appear'),
-            [
-                ['left', _('Left')],
-                ['center', _('Center')],
-                ['right', _('Right')],
-            ]);
-        ip.add(ipPosition);
-        // switch = the address is known and listed in the menu;
-        // open the row to choose whether it is in the bar too
-        const addressRow = (key, title, subtitle) => {
-            const row = new Adw.ExpanderRow({title, subtitle, show_enable_switch: true});
-            settings.bind(`ip-show-${key}`, row, 'enable-expansion', Gio.SettingsBindFlags.DEFAULT);
-            const bar = new Adw.SwitchRow({
-                title: _('Show in the top bar'),
-                subtitle: _('Off: only in the menu that opens when you click the addresses'),
-            });
-            settings.bind(`ip-bar-${key}`, bar, 'active', Gio.SettingsBindFlags.DEFAULT);
-            row.add_row(bar);
-            ip.add(row);
-            return row;
-        };
-        const lanRow = addressRow('lan', _('Local network address'),
-            _('The address of this computer in the network it is connected to now'));
-        const vpnRow = addressRow('vpn', _('VPN address'),
-            _('Shown with a shield while a VPN such as Tailscale is active'));
-        const publicRow = addressRow('public', _('Public address'),
-            _('The address seen on the Internet. To know it, the extension asks api.ipify.org (when the network changes and every 30 minutes); that service sees the request.'));
-        for (const row of [ipPosition, lanRow, vpnRow, publicRow])
-            settings.bind('show-ip', row, 'sensitive', Gio.SettingsBindFlags.GET);
-
-        // IP addresses in the side panel, under the tray
-        const panelIp = new Adw.PreferencesGroup({
-            title: _('IP addresses in the panel'),
-            description: _('A box under the tray icons. With more than one address, arrows go through them; click an address to copy it.'),
-        });
-        pageNetwork.add(panelIp);
-        const panelIpRow = new Adw.SwitchRow({
-            title: _('IP address in Smart Calendar Hub'),
-            subtitle: _('Show the box in the side panel'),
-        });
-        settings.bind('panel-ip', panelIpRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        panelIp.add(panelIpRow);
-        for (const [key, title, subtitle] of [
-            ['panel-ip-lan', _('Local network'), _('The address in the network you are connected to now')],
-            ['panel-ip-vpn', _('VPN'), _('Every active one: VPN 1, 2, 3…')],
-            ['panel-ip-public', _('Public address'), _('Asks api.ipify.org, like the top bar')],
-        ]) {
-            const row = new Adw.ActionRow({title, subtitle});
-            const check = new Gtk.CheckButton({valign: Gtk.Align.CENTER});
-            settings.bind(key, check, 'active', Gio.SettingsBindFlags.DEFAULT);
-            row.add_prefix(check);
-            row.activatable_widget = check;
-            settings.bind('panel-ip', row, 'sensitive', Gio.SettingsBindFlags.GET);
-            panelIp.add(row);
-        }
-
-        // ---------------- Notifications ----------------
-        const banners = new Adw.PreferencesGroup();
-        pageNotifications.add(banners);
-        const bannersRow = new Adw.SwitchRow({
-            title: _('Banners away from the mouse'),
-            subtitle: _('While the pointer is where a notification would pop up, it waits and appears as soon as the pointer moves away (urgent ones appear at once)'),
-        });
-        settings.bind('banners-away-from-mouse', bannersRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        banners.add(bannersRow);
-        const marginRow = new Adw.SpinRow({
-            title: _('Area around the banner (percent)'),
-            subtitle: _('How much larger than the notification the area the mouse must leave is: 0 = only the notification itself'),
-            adjustment: new Gtk.Adjustment({
-                lower: 0,
-                upper: 200,
-                step_increment: 5,
-                page_increment: 25,
-            }),
-        });
-        settings.bind('banners-away-margin', marginRow, 'value', Gio.SettingsBindFlags.DEFAULT);
-        settings.bind('banners-away-from-mouse', marginRow, 'sensitive', Gio.SettingsBindFlags.GET);
-        banners.add(marginRow);
-        pageNotifications.add(mutedGroup(window, settings));
-        pageNotifications.add(appSwitchGroup(window, settings, {
-            title: _('Red dot on the clock'),
-            description: _('A red dot appears next to the clock while one of the apps switched on here has notifications, or its tray icon changes from the usual one (for example a badge with unread messages).'),
-            seenKey: 'notify-apps-seen',
-            listKey: 'alert-apps',
-            listMeansOn: true,
-            emptyTitle: _('No notifications seen yet'),
-            emptySubtitle: _('Apps appear here after they send a notification'),
-        }));
+        pages.calendars.add(await calendarsGroup());
     }
 }

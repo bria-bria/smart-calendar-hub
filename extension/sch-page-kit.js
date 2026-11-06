@@ -103,10 +103,11 @@ function setSensitive(actor, on) {
 
 // A row: icon, title, one line of detail, and on the right one thing only
 // (a switch, a value or a chevron). With onActivate (or a switch) the whole
-// row is clickable. To update it in place, without building the page again:
+// row is clickable. wrap: long texts go on more lines instead of being cut.
+// To update it in place, without building the page again:
 //   row.titleLabel.text, row.subtitleLabel.text (hidden when empty),
 //   row.setTrailing(actor | null), row.setSensitive(bool).
-function row({icon = null, title = '', subtitle = '', trailing = null, onActivate = null} = {}) {
+function row({icon = null, title = '', subtitle = '', trailing = null, onActivate = null, wrap = false} = {}) {
     const line = new St.BoxLayout({style_class: 'sch-kit-row-line', x_expand: true});
     const image = iconOf(icon, 18);
     if (image)
@@ -114,6 +115,12 @@ function row({icon = null, title = '', subtitle = '', trailing = null, onActivat
     const texts = new St.BoxLayout({orientation: VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
     const titleLabel = label(title, 'sch-kit-row-title');
     const subtitleLabel = label(subtitle, 'sch-kit-row-subtitle');
+    if (wrap) {
+        for (const l of [titleLabel, subtitleLabel]) {
+            l.clutter_text.line_wrap = true;
+            l.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+        }
+    }
     subtitleLabel.visible = !!subtitle;
     subtitleLabel.connect('notify::text', () => {
         subtitleLabel.visible = !!subtitleLabel.text;

@@ -1070,6 +1070,19 @@
     margin: 6px 8px 2px 8px;
 }
 
+/* our own settings in the card beside the panel (sch-hub-settings.js): the
+   text under the title of a group, and the rows that belong to the one
+   above (the values of a choice, what matters only while a switch is on) */
+.sch-set-description {
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 0 8px;
+}
+
+.sch-kit-row.sch-set-child {
+    padding-left: 30px;
+}
+
 /* a piece of the kit switched off (kit.setSensitive) */
 .sch-kit-row:insensitive,
 .sch-kit-button:insensitive {

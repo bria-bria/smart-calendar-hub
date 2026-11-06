@@ -57,6 +57,8 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-log.js" \
     --extra-source="sch-banner-guard.js" \
     --extra-source="sch-ext-settings.js" \
+    --extra-source="sch-settings-model.js" \
+    --extra-source="sch-hub-settings.js" \
     --extra-source="sch-vesperal-location.js" \
     --extra-source="sch-year-chart.js" \
     --extra-source="icons" \

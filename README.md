@@ -99,8 +99,15 @@ the panel; the preferences window shows a warning when that extension is off.
 
 ## Settings
 
-Open the preferences (Extensions app → Smart Calendar Hub) or click the gear
-icon next to the tray icons. They are in seven tabs:
+Click the gear icon next to the tray icons: the settings open in the card
+beside the panel, in the style of the panel, with the list of the sections;
+click one to see its settings, the arrow in the header goes back to the list.
+Every change is applied at once. The card already has **Panel**,
+**Notifications** (banners away from the mouse), **Network** and
+**Extensions**; the other sections are coming. The same settings are in the
+preferences window (Extensions app → Smart Calendar Hub), in seven tabs —
+both are built from one description (`sch-settings-model.js`), so a new
+setting appears in both:
 
 - **Panel**: panel side (right, left, under the clock), clock position in the
   top bar, the date
@@ -222,8 +229,8 @@ installs it and enables it. On Wayland, log out and back in to load it.
 Smart Calendar Hub is written in **English** and includes **Italian**.
 Any other language can be translated by you, without programming:
 
-1. Open the Smart Calendar Hub settings once (Extensions app → Smart Calendar
-   Hub, or the gear icon in the panel). The extension creates the file
+1. Open the Smart Calendar Hub preferences window once (Extensions app →
+   Smart Calendar Hub). The extension creates the file
    `~/.config/smart-calendar-hub/translations/<language>.json`
    for your system language (for example `fr.json`, `de.json`, `es.json`).
    The file lives outside the extension folder, so updates never remove it.

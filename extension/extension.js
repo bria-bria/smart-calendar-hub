@@ -30,6 +30,7 @@ import {pageKit} from './sch-page-kit.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 import {BannerGuard} from './sch-banner-guard.js';
 import {SETTINGS_SWAPS, vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
+import {buildSectionList, buildSectionPage, hubSections} from './sch-hub-settings.js';
 import {logError, logWarning} from './sch-log.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -338,6 +339,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._clockWeather?.destroy();
         this._clockWeather = null;
 
+        this._closeHubSettings();
         this._closeTrayMenu();
         this._restoreAllTrayItems();
         this._movedTrayItems = null;
@@ -1532,10 +1534,8 @@ export default class SmartCalendarHubExtension extends Extension {
             y_align: Clutter.ActorAlign.CENTER,
             child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 14}),
         });
-        gear.connect('clicked', () => {
-            dm.menu.close();
-            this.openPreferences();
-        });
+        // our settings in the card beside the panel (sch-hub-settings.js)
+        gear.connect('clicked', () => this._toggleHubSettings());
         trayRow.add_child(gear);
 
         // 0a. The menu of a tray icon, inside the panel (instead of floating):
@@ -1735,6 +1735,8 @@ export default class SmartCalendarHubExtension extends Extension {
         });
 
         expander.connect('clicked', () => {
+            // our settings beside the panel give the card back first
+            this._closeHubSettings();
             // an app's menu shown above (tray-menu-fill) stays open: the
             // calendar opens and closes under it, in the panel
             const shown = this._insideMenu;
@@ -1784,6 +1786,7 @@ export default class SmartCalendarHubExtension extends Extension {
                     this._layoutTray();
                 }
                 this._trayMenuManager?.activeMenu?.close();
+                this._closeHubSettings();
                 this._closeTrayMenu();
                 this._skyView?.stop();
                 this._worldClocks?.stop();
@@ -1801,6 +1804,12 @@ export default class SmartCalendarHubExtension extends Extension {
         if (dm._eventsItem) {
             this._connect(dm._eventsItem, 'clicked', () => {
                 GObject.signal_stop_emission_by_name(dm._eventsItem, 'clicked');
+                // our settings in the card: the calendar takes their place
+                if (this._hubSettings) {
+                    this._closeHubSettings();
+                    this._setCalendarSide(true);
+                    return;
+                }
                 this._setCalendarSide(!calendarSide);
             });
         }
@@ -3374,8 +3383,20 @@ export default class SmartCalendarHubExtension extends Extension {
         this._tidyTrayMenu();
     }
 
-    _sideHeader(title, count, actions) {
+    _sideHeader(title, count, actions, back = null) {
         const header = new St.BoxLayout({style_class: 'sch-cal-header sch-side-header', x_expand: true});
+        // back: the arrow before the title (only for our own settings)
+        if (back) {
+            const arrow = new St.Button({
+                style_class: 'sch-cal-arrow',
+                can_focus: true,
+                accessible_name: _('Back'),
+                y_align: Clutter.ActorAlign.CENTER,
+                child: new St.Icon({icon_name: 'go-previous-symbolic', icon_size: 16}),
+            });
+            arrow.connect('clicked', () => back());
+            header.add_child(arrow);
+        }
         header.add_child(new St.Label({text: title, style_class: 'sch-cal-month', y_align: Clutter.ActorAlign.CENTER}));
         header.countLabel = new St.Label({
             text: count === null || count === undefined ? '' : String(count),
@@ -3406,6 +3427,83 @@ export default class SmartCalendarHubExtension extends Extension {
         return header;
     }
 
+    // Our own settings in the card beside the panel, as the settings of
+    // Vesperal and Freon (the panel itself stays as it is): the list of the
+    // sections, then one section. A second click on the button closes them.
+    _toggleHubSettings() {
+        if (this._hubSettings) {
+            this._closeHubSettings();
+            return;
+        }
+        // the page of an app gives the card back first
+        this._closeTrayMenu();
+        const hub = {externalId: 'smart-calendar-hub'};
+        this._showSidePage(hub, () => this._hubSettingsPage(null), {
+            sideTitle: 'Smart Calendar Hub',
+            sideActions: this._hubSettingsActions(),
+        });
+        if (hub.side) {
+            this._hubSettings = hub;
+            return;
+        }
+        // no card beside the panel (it could not be made): the window
+        this._dateMenu?.menu?.close();
+        this.openPreferences();
+    }
+
+    _hubSettingsActions() {
+        return [{
+            icon: 'window-close-symbolic',
+            label: _('Close'),
+            onClick: () => this._closeHubSettings(),
+        }];
+    }
+
+    // The list of the sections (id null) or the settings of section `id`
+    _hubSettingsPage(id) {
+        if (id === null)
+            return buildSectionList(sectionId => this._showHubSection(sectionId));
+        return buildSectionPage(this._settings, id, {
+            closePanel: () => this._dateMenu?.menu?.close(),
+        });
+    }
+
+    // Another page of our settings in the same card: the page and the header
+    // change, the card stays (id null: back to the list)
+    _showHubSection(id) {
+        const side = this._hubSettings?.side;
+        const inner = side?.page?.get_parent();
+        const card = this._calendarCard;
+        if (!inner || !card)
+            return;
+        const page = this._hubSettingsPage(id);
+        if (!page)
+            return;
+        const title = id === null
+            ? 'Smart Calendar Hub'
+            : hubSections().find(section => section.id === id)?.title ?? '';
+        const header = this._sideHeader(title, null, this._hubSettingsActions(),
+            id === null ? null : () => this._showHubSection(null));
+        inner.insert_child_above(page, side.page);
+        page.add_style_class_name('sch-hub-page');
+        side.page.destroy();
+        side.page = page;
+        card.insert_child_below(header, side.scroll);
+        side.header?.destroy();
+        side.header = header;
+        side.countLabel = header.countLabel;
+        side.scroll.vadjustment.value = 0;
+    }
+
+    // Our settings away from the card: the calendar back as it was
+    _closeHubSettings() {
+        const hub = this._hubSettings;
+        if (!hub)
+            return;
+        this._hubSettings = null;
+        this._hideSidePage(hub);
+    }
+
     // The calendar back in its card, or back inside the panel as it was
     _hideSidePage(shown) {
         const side = shown.side;
@@ -3430,6 +3528,8 @@ export default class SmartCalendarHubExtension extends Extension {
     // The card takes the place of every other card of the panel (they stay
     // hidden even if something shows them meanwhile), with the title on top
     _enterTrayPage(shown, title) {
+        // an app's page may want the card beside the panel: ours goes
+        this._closeHubSettings();
         // with tray-menu-fill the calendar, the clocks and the bottom buttons
         // stay under the menu, which then takes only the room it needs
         const fill = this._settings.get_boolean('tray-menu-fill');

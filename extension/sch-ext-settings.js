@@ -59,10 +59,10 @@ function enumValues(settings, key) {
     return type === 'enum' ? values.deepUnpack?.() ?? values : [];
 }
 
-const check = () => new St.Icon({icon_name: 'object-select-symbolic', icon_size: 16});
+export const check = () => new St.Icon({icon_name: 'object-select-symbolic', icon_size: 16});
 
 // A small round button with an icon, as the arrows of the calendar
-function roundButton(icon, label, onClick) {
+export function roundButton(icon, label, onClick) {
     const btn = new St.Button({
         style_class: 'sch-cal-arrow',
         can_focus: true,
