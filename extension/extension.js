@@ -1550,6 +1550,9 @@ export default class SmartCalendarHubExtension extends Extension {
         });
 
         expander.connect('clicked', () => {
+            // an app's menu or an extension's page shown above (tray-menu-fill):
+            // it goes first, with its side card, then the calendar opens
+            this._closeTrayMenu();
             // with the calendar beside the panel, the row brings it back inside
             if (calendarSide) {
                 this._setCalendarSide(false);
