@@ -247,6 +247,10 @@ export default class SmartCalendarHubExtension extends Extension {
         this._enableToken = null;
         this._disabling = true;
         unloadUserTranslations();
+        this._resizeGrab?.dismiss();
+        this._resizeGrab = null;
+        this._liveWidth = 0;
+        this._endResize = null;
         this._showSkyIcon();
         this._unsetFreonIcon();
         this._syncAllDay(false);
@@ -572,6 +576,13 @@ export default class SmartCalendarHubExtension extends Extension {
             break;
         case 'sidebar-width':
         case 'sidebar-width-gnome':
+            // a width chosen in the preferences replaces the dragged one
+            if (this._settings.get_int('sidebar-width-user') > 0)
+                this._settings.set_int('sidebar-width-user', 0);
+            this._updateSidebarSize();
+            this._layoutTray();
+            break;
+        case 'sidebar-width-user':
             this._updateSidebarSize();
             this._layoutTray();
             break;
@@ -1400,6 +1411,7 @@ export default class SmartCalendarHubExtension extends Extension {
             y_expand: true,
         });
         menuBox.add_child(this._sidebar);
+        this._setupResizeEdge();
         // At logout GNOME Shell destroys the panel without calling disable():
         // from then on nothing may touch the tray widgets (icons still being
         // destroyed queue a layout)
@@ -1762,6 +1774,8 @@ export default class SmartCalendarHubExtension extends Extension {
                     this._skyButton.reactive = !!Main.panel.statusArea[SKY_MENU_ROLE]?.menu;
                 this._worldClocks?.start();
             } else {
+                // the panel closed while its edge was being dragged
+                this._endResize?.();
                 this._trayMenuManager?.activeMenu?.close();
                 this._closeTrayMenu();
                 this._skyView?.stop();
@@ -2094,6 +2108,12 @@ export default class SmartCalendarHubExtension extends Extension {
     // every time the panel opens: that menu changes with its buttons, the
     // theme and the screen scale).
     _sidebarWidth(measure = false) {
+        // being dragged, or dragged earlier (the inner edge of the panel)
+        if (this._liveWidth)
+            return this._liveWidth;
+        const dragged = this._settings.get_int('sidebar-width-user');
+        if (dragged > 0)
+            return dragged;
         if (!this._settings.get_boolean('sidebar-width-gnome'))
             return this._settings.get_int('sidebar-width');
         if (measure || !this._gnomeWidth)
@@ -2210,6 +2230,74 @@ export default class SmartCalendarHubExtension extends Extension {
             setStyle(this._sidebar, null);
             setStyle(this._calendarCard, null);
         }
+    }
+
+    // The inner edge of the panel (the side towards the middle of the
+    // screen) can be dragged to make the panel wider or narrower, to read
+    // the pages of other extensions better. The width is kept (setting
+    // sidebar-width-user) until a double click on the edge, or until the
+    // width is changed in the preferences.
+    _setupResizeEdge() {
+        const EDGE = 8; // px of the edge that can be taken
+        const MIN = 280;
+        let drag = null;
+        let lastPress = 0;
+        const innerLeft = () => {
+            const [x] = this._sidebar.get_transformed_position();
+            const monitor = Main.layoutManager.monitors[
+                Main.layoutManager.findIndexForActor(this._sidebar)] ?? Main.layoutManager.primaryMonitor;
+            return x + this._sidebar.width / 2 > monitor.x + monitor.width / 2;
+        };
+        const nearEdge = px => {
+            const [x] = this._sidebar.get_transformed_position();
+            const w = this._sidebar.width;
+            return innerLeft() ? px >= x && px < x + EDGE : px <= x + w && px > x + w - EDGE;
+        };
+        const end = this._endResize = () => {
+            this._resizeGrab?.dismiss();
+            this._resizeGrab = null;
+            if (this._liveWidth)
+                this._settings.set_int('sidebar-width-user', this._liveWidth);
+            this._liveWidth = 0;
+            drag = null;
+        };
+        this._connect(this._sidebar, 'captured-event', (_actor, event) => {
+            const type = event.type();
+            const [px] = event.get_coords();
+            if (drag) {
+                if (type === Clutter.EventType.MOTION) {
+                    const dx = drag.left ? drag.x - px : px - drag.x;
+                    this._liveWidth = Math.round(Math.min(Math.max(drag.width + dx, MIN), drag.max));
+                    this._updateSidebarSize();
+                    this._relayout();
+                } else if (type === Clutter.EventType.BUTTON_RELEASE) {
+                    end();
+                    this._layoutTray();
+                }
+                return Clutter.EVENT_STOP;
+            }
+            if (type === Clutter.EventType.MOTION) {
+                this._sidebar.set_cursor_type(nearEdge(px)
+                    ? Clutter.CursorType.EW_RESIZE : Clutter.CursorType.INHERIT);
+                return Clutter.EVENT_PROPAGATE;
+            }
+            if (type !== Clutter.EventType.BUTTON_PRESS || event.get_button() !== 1 || !nearEdge(px))
+                return Clutter.EVENT_PROPAGATE;
+            // double click: back to the width of the preferences
+            const now = event.get_time();
+            if (now - lastPress < 400) {
+                lastPress = 0;
+                this._settings.set_int('sidebar-width-user', 0);
+                return Clutter.EVENT_STOP;
+            }
+            lastPress = now;
+            const monitor = Main.layoutManager.findIndexForActor(this._sidebar);
+            const area = Main.layoutManager.getWorkAreaForMonitor(monitor);
+            drag = {x: px, left: innerLeft(), width: this._sidebarWidth(), max: Math.round(area.width * 0.6)};
+            // the drag goes on outside the panel too
+            this._resizeGrab = global.stage.grab(this._sidebar);
+            return Clutter.EVENT_STOP;
+        });
     }
 
     _updateSidebarSize() {
@@ -2782,7 +2870,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // extension developers"): a title, a page of its own instead of its
         // menu, and whether we may clear its backgrounds
         const hub = indicator.smartCalendarHub ?? null;
-        const shown = {menu, info, hub, hidden: [], cleared: new Map(), ornaments: new Set()};
+        const shown = {menu, info, hub, hidden: [], cleared: new Map(), ornaments: new Map()};
         if (typeof hub?.buildPage === 'function') {
             try {
                 shown.page = hub.buildPage();
@@ -3072,7 +3160,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const shown = {
             externalId: id, menu: null, info: null, page,
             hub: {keepStyle: !!keepStyle},
-            hidden: [], cleared: new Map(), ornaments: new Set(),
+            hidden: [], cleared: new Map(), ornaments: new Map(),
         };
         this._trayMenuContent.add_child(page);
         this._watchExternalPage(shown, page);
@@ -3455,11 +3543,13 @@ export default class SmartCalendarHubExtension extends Extension {
         const marked = ornaments.some(o => o.icon_name && (o.visible || shown.ornaments.has(o)));
         for (const ornament of ornaments) {
             if (marked && shown.ornaments.has(ornament)) {
-                ornament.show();
+                ornament.disconnect(shown.ornaments.get(ornament));
                 shown.ornaments.delete(ornament);
+                ornament.show();
             } else if (!marked && ornament.visible) {
                 ornament.hide();
-                shown.ornaments.add(ornament);
+                // hidden by us: shown again at the end, unless destroyed
+                shown.ornaments.set(ornament, ornament.connect('destroy', () => shown.ornaments.delete(ornament)));
             }
         }
     }
@@ -3478,7 +3568,9 @@ export default class SmartCalendarHubExtension extends Extension {
         const visit = actor => {
             for (const child of actor.get_children()) {
                 if (child instanceof St.Widget && !shown.cleared.has(child) && this._isTrayMenuCard(child)) {
-                    shown.cleared.set(child, child.get_style());
+                    // a piece the app destroys meanwhile leaves the list
+                    const id = child.connect('destroy', () => shown.cleared.delete(child));
+                    shown.cleared.set(child, {style: child.get_style(), id});
                     child.set_style(`${child.get_style() ?? ''}; ${TRAY_CARD_CLEAR}`.replace(/^; /, ''));
                 }
                 visit(child);
@@ -3501,7 +3593,8 @@ export default class SmartCalendarHubExtension extends Extension {
             for (const child of actor.get_children()) {
                 if (child instanceof St.ScrollView && child.has_style_class_name('popup-sub-menu') &&
                     !shown.wheel.has(child)) {
-                    shown.wheel.set(child, child.enable_mouse_scrolling);
+                    const id = child.connect('destroy', () => shown.wheel.delete(child));
+                    shown.wheel.set(child, {wheel: child.enable_mouse_scrolling, id});
                     child.enable_mouse_scrolling = false;
                 }
                 visit(child);
@@ -3558,12 +3651,10 @@ export default class SmartCalendarHubExtension extends Extension {
                 // the menu is gone
             }
         }
-        for (const [widget, style] of shown.cleared) {
-            try {
-                widget.set_style(style);
-            } catch (_e) {
-                // the app destroyed it
-            }
+        // still alive: a destroyed piece left these lists (its 'destroy')
+        for (const [widget, {style, id}] of shown.cleared) {
+            widget.disconnect(id);
+            widget.set_style(style);
         }
         for (const restore of shown.onClose ?? []) {
             try {
@@ -3572,24 +3663,17 @@ export default class SmartCalendarHubExtension extends Extension {
                 logError(`tray menu: ${e}`);
             }
         }
-        for (const [view, wheel] of shown.wheel ?? []) {
-            try {
-                view.enable_mouse_scrolling = wheel;
-            } catch (_e) {
-                // the app destroyed it
-            }
+        for (const [view, {wheel, id}] of shown.wheel ?? []) {
+            view.disconnect(id);
+            view.enable_mouse_scrolling = wheel;
         }
-        // still alive: a destroyed label leaves the map (its 'destroy')
         for (const [label, id] of shown.centred ?? []) {
             label.disconnect(id);
             label.x_align = Clutter.ActorAlign.CENTER;
         }
-        for (const ornament of shown.ornaments) {
-            try {
-                ornament.show();
-            } catch (_e) {
-                // the app destroyed it
-            }
+        for (const [ornament, id] of shown.ornaments) {
+            ornament.disconnect(id);
+            ornament.show();
         }
         // a page of the extension: built for this visit, destroyed after it
         // (the extension frees its resources on its 'destroy')
