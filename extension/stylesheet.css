@@ -419,6 +419,13 @@
     margin: 2px 4px;
 }
 
+/* GNOME gives the card 4px on each side: our box already has them, so its
+   edges line up with "Calendar and events" */
+.sch-today-events .events-button {
+    margin-left: 0;
+    margin-right: 0;
+}
+
 /* 4. Notifications */
 .sch-sidebar-box .message-list {
     width: 24.5em;
@@ -431,6 +438,14 @@
     /* never squeezed to nothing when the calendar or the weather is open:
        it shrinks to this and scrolls */
     min-height: 10em;
+}
+
+/* GNOME keeps 12px on the right of the notifications (towards the line that
+   separates them from the calendar, not in the panel): without them they are
+   as wide as "Calendar and events" */
+.sch-sidebar-box .message-view {
+    margin-left: 0;
+    margin-right: 0;
 }
 
 .sch-sidebar-box .message-list .message-list-placeholder > StIcon {

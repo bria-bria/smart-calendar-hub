@@ -6,9 +6,9 @@
 // city, the minute hand in GNOME's accent colour, a darker dial where it is
 // night. Hovering a clock shows "city · time"; a click opens GNOME Clocks.
 // With more clocks than room, an arrow on each side moves the view (as the
-// tray). Before the clocks, the alarms and timers of GNOME Clocks: the next
-// ring of each alarm (an alarm switched off in GNOME Clocks with the pause
-// sign), and each timer with its duration. GNOME Clocks keeps the countdown
+// tray). Before the clocks, the alarms and timers of GNOME Clocks: the
+// alarms that still ring today (one switched off in GNOME Clocks that would
+// ring today with the pause sign), and each timer with its duration. GNOME Clocks keeps the countdown
 // of its running timers to itself and never reads changes made by others, so
 // a click on a timer starts OUR countdown of that duration: click again to
 // pause (pause sign) and to resume, right click to reset; at the end a
@@ -346,26 +346,36 @@ export class WorldClocksCard {
         const now = GLib.DateTime.new_now_local();
         try {
             const alarms = this._clocksApp?.get_value('alarms').recursiveUnpack() ?? [];
+            // only the alarms still to ring today: GNOME Clocks saves the
+            // next ring of the alarms that are on (it already follows the
+            // days of the week); one that rang today, or rings another day,
+            // is not shown
+            const today = now.format('%F');
+            const isLater = when => when && when.compare(now) > 0 && when.format('%F') === today;
             const next = alarms
                 .map(a => ({name: a.name ?? '', when: a.ring_time
                     ? GLib.DateTime.new_from_iso8601(a.ring_time, null)?.to_local() : null}))
-                .filter(a => a.when && a.when.compare(now) > 0)
+                .filter(a => isLater(a.when))
                 .sort((a, b) => a.when.compare(b.when));
             for (const alarm of next) {
-                const today = alarm.when.format('%F') === now.format('%F');
                 // as GNOME's clock, on the chip and in the label
-                const chipTime = this._format(alarm.when, !today);
-                const time = chipTime;
+                const time = this._format(alarm.when);
                 const tip = alarm.name
                     ? _('Alarm · {name} · {time}', {name: alarm.name, time})
                     : _('Alarm · {time}', {time});
-                add('alarm-symbolic', chipTime, () => tip);
+                add('alarm-symbolic', time, () => tip);
             }
-            // switched off in GNOME Clocks (GNOME saves the next ring only
-            // of the alarms that are on): the pause sign, dimmed
+            // switched off in GNOME Clocks (no next ring saved): the pause
+            // sign, dimmed, only if switched on it would ring later today.
+            // Its days of the week as GNOME Clocks saves them, 1 = Monday
+            // as in GLib; no days: rings once, at the next hour:minute
+            const weekday = now.get_day_of_week();
             for (const alarm of alarms.filter(a => !a.ring_time)) {
+                const days = alarm.days ?? [];
                 const when = GLib.DateTime.new_local(now.get_year(), now.get_month(),
                     now.get_day_of_month(), alarm.hour ?? 0, alarm.minute ?? 0, 0);
+                if ((days.length && !days.includes(weekday)) || !isLater(when))
+                    continue;
                 const time = this._format(when);
                 const tip = `${alarm.name
                     ? _('Alarm · {name} · {time}', {name: alarm.name, time})
@@ -505,9 +515,8 @@ export class WorldClocksCard {
     }
 
     // "17:30" or "5:30 PM", as GNOME's clock; twelve: always with AM/PM
-    _format(time, withDay = false, twelve = this._twelveHours()) {
-        const day = withDay ? '%a ' : '';
-        return time.format(twelve ? `${day}%l:%M %p` : `${day}%H:%M`).replace(/\s+/g, ' ').trim();
+    _format(time, twelve = this._twelveHours()) {
+        return time.format(twelve ? '%l:%M %p' : '%H:%M').replace(/\s+/g, ' ').trim();
     }
 
     _time(clock) {
@@ -523,7 +532,7 @@ export class WorldClocksCard {
             return;
         }
         // the hands show only 12 hours: the label says AM or PM
-        text ??= `${clock.name} · ${this._format(this._time(clock), false, true)}`;
+        text ??= `${clock.name} · ${this._format(this._time(clock), true)}`;
         this._tip.text = text;
         actor.accessible_name = text;
         this._tip.show();
