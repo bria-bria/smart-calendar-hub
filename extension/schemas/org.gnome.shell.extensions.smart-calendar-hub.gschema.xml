@@ -113,7 +113,7 @@
     <key name="banners-away-margin" type="i">
       <range min="0" max="200"/>
       <default>50</default>
-      <summary>How much larger than the banner the area kept free of the mouse is, in percent</summary>
+      <summary>Size of the area kept free of the pointer, in percent larger than the banner</summary>
     </key>
 
     <key name="show-today-events" type="b">
@@ -123,7 +123,7 @@
 
     <key name="show-date" type="b">
       <default>true</default>
-      <summary>Show the date in the side panel (switched off, the sun and the moon go too)</summary>
+      <summary>Show the date in the side panel (when off, the sun and the moon are hidden too)</summary>
     </key>
 
     <key name="show-sun-moon" type="b">
@@ -281,7 +281,7 @@
     <key name="vesperal-hide-icon" type="b">
       <default>false</default>
       <summary>Hide the Vesperal icon in the top bar</summary>
-      <description>With the Vesperal extension installed, its icon next to the clock is hidden; its menu still opens with a click on the sun and moon of the panel.</description>
+      <description>With the Vesperal extension installed, its icon next to the clock is hidden; its menu still opens with a click on the sun and moon in the panel.</description>
     </key>
     <key name="freon-single-icon" type="b">
       <default>false</default>

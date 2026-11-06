@@ -5,7 +5,7 @@
 // coloured dots for the events of each day, and the agenda of the selected
 // day below it (plus tomorrow when today is selected).
 //
-// Events come from GNOME's own event source (the one of the date menu, fed by
+// Events come from GNOME's own event source (the date menu's, fed by
 // evolution-data-server). The hidden GNOME calendar keeps asking for the month
 // shown here, so both always request the same range and the source is not
 // reloaded twice. Colours and names of the calendars are read once from

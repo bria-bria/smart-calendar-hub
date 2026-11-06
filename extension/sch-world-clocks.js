@@ -5,7 +5,7 @@
 // of GNOME Clocks (the same list GNOME shows), hands on the time of that
 // city, the minute hand in GNOME's accent colour, a darker dial where it is
 // night. Hovering a clock shows "city · time"; a click opens GNOME Clocks.
-// With more clocks than room, an arrow on each side moves the view (as the
+// With more clocks than room, an arrow on each side moves the view (like the
 // tray). Before the clocks, the alarms and timers of GNOME Clocks: the
 // alarms that still ring today (one switched off in GNOME Clocks that would
 // ring today with the pause sign), and each timer with its duration. GNOME Clocks keeps the countdown
@@ -181,7 +181,7 @@ export class WorldClocksCard {
 
         this._settings = new Gio.Settings({schema_id: 'org.gnome.shell.world-clocks'});
         this._settingsId = this._settings.connect('changed::locations', () => this._load());
-        // 12 or 24 hours, as GNOME's clock, for the times in the labels
+        // 12 or 24 hours, like GNOME's clock, for the times in the labels
         this._interface = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
         this._formatId = this._interface.connect('changed::clock-format', () => {
             this._loadChips();
@@ -358,7 +358,7 @@ export class WorldClocksCard {
                 .filter(a => isLater(a.when))
                 .sort((a, b) => a.when.compare(b.when));
             for (const alarm of next) {
-                // as GNOME's clock, on the chip and in the label
+                // like GNOME's clock, on the chip and in the label
                 const time = this._format(alarm.when);
                 const tip = alarm.name
                     ? _('Alarm · {name} · {time}', {name: alarm.name, time})
@@ -514,7 +514,7 @@ export class WorldClocksCard {
         return this._interface?.get_string('clock-format') === '12h';
     }
 
-    // "17:30" or "5:30 PM", as GNOME's clock; twelve: always with AM/PM
+    // "17:30" or "5:30 PM", like GNOME's clock; twelve: always with AM/PM
     _format(time, twelve = this._twelveHours()) {
         return time.format(twelve ? '%l:%M %p' : '%H:%M').replace(/\s+/g, ' ').trim();
     }

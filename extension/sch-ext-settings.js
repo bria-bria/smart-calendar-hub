@@ -61,7 +61,7 @@ function enumValues(settings, key) {
 
 export const check = () => new St.Icon({icon_name: 'object-select-symbolic', icon_size: 16});
 
-// A small round button with an icon, as the arrows of the calendar
+// A small round button with an icon, like the arrows of the calendar
 export function roundButton(icon, label, onClick) {
     const btn = new St.Button({
         style_class: 'sch-cal-arrow',
@@ -146,7 +146,7 @@ function cardRows(settings, card, syncs, rebuild) {
         const get = () => (isInt ? settings.get_int(card.key) : settings.get_string(card.key));
         const set = value => (isInt ? settings.set_int(card.key, value) : settings.set_string(card.key, value));
         // a value that makes the extension build its menu anew: set after
-        // the click, then the card comes back (extension.js)
+        // the click, then the card comes back (sch-settings-swaps.js)
         const choose = value => (card.rebuilds && rebuild
             ? rebuild(() => set(value)) : set(value));
         for (const [value, title] of options) {
@@ -241,7 +241,7 @@ function dayHorizon(settings) {
     return TWILIGHT_DEPTH[stringOf(settings, 'twilight', 'civil')];
 }
 
-// The year at a glance of Vesperal, built again when its place or the
+// Vesperal's year at a glance, built again when its place or the
 // bounds of its day change
 function vesperalYear(settings) {
     const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'sch-ext-group', x_expand: true});
@@ -274,7 +274,7 @@ function readingDetails(settings) {
 
 const notifying = settings => settings.get_boolean('notifications');
 
-// Vesperal (extensions.gnome.org/extension/11329): everything of its
+// Vesperal (extensions.gnome.org/extension/11329): everything in its
 // window (version 4: the year at a glance, the location and the
 // notifications first, then what the top bar shows, the twilight, the
 // bounds of the day), in the card; the
@@ -327,12 +327,12 @@ function vesperalCards() {
             'sunrise-sunset': _('From sunrise to sunset'),
             'dawn-dusk': _('From dawn to dusk'),
         }, subtitles: () => ({
-            'dawn-dusk': _('As long as there is the light of the twilight above'),
+            'dawn-dusk': _('As long as there is light, by the twilight chosen above'),
         })},
     ];
 }
 
-// Freon (extensions.gnome.org/extension/841): everything of its window but
+// Freon (extensions.gnome.org/extension/841): everything in its window except
 // its place in the top bar, which does not matter with the hub (its icon is
 // in our tray)
 function freonCards() {

@@ -136,7 +136,7 @@ function modelRows(row, ctx, parentOn = null) {
         break;
     }
     case 'number': {
-        // − and + around the value, as «Read the sensors every» of Freon
+        // − and + around the value, like Freon's «Read the sensors every»
         const shown = kit.value('');
         const step = sign => settings.set_int(row.key,
             Math.max(row.min, Math.min(row.max, settings.get_int(row.key) + sign * row.step)));

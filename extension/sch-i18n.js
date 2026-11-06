@@ -36,7 +36,7 @@ const README_TEXT =
 
 // Italian: also the complete list of sentences (used for the users' files)
 const IT = {
-    // --- Side panel (extension.js) ---
+    // --- Side panel (sch-side-panel.js and its parts) ---
     "{app} (tray icon)":
         "{app} (icona del vassoio)",
     "Weather":
@@ -125,7 +125,7 @@ const IT = {
         "Dall'alba al tramonto",
     "From dawn to dusk":
         "Dall'aurora al crepuscolo",
-    "As long as there is the light of the twilight above":
+    "As long as there is light, by the twilight chosen above":
         "Finché c'è la luce del crepuscolo scelto sopra",
     "Location":
         "Posizione",
@@ -293,7 +293,7 @@ const IT = {
         "Mostra il riquadro nel pannello laterale",
     "Local network":
         "Rete locale",
-    "The address in the network you are connected to now":
+    "The address on the network you are connected to now":
         "L'indirizzo nella rete a cui sei collegato adesso",
     "VPN":
         "VPN",
@@ -463,7 +463,7 @@ const IT = {
         "La schermata dove scegli l'utente è del sistema: Smart Calendar Hub non può cambiarla da sola. Uno script, lanciato da te in un terminale, installa l'estensione per tutti gli utenti e ci copia il tuo colore d'accento, lo spazio delle icone, la posizione dell'ora e la batteria circolare.",
     "It needs the administrator password":
         "Serve la password di amministratore",
-    "It writes in /usr/share/gnome-shell/extensions and in /etc/dconf (settings of the gdm user). Read the script before running it.":
+    "It writes to /usr/share/gnome-shell/extensions and to /etc/dconf (settings of the gdm user). Read the script before running it.":
         "Scrive in /usr/share/gnome-shell/extensions e in /etc/dconf (impostazioni dell'utente gdm). Leggi lo script prima di lanciarlo.",
     "1. Download the script":
         "1. Scarica lo script",
@@ -545,14 +545,14 @@ const IT = {
         "Dove compaiono gli indirizzi IP",
     "Local network address":
         "Indirizzo della rete locale",
-    "The address of this computer in the network it is connected to now":
+    "The address of this computer on the network it is connected to now":
         "L'indirizzo di questo computer nella rete a cui è collegato adesso",
     "Public address":
         "Indirizzo pubblico",
     "The address seen on the Internet. To know it, the extension asks api.ipify.org (when the network changes and every 30 minutes); that service sees the request.":
         "L'indirizzo visto su Internet. Per saperlo l'estensione lo chiede ad api.ipify.org (quando cambia la rete e ogni 30 minuti); quel servizio vede la richiesta.",
 
-    // --- Silencing apps (extension.js, sch-settings-model.js) ---
+    // --- Silencing apps (sch-notifications.js, sch-settings-model.js) ---
     "Silence notifications from this app":
         "Silenzia le notifiche di questa app",
     "1 hour":
@@ -575,7 +575,7 @@ const IT = {
         "Riattiva",
     "Silenced until {time} · press the coloured button again to turn it back on":
         "Silenziata fino alle {time} · ripremi il tasto colorato per riattivarla",
-    "Silenced always · press the coloured button again to turn it back on":
+    "Always silenced · press the coloured button again to turn it back on":
         "Silenziata sempre · ripremi il tasto colorato per riattivarla",
 
     // --- Calendar (sch-calendar.js) ---
@@ -739,7 +739,7 @@ async function ensureDir(path) {
 }
 
 // Loads the user's translation file for the system language.
-// With merge=true (at every start of the panel) it creates the file if it
+// With merge=true (every time the panel starts) it creates the file if it
 // is missing and appends the new sentences at the end, never changing the
 // ones already there. If the file contains a mistake it is left untouched and
 // English is used. Returns the file path, or null for Italian/English.

@@ -3,7 +3,7 @@
 //
 // IP addresses in the top bar: the local network address of the current
 // connection (from NetworkManager) and, only when switched on, the public
-// address (asked to api.ipify.org, the only network request made by the
+// address (requested from api.ipify.org, the only network request made by the
 // extension). Left, center or right of the top bar. Clicking opens a menu
 // with every address switched on, each one can be copied; the settings choose
 // which of them are also shown in the bar. PanelIpBox shows the chosen
@@ -284,7 +284,7 @@ export class IpView {
         }
     }
 
-    // The address in the local network and its kind ('wifi', 'wired',
+    // The address on the local network and its kind ('wifi', 'wired',
     // 'other'), of the connection the traffic goes through now: the primary
     // connection (default route), unless it is a VPN; then the Wi-Fi or
     // cable connection holding the default route under it. IPv4 first,
@@ -415,7 +415,7 @@ export class PanelIpBox {
             visible: false,
         });
         const row = new St.BoxLayout({style_class: 'sch-weather-row', x_expand: true});
-        // The whole box opens and closes the list, as the weather row; the
+        // The whole box opens and closes the list, like the weather row; the
         // addresses are copied from the list
         const card = new St.Button({
             style_class: 'sch-calendar-expander',

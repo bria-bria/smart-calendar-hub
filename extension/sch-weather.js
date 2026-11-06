@@ -117,7 +117,7 @@ export class CityWeather {
         return entry.info;
     }
 
-    // Downloads again the selected city if its data are older than 15 minutes
+    // Downloads the selected city's weather again if its data are older than 15 minutes
     refresh() {
         if (selectedCity === 0)
             return;

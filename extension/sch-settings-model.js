@@ -252,7 +252,7 @@ function networkGroups() {
                     ],
                     enabledWhen: ipOn},
                 address('lan', _('Local network address'),
-                    _('The address of this computer in the network it is connected to now')),
+                    _('The address of this computer on the network it is connected to now')),
                 address('vpn', _('VPN address'),
                     _('Shown with a shield while a VPN such as Tailscale is active')),
                 address('public', _('Public address'),
@@ -267,7 +267,7 @@ function networkGroups() {
                 {type: 'switch', key: 'panel-ip', title: _('IP address in Smart Calendar Hub'),
                     subtitle: _('Show the box in the side panel')},
                 {type: 'check', key: 'panel-ip-lan', title: _('Local network'),
-                    subtitle: _('The address in the network you are connected to now'), enabledWhen: panelIpOn},
+                    subtitle: _('The address on the network you are connected to now'), enabledWhen: panelIpOn},
                 {type: 'check', key: 'panel-ip-vpn', title: _('VPN'),
                     subtitle: _('Every active one: VPN 1, 2, 3…'), enabledWhen: panelIpOn},
                 {type: 'check', key: 'panel-ip-public', title: _('Public address'),
@@ -484,7 +484,7 @@ function calendarGroups() {
     ];
 }
 
-const SCRIPT = 'installa-schermata-accesso.sh';
+const SCRIPT = 'install-login-screen.sh';
 // the raw file: the browser shows the script itself, to be saved as it is
 const SCRIPT_URL = `https://raw.githubusercontent.com/bria-bria/smart-calendar-hub/main/${SCRIPT}`;
 
@@ -543,7 +543,7 @@ function byHandGroups() {
             description: _('The screen where you choose the user belongs to the system: Smart Calendar Hub cannot change it by itself. A script, run by you in a terminal, installs the extension for all users and copies your accent colour, icon spacing, clock position and battery circle there.'),
             rows: [
                 {type: 'info', icon: 'dialog-warning-symbolic', title: _('It needs the administrator password'),
-                    subtitle: _('It writes in /usr/share/gnome-shell/extensions and in /etc/dconf (settings of the gdm user). Read the script before running it.')},
+                    subtitle: _('It writes to /usr/share/gnome-shell/extensions and to /etc/dconf (settings of the gdm user). Read the script before running it.')},
                 {type: 'link', title: _('1. Download the script'),
                     subtitle: _('It opens in the browser: save it with Ctrl+S in a folder of yours'),
                     button: _('Open the page'), url: SCRIPT_URL},
@@ -555,7 +555,7 @@ function byHandGroups() {
         {
             title: _('Back to the login screen as it was'),
             rows: [
-                {type: 'command', title: _('In a terminal, in the folder of the script'), command: `sudo bash ${SCRIPT} --rimuovi`},
+                {type: 'command', title: _('In a terminal, in the folder of the script'), command: `sudo bash ${SCRIPT} --remove`},
             ],
         },
     ];

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
 // Where Vesperal takes its location from, in the card beside the panel:
-// automatic (the location services) or manual, with the search of a city
+// automatic (the location services) or manual, with a city search
 // and the coordinates, as in its own preferences. The search is offline,
 // in the cities GNOME knows (GWeather, the same list as Vesperal's search);
 // a city or coordinates chosen here are written as Vesperal writes them

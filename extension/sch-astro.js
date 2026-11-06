@@ -32,7 +32,7 @@ function equatorial(lon, lat) {
 function sunLongitude(d) {
     const m = (357.5291 + 0.98560028 * d) * RAD; // mean anomaly
     const centre = (1.9148 * Math.sin(m) + 0.02 * Math.sin(2 * m) + 0.0003 * Math.sin(3 * m)) * RAD;
-    // the perihelion moves on 1.72° a century (0.45° from 2000 to 2026)
+    // the perihelion moves 1.72° per century (0.45° from 2000 to 2026)
     return m + centre + (102.9372 + 0.0000471 * d) * RAD + Math.PI;
 }
 
@@ -120,7 +120,7 @@ export function seasons(year) {
     });
 }
 
-// The pass of the body across the sky around `now`:
+// The passage of the body across the sky around `now`:
 // {up, rise, set} — up: above the horizon now; rise/set: the last rising
 // and the next setting when up, the next rising and its setting when down
 // (Date, or null when not found within a day and a half: polar day/night).

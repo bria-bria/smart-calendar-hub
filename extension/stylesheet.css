@@ -29,7 +29,7 @@
 }
 
 /* no space between the cells: like the top bar, the space is inside the
-   cell (its width is set by _trayCellStyle in extension.js) */
+   cell (its width is set by _cellStyle in sch-tray.js) */
 .sch-tray-cell {
     height: 32px;
 }
@@ -232,7 +232,7 @@
 }
 
 /* In the card beside the panel: narrow side bands, so the days are bigger
-   (SIDE_CALENDAR_EXTRA in extension.js); the month name and the arrows
+   (SIDE_CALENDAR_EXTRA in sch-panel-geometry.js); the month name and the arrows
    further inside; the agenda keeps its margins */
 .sch-calendar-card .sch-cal-card {
     padding: 12px 4px;
