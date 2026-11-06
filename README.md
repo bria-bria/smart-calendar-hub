@@ -393,6 +393,22 @@ and scrolling):
 `externalPageFeatures` lists what the installed hub offers: `'side'`,
 `'side-header'`, `'kit'`, `'message'`, `'side-count'`, `'update'`.
 
+## Bring your extension to the hub
+
+Smart Calendar Hub wants to be the place where GNOME extensions meet.
+
+- **You already have an extension:** tell us about it with the
+  [integration proposal form](https://github.com/bria-bria/smart-calendar-hub/issues/new?template=integration.yml).
+  We try it inside the panel and, if we like it, we work on our side so it
+  fits in at its best, without touching your code; then it joins the
+  recommended extensions.
+- **You want to build one for the hub:** the page model and the page kit
+  above are public. If you need something that is missing, ask: we add it
+  for everyone.
+- **You only have an idea:** share it in
+  [Discussions → Ideas](https://github.com/bria-bria/smart-calendar-hub/discussions/categories/ideas).
+  The most wanted ideas become part of the hub or a new extension.
+
 ## How this was made
 
 Smart Calendar Hub is a hands-on collaboration between a person and an AI —
