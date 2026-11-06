@@ -1,0 +1,40 @@
+name: Integration proposal
+description: Propose your GNOME extension for Smart Calendar Hub
+title: "Integration: "
+labels: ["integration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for proposing your extension! We try it inside the hub's panel and, if it fits, we work on our side so it integrates well — your code is never touched.
+  - type: input
+    id: name
+    attributes:
+      label: Extension name
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link
+      description: extensions.gnome.org page or repository
+      placeholder: https://extensions.gnome.org/extension/...
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What it does
+    validations:
+      required: true
+  - type: textarea
+    id: wish
+    attributes:
+      label: What would you like inside the hub?
+      description: For example its menu in the panel, a page of its own, settings in the card beside the panel…
+  - type: checkboxes
+    id: author
+    attributes:
+      label: About you
+      options:
+        - label: I am the author or a maintainer of this extension
