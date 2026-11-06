@@ -279,6 +279,10 @@ const IT = {
         "Timer finito",
     "Back":
         "Indietro",
+    "Menu in a card":
+        "Menu in una scheda",
+    "Off: the menu of the app sits directly on the panel, without a card around it, so it looks part of the panel.":
+        "Spento: il menu dell'app sta direttamente sul pannello, senza una scheda intorno, così sembra parte del pannello.",
     "Menus of the icons":
         "Menu delle icone",
     "Menus inside the panel":

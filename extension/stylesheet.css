@@ -1020,3 +1020,10 @@
 .sch-kit-button:insensitive {
     color: rgba(255, 255, 255, 0.4);
 }
+
+/* the menu of an app without our card around it (setting tray-menu-card) */
+.sch-tray-menu-host.sch-tray-menu-host-flat {
+    background-color: transparent;
+    border-color: transparent;
+    padding: 2px 2px 6px 2px;
+}

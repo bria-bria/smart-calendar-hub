@@ -482,6 +482,9 @@ export default class SmartCalendarHubExtension extends Extension {
         case 'tray-menus-floating':
             this._syncTrayMenuModes();
             break;
+        case 'tray-menu-card':
+            this._syncTrayMenuCard();
+            break;
         case 'top-bar-position':
             this._syncTopBarOrganizer();
             this._applyTopBarPosition();
@@ -2542,6 +2545,18 @@ export default class SmartCalendarHubExtension extends Extension {
             return Clutter.EVENT_STOP;
         });
         this._sidebar.add_child(this._trayMenuHost);
+        this._syncTrayMenuCard();
+    }
+
+    // With the card (as the other cards of the panel) or without: the menu of
+    // the app then sits on the panel itself, only the title row stays
+    _syncTrayMenuCard() {
+        if (!this._trayMenuHost)
+            return;
+        if (this._settings.get_boolean('tray-menu-card'))
+            this._trayMenuHost.remove_style_class_name('sch-tray-menu-host-flat');
+        else
+            this._trayMenuHost.add_style_class_name('sch-tray-menu-host-flat');
     }
 
     // The menu leaves its floating box (hidden) for our card; every other

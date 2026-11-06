@@ -42,6 +42,12 @@
       <description>Identifiers of the icons that stay in the top bar instead of moving inside the panel.</description>
     </key>
 
+    <key name="tray-menu-card" type="b">
+      <default>true</default>
+      <summary>Show the menus of the tray icons inside a card</summary>
+      <description>When off, the menu of a tray icon (or the page of an extension) sits directly on the background of the panel, without a card of its own.</description>
+    </key>
+
     <key name="tray-menus-inside" type="b">
       <default>true</default>
       <summary>Menus of the tray icons inside the panel</summary>

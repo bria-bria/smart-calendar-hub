@@ -654,6 +654,13 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('tray-menus-inside', insideRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         menusGroup.add(insideRow);
+        const cardRow = new Adw.SwitchRow({
+            title: _('Menu in a card'),
+            subtitle: _('Off: the menu of the app sits directly on the panel, without a card around it, so it looks part of the panel.'),
+        });
+        settings.bind('tray-menu-card', cardRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('tray-menus-inside', cardRow, 'sensitive', Gio.SettingsBindFlags.GET);
+        menusGroup.add(cardRow);
         pageTray.add(menusGroup);
         pageTray.add(appSwitchGroup(window, settings, {
             title: _('Menu inside the panel, icon by icon'),
