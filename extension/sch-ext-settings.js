@@ -263,11 +263,14 @@ function readingDetails(settings) {
 const notifying = settings => settings.get_boolean('notifications');
 
 // Vesperal (extensions.gnome.org/extension/11329): everything of its
-// window (version 4: what the top bar shows, the twilight, the bounds of
-// the day, the location, the notifications, the year), in the card; the
+// window (version 4: the year at a glance first, then what the top bar
+// shows, the twilight, the bounds of the day, the location, the
+// notifications), in the card; the
 // keys an older version does not have are left out
 function vesperalCards() {
     return [
+        // first, at Michele's request: the year at a glance
+        {build: vesperalYear},
         {key: 'bar-content', title: _('In the top bar'), labels: {
             'arc-and-duration': _('Sun arc and duration'),
             arc: _('Sun arc only'),
@@ -313,7 +316,6 @@ function vesperalCards() {
             key: 'notification-lead-time', title: _('Notify ahead by'), min: 0, max: 180, step: 5,
             format: minutes => (minutes ? _('{minutes} min', {minutes}) : _('At the event')),
         }, enabledWhen: notifying},
-        {build: vesperalYear},
     ];
 }
 
