@@ -4,7 +4,7 @@
 // Notification banners away from the mouse. GNOME shows a banner (at the top
 // centre, or where an extension moved it) even when the pointer is right
 // there, so a click meant for a window opens the notification instead.
-// While the pointer is inside the area where the banner would appear (15% larger), the notification waits in
+// While the pointer is inside the area where the banner would appear (50% larger), the notification waits in
 // GNOME's own queue (same order, nothing lost) and shows up as soon as the
 // pointer leaves. Critical notifications are never held back.
 
@@ -17,7 +17,7 @@ import {Urgency} from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {logWarning} from './sch-log.js';
 
-const MARGIN = 0.15;
+const MARGIN = 0.5;
 const CHECK_INTERVAL_MS = 200;
 
 // Where an aligned box sits in the free space: 0 start, 0.5 centre, 1 end
