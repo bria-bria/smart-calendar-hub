@@ -64,13 +64,19 @@ def italian_table():
     # drop comment lines, so quoted examples in comments are not read as entries
     body = '\n'.join(l for l in body.splitlines() if not l.lstrip().startswith('//'))
     pairs = re.findall(STRING + r'\s*:\s*' + STRING, body)
-    return {js_string(k): js_string(v) for k, v in pairs}
+    keys = [js_string(k) for k, _v in pairs]
+    # a sentence written twice: JavaScript keeps only the last translation
+    duplicates = sorted({k for k in keys if keys.count(k) > 1})
+    return {js_string(k): js_string(v) for k, v in pairs}, duplicates
 
 
 def main():
     used = used_sentences()
-    table = italian_table()
+    table, duplicates = italian_table()
     problems = 0
+    for sentence in duplicates:
+        print(f'TWICE in IT (only the last one counts): {sentence!r}')
+        problems += 1
 
     if None in used:
         problems += len(used.pop(None))

@@ -58,17 +58,39 @@ const IT = {
         "Il suo menu si apre comunque dal sole e dalla luna del pannello",
     "Temperatures of the processor, the disks and the graphics card, and the fans.":
         "Temperature del processore, dei dischi e della scheda video, e le ventole.",
-    // --- Vesperal in the card beside the panel (sch-vesperal.js) ---
+    // --- Vesperal in the card beside the panel (sch-ext-settings.js) ---
     "Close":
         "Chiudi",
     "In the top bar":
         "Nella barra in alto",
-    "Time until the next sunrise or sunset":
-        "Tempo che manca alla prossima alba o al prossimo tramonto",
-    "Time since the last sunrise or sunset":
-        "Tempo passato dall'ultima alba o dall'ultimo tramonto",
+    "Sun arc and duration":
+        "Arco del sole e durata",
+    "Sun arc only":
+        "Solo l'arco del sole",
+    "Duration only":
+        "Solo la durata",
+    "Duration":
+        "Durata",
+    "Remaining time":
+        "Tempo che manca",
+    "Elapsed time":
+        "Tempo passato",
+    "Elapsed and remaining time":
+        "Tempo passato e tempo che manca",
+    "Until the next sunrise or sunset":
+        "Alla prossima alba o al prossimo tramonto",
+    "Since the last sunrise or sunset":
+        "Dall'ultima alba o dall'ultimo tramonto",
+    "Since the last sunrise or sunset, and until the next":
+        "Dall'ultima alba o dall'ultimo tramonto, e quanto manca al prossimo evento",
+    "Until the next dawn or dusk":
+        "Alla prossima aurora o al prossimo crepuscolo",
+    "Since the last dawn or dusk":
+        "Dall'ultima aurora o dall'ultimo crepuscolo",
+    "Since the last dawn or dusk, and until the next":
+        "Dall'ultima aurora o dall'ultimo crepuscolo, e quanto manca al prossimo evento",
     "Dawn and dusk":
-        "Alba e crepuscolo",
+        "Aurora e crepuscolo",
     "Civil twilight (6°)":
         "Crepuscolo civile (6°)",
     "Nautical twilight (12°)":
@@ -77,18 +99,140 @@ const IT = {
         "Crepuscolo astronomico (18°)",
     "Arc of the sun":
         "Arco del sole",
-    "Left of the time":
-        "A sinistra del tempo",
-    "Right of the time":
-        "A destra del tempo",
+    "Left of the duration":
+        "A sinistra della durata",
+    "Right of the duration":
+        "A destra della durata",
+    "Place of its icon":
+        "Posto della sua icona",
+    "Next to the clock":
+        "Accanto all'orologio",
+    "Left side":
+        "Lato sinistro",
+    "Right side":
+        "Lato destro",
+    "After the workspace indicator":
+        "Dopo l'indicatore degli spazi di lavoro",
+    "Before the system indicators":
+        "Prima delle icone di sistema",
+    "Day and night":
+        "Giorno e notte",
+    "From sunrise to sunset":
+        "Dall'alba al tramonto",
+    "From dawn to dusk":
+        "Dall'aurora al crepuscolo",
+    "As long as there is the light of the twilight above":
+        "Finché c'è la luce del crepuscolo scelto sopra",
     "Location":
         "Posizione",
     "From the location services":
         "Dai servizi di localizzazione",
-    "The city chosen in its preferences":
-        "La città scelta nelle sue preferenze",
-    "All the preferences of Vesperal":
-        "Tutte le preferenze di Vesperal",
+    "Automatic":
+        "Automatica",
+    "Manual":
+        "Manuale",
+    "Location services are off":
+        "I servizi di localizzazione sono spenti",
+    "No location set":
+        "Nessuna posizione scelta",
+    "Search for a city":
+        "Cerca una città",
+    "Coordinates":
+        "Coordinate",
+    "Latitude (north positive)":
+        "Latitudine (positiva a nord)",
+    "Longitude (east positive)":
+        "Longitudine (positiva a est)",
+    "Latitude must be between −90 and 90":
+        "La latitudine deve essere tra −90 e 90",
+    "Longitude must be between −180 and 180":
+        "La longitudine deve essere tra −180 e 180",
+    "Send notifications":
+        "Invia notifiche",
+    "Dawn":
+        "Aurora",
+    "Sunrise":
+        "Alba",
+    "Sunset":
+        "Tramonto",
+    "Dusk":
+        "Crepuscolo",
+    "Notify ahead by":
+        "Avvisa in anticipo di",
+    "{minutes} min":
+        "{minutes} min",
+    "At the event":
+        "Al momento dell'evento",
+    // --- the year at a glance (sch-year-chart.js) ---
+    "The year at a glance":
+        "L'anno a colpo d'occhio",
+    "No location yet: choose one above":
+        "Ancora nessuna posizione: scegline una qui sopra",
+    "{hours} h {minutes} min":
+        "{hours} h {minutes} min",
+    "In {days} days":
+        "Tra {days} giorni",
+    "March equinox":
+        "Equinozio di marzo",
+    "June solstice":
+        "Solstizio di giugno",
+    "September equinox":
+        "Equinozio di settembre",
+    "December solstice":
+        "Solstizio di dicembre",
+    // --- Freon in the card beside the panel (sch-ext-settings.js) ---
+    "In the menu":
+        "Nel menu",
+    "Temperatures":
+        "Temperature",
+    "Fans":
+        "Ventole",
+    "Voltages":
+        "Tensioni",
+    "Power":
+        "Potenza",
+    "Grouped in a sub-menu":
+        "Raggruppate in un sottomenu",
+    "Unit":
+        "Unità",
+    "Celsius (°C)":
+        "Celsius (°C)",
+    "Fahrenheit (°F)":
+        "Fahrenheit (°F)",
+    "Decimal values":
+        "Valori con decimali",
+    "Sensor sources":
+        "Fonti dei sensori",
+    "Processor and motherboard":
+        "Processore e scheda madre",
+    "Disks":
+        "Dischi",
+    "Graphics card":
+        "Scheda video",
+    "Liquid coolers":
+        "Raffreddamento a liquido",
+    "Direct":
+        "Diretto",
+    "Icon":
+        "Icona",
+    "Temperature unit":
+        "Unità della temperatura",
+    "Fan speed unit":
+        "Unità della velocità delle ventole",
+    "Voltage unit":
+        "Unità della tensione",
+    "Power unit":
+        "Unità della potenza",
+    "Readings":
+        "Letture",
+    "Read the sensors every":
+        "Leggi i sensori ogni",
+    "{seconds} s":
+        "{seconds} s",
+    "Less":
+        "Meno",
+    "More":
+        "Più",
     "One thermometer icon":
         "Una sola icona a termometro",
     "Its button shows one thermometer instead of an icon and a temperature for each sensor; the temperatures stay in its menu":
@@ -227,6 +371,22 @@ const IT = {
         "Batteria",
     "In the top bar, also on the lock screen and on the login screen.":
         "Nella barra in alto, anche sul blocco schermo e sulla schermata di accesso.",
+    "Deminder’s extension, which gave us the idea of the circle, is drawing the battery: change its look in its own settings. Switch it off to get our circle back.":
+        "L'estensione di Deminder, da cui viene l'idea del cerchio, sta disegnando la batteria: cambiane l'aspetto nelle sue impostazioni. Spegnila per riavere il nostro cerchio.",
+    "Deminder’s extension, which gave us the idea of the circle, is installed but off. Turn it on and our circle steps aside.":
+        "L'estensione di Deminder, da cui viene l'idea del cerchio, è installata ma spenta. Accendila e il nostro cerchio si fa da parte.",
+    "Deminder’s extension, which gave us the idea of the circle: a circle or a portrait, in several styles. With it on, our circle steps aside.":
+        "L'estensione di Deminder, da cui viene l'idea del cerchio: un cerchio o una pila verticale, in vari stili. Con lei accesa, il nostro cerchio si fa da parte.",
+    "Project page":
+        "Pagina del progetto",
+    "Turn on":
+        "Accendi",
+    "Get it":
+        "Installala",
+    "GNOME did not turn it on: check that extensions are on in the Extensions app":
+        "GNOME non l'ha accesa: controlla che le estensioni siano attive nell'app Estensioni",
+    "The battery in the top bar as a circle or a portrait, by Deminder. While it is on, Smart Calendar Hub leaves the battery to it.":
+        "La batteria nella barra in alto come cerchio o come pila verticale, di Deminder. Finché è accesa, Smart Calendar Hub lascia a lei la batteria.",
     "Battery as a circle":
         "Batteria circolare",
     "A ring that empties with the charge, in the colour of the bar; yellow under 20%, red under 10%. A bolt only while it is really charging":
@@ -273,8 +433,6 @@ const IT = {
         "Fanno le stesse cose: con tutte e due accese la barra in alto può mostrarle due volte o se la contendono.",
     "Weather inside the clock pill: Panel → Weather.":
         "Meteo nella pillola dell'ora: Pannello → Meteo.",
-    "Battery as a circle: Panel → Battery.":
-        "Batteria circolare: Pannello → Batteria.",
     "Space between the top bar icons: Panel → Appearance.":
         "Spazio tra le icone della barra in alto: Pannello → Aspetto.",
     "Only its \"Items Color\": accent colour in the top bar, Panel → Appearance.":
@@ -309,8 +467,8 @@ const IT = {
         "1. Scarica lo script",
     "It opens in the browser: save it with Ctrl+S in a folder of yours":
         "Si apre nel browser: salvalo con Ctrl+S in una tua cartella",
-    "Open":
-        "Apri",
+    "Open the page":
+        "Apri la pagina",
     "2. In a terminal, in that folder":
         "2. In un terminale, in quella cartella",
     "3. Log out":
@@ -467,8 +625,6 @@ const IT = {
     // --- Preferences window (prefs.js) ---
     "Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on":
         "Le icone del vassoio richiedono l'estensione «AppIndicator and KStatusNotifierItem Support»: attivala",
-    "Position":
-        "Posizione",
     "Where the side panel opens and where the clock sits in the top bar.":
         "Dove si apre il pannello laterale e dove sta l'ora nella barra in alto.",
     "Panel side":

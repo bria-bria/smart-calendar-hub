@@ -68,7 +68,9 @@ there — always on our side: their code stays exactly as their authors wrote it
 | [WiFi Signal Plus](https://extensions.gnome.org/extension/9329/wifi-signal-plus/) | details of the Wi-Fi connection, signal graph, nearby networks |
 | [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) | the tray icons of your apps and their menus, e.g. KTailctl (Tailscale) and Cachy-Update |
 | [Top Bar Organizer](https://extensions.gnome.org/extension/4356/top-bar-organizer/) | with one switch, the clock position is written into its order so the two never fight (the old order comes back when switched off); the tray keeps its icons when it re-sorts them |
-| [Freon](https://extensions.gnome.org/extension/841/freon/) | temperatures of the processor, disks and graphics card, and fan speeds: its menu opens in the panel, the mouse wheel scrolls its long sensor lists, and an optional switch shows one thermometer in the tray instead of a reading per sensor |
+| [Vesperal](https://extensions.gnome.org/extension/11329/vesperal/) | tells time by the Sun: a click on the hub's sun and moon opens its menu inside the panel, all its settings open in the card beside the panel (from version 4 also the top bar content, the day from dawn to dusk and the notifications; with an offline city search and the year at a glance: day length through the year, solstices and equinoxes), and its own icon next to the clock can be hidden |
+| [Battery Indicator Icon](https://extensions.gnome.org/extension/5718/battery-indicator-icon/) | by Deminder, where the idea of our battery circle comes from ([project](https://github.com/Deminder/battery-indicator-icon)): while it is on, the hub's own circle steps aside and lets it draw the battery, also on the lock screen |
+| [Freon](https://extensions.gnome.org/extension/841/freon/) | temperatures of the processor, disks and graphics card, and fan speeds: its menu opens in the panel, its "Sensor Settings" item opens all its settings (what the menu and the top bar show, grouping, unit, polling interval, sensor sources) in the card beside the panel, the mouse wheel scrolls its long sensor lists, and an optional switch shows one thermometer in the tray instead of a reading per sensor |
 
 ### Built for the hub
 
@@ -107,7 +109,10 @@ icon next to the tray icons. They are in seven tabs:
   menu": as wide as the system menu, automatically), space between the
   top bar icons (12 = GNOME default, less brings them closer), texts and
   icons of the top bar in GNOME's accent colour, the battery as a circle that
-  empties with the charge (percentage inside optional).
+  empties with the charge (percentage inside optional) — the idea of
+  [battery-indicator-icon](https://github.com/Deminder/battery-indicator-icon) by Deminder: while that extension
+  is on, the hub leaves the battery to it and these two switches give way to
+  a row that says so.
 - **Tray**: which top bar icons move inside the panel, and a switch for each
   app. The menu of a tray icon (e.g. Cachy-Update) opens inside the
   panel, in place of the cards, instead of floating; it can be switched off,
@@ -132,9 +137,11 @@ icon next to the tray icons. They are in seven tabs:
   only when they are installed. Top Bar Organizer sync (off by default; turn
   it on if you use Top Bar Organizer, otherwise both extensions try to place
   the clock). Vesperal: a click on the sun and moon opens its menu inside the
-  panel (its "Preferences" item opens its main settings in the card beside
-  the panel), and its own icon next to the clock can be hidden. Freon: one
+  panel (its "Preferences" and "Set a location manually…" items open all
+  its settings in the card beside the panel), and its own icon next to the clock can be hidden. Freon: one
   thermometer icon instead of an icon and a temperature for each sensor.
+  Battery Indicator Icon: whether it is on, with a button to turn it on if it
+  is installed, or to get it from extensions.gnome.org.
 - **By hand**: everything to be done outside the extension, with the
   commands to copy — the apps and extensions it uses, the extensions to switch
   off because they do the same things, calendar reminders that never show up,

@@ -8,6 +8,7 @@ import Gdk from 'gi://Gdk';
 import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {ExtensionState} from 'resource:///org/gnome/Shell/Extensions/js/misc/extensionUtils.js';
 
 import {_, loadUserTranslations} from './sch-i18n.js';
 import {loadCalendars, setCalendarSelected} from './sch-eds.js';
@@ -17,6 +18,122 @@ const APPINDICATOR_UUIDS = [
     'appindicatorsupport@rgcjonas.gmail.com',
     'ubuntu-appindicators@ubuntu.com',
 ];
+
+// Battery Indicator Icon by Deminder, from which the idea of our battery
+// circle comes: while it is active it draws the battery and our circle steps
+// aside (sch-battery.js)
+const BII_UUID = 'battery-indicator-icon@Deminder';
+const BII_PROJECT_URL = 'https://github.com/Deminder/battery-indicator-icon';
+const BII_EGO_URL = 'https://extensions.gnome.org/extension/5718/battery-indicator-icon/';
+
+// GNOME Shell's own D-Bus interface for extensions (the one of the
+// Extensions app): state of another extension and switching it on
+const ShellExtensionsProxy = Gio.DBusProxy.makeProxyWrapper(`
+<node>
+  <interface name="org.gnome.Shell.Extensions">
+    <method name="GetExtensionInfo">
+      <arg type="s" direction="in" name="uuid"/>
+      <arg type="a{sv}" direction="out" name="info"/>
+    </method>
+    <method name="EnableExtension">
+      <arg type="s" direction="in" name="uuid"/>
+      <arg type="b" direction="out" name="success"/>
+    </method>
+    <signal name="ExtensionStateChanged">
+      <arg type="s" name="uuid"/>
+      <arg type="a{sv}" name="state"/>
+    </signal>
+  </interface>
+</node>`);
+
+// 'active', 'off' (installed, can be switched on) or 'missing' (not
+// installed, or broken: to be taken again from extensions.gnome.org)
+const BROKEN = [ExtensionState.ERROR, ExtensionState.OUT_OF_DATE, ExtensionState.UNINSTALLED];
+function extensionState(info) {
+    const state = info?.state?.unpack();
+    if (state === undefined || BROKEN.includes(state))
+        return 'missing';
+    return state === ExtensionState.ACTIVE ? 'active' : 'off';
+}
+
+// Follows another extension while the window is open: onChange(state) as
+// soon as GNOME Shell answers and at every change. Returns a function that
+// switches it on (a toast if GNOME refuses, e.g. all extensions are off).
+function watchExtension(window, uuid, onChange) {
+    let proxy = null;
+    let signalId = 0;
+    let closed = false;
+    const fail = e => console.error(`Smart Calendar Hub: GNOME Shell extensions service, ${uuid}: ${e}`);
+    const refresh = () => {
+        proxy?.GetExtensionInfoAsync(uuid)
+            .then(([info]) => !closed && onChange(extensionState(info)))
+            .catch(fail);
+    };
+    new ShellExtensionsProxy(Gio.DBus.session, 'org.gnome.Shell', '/org/gnome/Shell',
+        (p, error) => {
+            if (error)
+                fail(error);
+            if (error || closed)
+                return;
+            proxy = p;
+            signalId = p.connectSignal('ExtensionStateChanged', (_p, _sender, [id, info]) => {
+                if (id === uuid && !closed)
+                    onChange(extensionState(info));
+            });
+            refresh();
+        }, null, Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES);
+    window.connect('close-request', () => {
+        closed = true;
+        if (signalId)
+            proxy?.disconnectSignal(signalId);
+        signalId = 0;
+        return false;
+    });
+    return () => {
+        proxy?.EnableExtensionAsync(uuid)
+            .then(([ok]) => ok || window.add_toast(new Adw.Toast({
+                title: _('GNOME did not turn it on: check that extensions are on in the Extensions app'),
+            })))
+            .catch(fail);
+    };
+}
+
+// A row about Battery Indicator Icon, with one button: its project page
+// while it is active, "Turn on" if installed but off, "Get it" (its page on
+// extensions.gnome.org) if missing. Hidden until the state is known.
+// Returns {row, set(state)}.
+function batteryIndicatorIconRow(window, enable) {
+    const row = new Adw.ActionRow({title: 'Battery Indicator Icon', visible: false});
+    row.add_prefix(new Gtk.Image({icon_name: 'battery-good-symbolic'}));
+    const button = new Gtk.Button({valign: Gtk.Align.CENTER});
+    row.add_suffix(button);
+    let state = null;
+    button.connect('clicked', () => {
+        if (state === 'off')
+            enable();
+        else
+            new Gtk.UriLauncher({uri: state === 'active' ? BII_PROJECT_URL : BII_EGO_URL})
+                .launch(window, null, null);
+    });
+    const set = s => {
+        state = s;
+        row.visible = true;
+        if (s === 'active') {
+            row.subtitle = _('Deminder’s extension, which gave us the idea of the circle, is drawing the battery: change its look in its own settings. Switch it off to get our circle back.');
+            button.label = _('Project page');
+            button.remove_css_class('suggested-action');
+        } else if (s === 'off') {
+            row.subtitle = _('Deminder’s extension, which gave us the idea of the circle, is installed but off. Turn it on and our circle steps aside.');
+            button.label = _('Turn on');
+            button.add_css_class('suggested-action');
+        } else {
+            row.subtitle = _('Deminder’s extension, which gave us the idea of the circle: a circle or a portrait, in several styles. With it on, our circle steps aside.');
+            button.label = _('Get it');
+            button.remove_css_class('suggested-action');
+        }
+    };
+    return {row, set};
+}
 
 // A choice bound to a string key with a fixed list of values.
 // An expander row instead of a drop-down: the drop-down cut long choices
@@ -298,8 +415,6 @@ function byHandPage(window, page) {
     page.add(overlap);
     info(overlap, 'weather-overcast-symbolic', "Weather O'Clock",
         _('Weather inside the clock pill: Panel → Weather.'));
-    info(overlap, 'battery-good-symbolic', 'Battery Indicator Icon',
-        _('Battery as a circle: Panel → Battery.'));
     info(overlap, 'view-more-horizontal-symbolic', 'Status Area Horizontal Spacing',
         _('Space between the top bar icons: Panel → Appearance.'));
     info(overlap, 'applications-graphics-symbolic', 'DashCraft',
@@ -342,7 +457,7 @@ function byHandPage(window, page) {
         subtitle: _('It opens in the browser: save it with Ctrl+S in a folder of yours'),
     });
     const open = new Gtk.Button({
-        label: _('Open'),
+        label: _('Open the page'),
         valign: Gtk.Align.CENTER,
     });
     open.connect('clicked', () => {
@@ -453,6 +568,16 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('freon-single-icon', freonRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         freon.add(freonRow);
 
+        // Battery Indicator Icon: here and in Panel → Battery (followed
+        // there, see watchExtension)
+        const biiGroup = new Adw.PreferencesGroup({
+            title: 'Battery Indicator Icon',
+            description: _('The battery in the top bar as a circle or a portrait, by Deminder. While it is on, Smart Calendar Hub leaves the battery to it.'),
+        });
+        pageExtensions.add(biiGroup);
+        const biiExtRow = batteryIndicatorIconRow(window, () => enableBii());
+        biiGroup.add(biiExtRow.row);
+
         // ---------------- Panel ----------------
         const position = new Adw.PreferencesGroup({
             title: _('Position'),
@@ -551,9 +676,10 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
 
         // The battery as a circle in the top bar (also on the lock and login
         // screens)
+        const batteryText = _('In the top bar, also on the lock screen and on the login screen.');
         const battery = new Adw.PreferencesGroup({
             title: _('Battery'),
-            description: _('In the top bar, also on the lock screen and on the login screen.'),
+            description: batteryText,
         });
         pagePanel.add(battery);
         const circleRow = new Adw.SwitchRow({
@@ -568,6 +694,16 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('battery-circle-text', circleTextRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('battery-circle', circleTextRow, 'sensitive', Gio.SettingsBindFlags.GET);
         battery.add(circleTextRow);
+        // while Battery Indicator Icon is active our two switches make no
+        // difference: only its row is shown (the settings are kept)
+        const biiBatteryRow = batteryIndicatorIconRow(window, () => enableBii());
+        battery.add(biiBatteryRow.row);
+        const enableBii = watchExtension(window, BII_UUID, state => {
+            biiExtRow.set(state);
+            biiBatteryRow.set(state);
+            circleRow.visible = circleTextRow.visible = state !== 'active';
+            battery.description = state === 'active' ? null : batteryText;
+        });
 
         // Everything about the weather in one group
         const weather = new Adw.PreferencesGroup({

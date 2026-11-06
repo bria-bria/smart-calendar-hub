@@ -29,7 +29,7 @@ import {WorldClocksCard, stopTimerCountdowns} from './sch-world-clocks.js';
 import {pageKit} from './sch-page-kit.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 import {BannerGuard} from './sch-banner-guard.js';
-import {buildVesperalPage, vesperalSettings} from './sch-vesperal.js';
+import {SETTINGS_SWAPS} from './sch-ext-settings.js';
 import {logError, logWarning} from './sch-log.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -90,6 +90,16 @@ class FullHeightBox extends St.BoxLayout {
     vfunc_get_preferred_height(forWidth) {
         const [, natural] = super.vfunc_get_preferred_height(forWidth);
         return [natural, natural];
+    }
+});
+// A box that asks for no width of its own: it takes the width it is given.
+// The pages in the card beside the panel are as wide as the calendar's card
+// whatever they hold; a long text gets its ellipsis instead of widening the
+// card (and the whole menu, which then went off the screen).
+const NarrowBox = GObject.registerClass(
+class NarrowBox extends St.BoxLayout {
+    vfunc_get_preferred_width(_forHeight) {
+        return [0, 0];
     }
 });
 // Room the calendar days gain in the card beside the panel, where the side
@@ -178,6 +188,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._savedParents = [];
         this._movedTrayItems = new Map();
         this._idleId = 0;
+        this._reopenId = 0;
 
         const dmContainer = this._dateMenu.container;
         const dmParent = dmContainer.get_parent();
@@ -265,6 +276,10 @@ export default class SmartCalendarHubExtension extends Extension {
         if (this._idleId) {
             GLib.source_remove(this._idleId);
             this._idleId = 0;
+        }
+        if (this._reopenId) {
+            GLib.source_remove(this._reopenId);
+            this._reopenId = 0;
         }
 
         for (const [obj, id] of this._signals ?? []) {
@@ -2846,51 +2861,174 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         indicator.menu.close();
         this._showTrayMenu(indicator, {role: SKY_MENU_ROLE, key: SKY_MENU_ROLE, cell: null});
-        if (this._insideMenu?.menu === indicator.menu)
-            this._swapSkyPreferences(this._insideMenu);
     }
 
-    // In the panel, the last item of Vesperal's menu ("Preferences") opens
-    // its main settings in the card beside the panel instead of its window:
-    // for the visit its item is hidden and one of ours takes its place
-    _swapSkyPreferences(shown) {
-        const items = shown.menu._getMenuItems?.() ?? [];
-        const theirs = items[items.length - 1];
-        // its own text, in its own translation: the item it adds with
-        // menu.addAction() with its translated "Preferences"
-        if (!(theirs instanceof PopupMenu.PopupMenuItem) ||
-            theirs.label.text !== Gettext.dgettext('vesperal', 'Preferences'))
+    // In the panel, the items of an extension's menu that open its
+    // preferences window (SETTINGS_SWAPS, by role) open its main settings
+    // in the card beside the panel instead: for the visit each one is hidden
+    // and one of ours takes its place. Applied again when the extension
+    // builds its menu anew (Freon does, with removeAll(), when a setting
+    // changes): our items go with the old ones, theirs come back.
+    _swapPrefsItem(shown) {
+        const role = shown?.info?.role;
+        const config = Object.hasOwn(SETTINGS_SWAPS, role ?? '') ? SETTINGS_SWAPS[role] : null;
+        if (!config || !shown.menu || shown.page || shown.swap || this._insideMenu !== shown)
             return;
-        const ours = new PopupMenu.PopupMenuItem(theirs.label.text);
-        this._connect(ours, 'activate', () => this._toggleSkySettings(shown));
-        theirs.hide();
-        shown.menu.addMenuItem(ours);
-        (shown.onClose ??= []).push(() => {
-            ours.destroy();
-            theirs.show();
-        });
+        const textOf = item => item.label?.text ??
+            item.get_children().find(child => child instanceof St.Label)?.text;
+        const items = (shown.menu._getMenuItems?.() ?? []).filter(item =>
+            item instanceof PopupMenu.PopupBaseMenuItem);
+        const swap = {pairs: []};
+        // their own texts, in their own translation
+        for (const text of config.texts.map(english => Gettext.dgettext(config.domain, english))) {
+            const theirs = items.findLast(item => textOf(item) === text);
+            const parent = theirs?.get_parent();
+            if (!parent)
+                continue;
+            const ours = new PopupMenu.PopupMenuItem(text);
+            // not added with addMenuItem(): the menu would close on activate,
+            // and the card with it
+            ours.connect('activate', () => this._toggleExtSettings(shown, config));
+            // wanted: whether the extension wants its item seen (Vesperal
+            // shows the one for the location only while it knows none);
+            // ours follows it, theirs stays hidden
+            const pair = {ours, theirs, wanted: theirs.visible, hiding: false};
+            const hideTheirs = () => {
+                pair.hiding = true;
+                theirs.hide();
+                pair.hiding = false;
+            };
+            pair.ids = [
+                theirs.connect('destroy', () => {
+                    pair.theirs = null;
+                }),
+                theirs.connect('notify::visible', () => {
+                    if (pair.hiding || !pair.theirs)
+                        return;
+                    pair.wanted = theirs.visible;
+                    if (pair.ours)
+                        pair.ours.visible = pair.wanted;
+                    if (theirs.visible)
+                        hideTheirs();
+                }),
+            ];
+            // gone without us (the menu built anew): theirs back, ours again
+            // once the extension has finished (never inside 'destroy')
+            // (the other items of ours are left to that moment too)
+            ours.connect('destroy', () => {
+                pair.ours = null;
+                if (shown.swap !== swap)
+                    return;
+                shown.swap = null;
+                this._restoreTheirPrefsItems(swap, false);
+                shown.oldSwap = swap;
+                if (!shown.swapIdleId) {
+                    shown.swapIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                        shown.swapIdleId = 0;
+                        this._dropOldSwap(shown);
+                        this._swapPrefsItem(shown);
+                        return GLib.SOURCE_REMOVE;
+                    });
+                }
+            });
+            parent.insert_child_above(ours, theirs);
+            ours.visible = pair.wanted;
+            hideTheirs();
+            swap.pairs.push(pair);
+        }
+        if (!swap.pairs.length)
+            return;
+        shown.swap = swap;
+        if (!shown.swapRestore) {
+            shown.swapRestore = () => this._unswapPrefsItem(shown);
+            (shown.onClose ??= []).push(shown.swapRestore);
+        }
     }
 
-    _toggleSkySettings(shown) {
+    // Their items back as they want them, and ours gone (not from inside
+    // the 'destroy' of one of ours: destroyOurs false)
+    _restoreTheirPrefsItems(swap, destroyOurs = true) {
+        for (const pair of swap.pairs) {
+            const theirs = pair.theirs;
+            pair.theirs = null;
+            // null once destroyed (its 'destroy' handler)
+            if (theirs) {
+                pair.ids.forEach(id => theirs.disconnect(id));
+                theirs.visible = pair.wanted;
+            }
+            // null once destroyed (its 'destroy' handler)
+            if (destroyOurs)
+                pair.ours?.destroy();
+        }
+    }
+
+    // The items of ours left from a menu built anew
+    _dropOldSwap(shown) {
+        const old = shown.oldSwap;
+        shown.oldSwap = null;
+        if (old)
+            this._restoreTheirPrefsItems(old);
+    }
+
+    // At the end of the visit: their items back, ours gone
+    _unswapPrefsItem(shown) {
+        if (shown.swapIdleId)
+            GLib.source_remove(shown.swapIdleId);
+        shown.swapIdleId = 0;
+        this._dropOldSwap(shown);
+        const swap = shown.swap;
+        shown.swap = null; // before destroy: no new swap from its 'destroy'
+        if (swap)
+            this._restoreTheirPrefsItems(swap);
+    }
+
+    _toggleExtSettings(shown, config) {
         if (this._insideMenu !== shown)
             return;
         if (shown.side) {
             this._hideSidePage(shown);
             return;
         }
-        const settings = vesperalSettings();
+        const settings = config.settings();
         if (!settings) {
-            Main.extensionManager.openExtensionPrefs(SKY_MENU_ROLE, '', {});
+            Main.extensionManager.openExtensionPrefs(config.uuid, '', {});
             return;
         }
-        this._showSidePage(shown, () => buildVesperalPage(settings), {
-            sideTitle: 'Vesperal',
+        const role = shown.info?.role;
+        // a change that makes the extension build its icon and menu anew
+        // (Vesperal, when its icon moves) ends this visit: made after the
+        // click (the card goes with the menu), then the card opened again
+        // on the new menu, which the extension builds at once
+        const rebuild = change => {
+            if (this._reopenId)
+                return;
+            this._reopenId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                this._reopenId = 0;
+                change();
+                this._reopenExtSettings(role, config);
+                return GLib.SOURCE_REMOVE;
+            });
+        };
+        this._showSidePage(shown, () => config.build(settings, {rebuild}), {
+            sideTitle: config.name,
             sideActions: [{
                 icon: 'window-close-symbolic',
                 label: _('Close'),
                 onClick: () => this._hideSidePage(shown),
             }],
         });
+    }
+
+    // The card of `role` again, if its menu went away with the change and
+    // the panel is still open (only Vesperal's menu can be opened from here)
+    _reopenExtSettings(role, config) {
+        if (role !== SKY_MENU_ROLE || this._disabling || !this._dateMenu?.menu?.isOpen)
+            return;
+        if (this._insideMenu?.info?.role !== role)
+            this._openSkyMenu();
+        const shown = this._insideMenu;
+        if (shown?.info?.role === role && !shown.side)
+            this._toggleExtSettings(shown, config);
     }
 
     // Public, for other extensions: show a page of theirs in the panel, with
@@ -3091,7 +3229,7 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         }
         view.hide();
-        const inner = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+        const inner = new NarrowBox({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         inner.add_child(page);
         page.add_style_class_name?.('sch-hub-page');
         side.scroll = new St.ScrollView({
@@ -3227,6 +3365,7 @@ export default class SmartCalendarHubExtension extends Extension {
     // The same measure for every app: its cards without background, and no
     // empty room before the items when the menu has no check marks at all
     _tidyTrayMenu() {
+        this._swapPrefsItem(this._insideMenu);
         this._prefillTraySubmenus();
         this._passSubmenuScroll();
         // the extension styles itself inside the hub
@@ -3234,6 +3373,28 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         this._clearTrayMenuCards();
         this._alignTrayMenuItems();
+        this._leftAlignTrayLabels();
+    }
+
+    // Some apps centre the name of their items (Freon: the sensors, between
+    // the icon and the value): in the panel it starts at the left, as the
+    // items of every other app. Put back at the end of the visit.
+    _leftAlignTrayLabels() {
+        const shown = this._insideMenu;
+        if (!shown?.box)
+            return;
+        shown.centred ??= new Map();
+        const visit = actor => {
+            for (const child of actor.get_children()) {
+                if (actor instanceof PopupMenu.PopupBaseMenuItem && child instanceof St.Label &&
+                    child.x_expand && child.x_align === Clutter.ActorAlign.CENTER && !shown.centred.has(child)) {
+                    shown.centred.set(child, child.connect('destroy', () => shown.centred.delete(child)));
+                    child.x_align = Clutter.ActorAlign.START;
+                }
+                visit(child);
+            }
+        };
+        visit(shown.box);
     }
 
     // Some apps (Qt ones, e.g. KTailctl) leave a sub-menu empty until they
@@ -3417,6 +3578,11 @@ export default class SmartCalendarHubExtension extends Extension {
             } catch (_e) {
                 // the app destroyed it
             }
+        }
+        // still alive: a destroyed label leaves the map (its 'destroy')
+        for (const [label, id] of shown.centred ?? []) {
+            label.disconnect(id);
+            label.x_align = Clutter.ActorAlign.CENTER;
         }
         for (const ornament of shown.ornaments) {
             try {

@@ -32,7 +32,8 @@ function equatorial(lon, lat) {
 function sunLongitude(d) {
     const m = (357.5291 + 0.98560028 * d) * RAD; // mean anomaly
     const centre = (1.9148 * Math.sin(m) + 0.02 * Math.sin(2 * m) + 0.0003 * Math.sin(3 * m)) * RAD;
-    return m + centre + 102.9372 * RAD + Math.PI;
+    // the perihelion moves on 1.72° a century (0.45° from 2000 to 2026)
+    return m + centre + (102.9372 + 0.0000471 * d) * RAD + Math.PI;
 }
 
 // ecliptic longitude and latitude of the moon (radians), main terms
@@ -76,6 +77,47 @@ export function moonPhase(date) {
     const d = days(date);
     const angle = (moonEcliptic(d).lon - sunLongitude(d)) / (2 * Math.PI);
     return ((angle % 1) + 1) % 1;
+}
+
+// Hours of daylight (sunrise to sunset; from dawn to dusk with the depth
+// of the twilight as `horizon`, e.g. -6) on the day of `date` at
+// `latitude`, from the sun's declination at that moment: 0 in the polar
+// night, 24 in the polar day
+export function dayLength(date, latitude, horizon = SUN_HORIZON) {
+    const dec = equatorial(sunLongitude(days(date)), 0).dec;
+    const phi = latitude * RAD;
+    const cosHour = (Math.sin(horizon * RAD) - Math.sin(phi) * Math.sin(dec)) /
+        (Math.cos(phi) * Math.cos(dec));
+    if (cosHour >= 1)
+        return 0;
+    if (cosHour <= -1)
+        return 24;
+    return 2 * Math.acos(cosHour) / RAD / 15;
+}
+
+// The March equinox, June solstice, September equinox and December
+// solstice of `year` (Dates): when the sun reaches ecliptic longitude 0°,
+// 90°, 180° and 270°, found by halving a window of days around each
+export function seasons(year) {
+    const starts = [[2, 20], [5, 21], [8, 22], [11, 21]]; // month (0-11), usual day
+    return starts.map(([month, day], i) => {
+        const target = i * Math.PI / 2;
+        // the angle from the target, between -π and π: it goes from < 0 to > 0
+        const offset = t => {
+            const a = (sunLongitude(days(new Date(t))) - target) % (2 * Math.PI);
+            return ((a + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
+        };
+        let a = Date.UTC(year, month, day) - 4 * DAY_MS;
+        let b = a + 8 * DAY_MS;
+        for (let k = 0; k < 30; k++) {
+            const m = (a + b) / 2;
+            if (offset(m) < 0)
+                a = m;
+            else
+                b = m;
+        }
+        return new Date((a + b) / 2);
+    });
 }
 
 // The pass of the body across the sky around `now`:

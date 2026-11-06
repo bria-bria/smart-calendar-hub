@@ -1035,6 +1035,41 @@
     color: rgba(255, 255, 255, 0.8);
 }
 
+/* the settings of other extensions in the card beside the panel
+   (sch-ext-settings.js): a box to type in, − and + around a value, a group
+   of pieces at the spacing of the page, the chart of the year */
+.sch-ext-entry {
+    margin: 4px;
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    selection-background-color: -st-accent-color;
+    selected-color: -st-accent-fg-color;
+}
+
+.sch-ext-entry:focus {
+    border-color: -st-accent-color;
+}
+
+.sch-ext-entry StLabel.hint-text {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.sch-ext-stepper {
+    spacing: 8px;
+}
+
+.sch-ext-group {
+    spacing: 8px;
+}
+
+.sch-year-chart {
+    color: -st-accent-color;
+    margin: 6px 8px 2px 8px;
+}
+
 /* a piece of the kit switched off (kit.setSensitive) */
 .sch-kit-row:insensitive,
 .sch-kit-button:insensitive {

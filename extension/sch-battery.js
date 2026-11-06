@@ -10,7 +10,10 @@
 // colour of their text (also GNOME's accent colour, see sch-topbar-style.js):
 // yellow under 20%, red under 10%. When the charge changes the ring slides to
 // the new value. Kept on every screen (session, lock and login screen).
-// Written for Smart Calendar Hub after the idea of Battery Indicator Icon.
+// Written for Smart Calendar Hub after the idea of Battery Indicator Icon
+// by Deminder (https://github.com/Deminder/battery-indicator-icon): while
+// that extension is active it draws the battery itself, and ours steps
+// aside (the user's settings are not touched).
 
 import 'cairo'; // makes the Cairo context of St.DrawingArea usable
 import Clutter from 'gi://Clutter';
@@ -21,6 +24,7 @@ import St from 'gi://St';
 import UPower from 'gi://UPowerGlib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import {ExtensionState} from 'resource:///org/gnome/shell/misc/extensionUtils.js';
 
 const ICON_SIZE = 16; // GNOME's panel icon size (panel.js PANEL_ICON_SIZE)
 const SLIDE_MS = 800;
@@ -29,6 +33,7 @@ const CRITICAL = 10;
 const YELLOW = [0.96, 0.83, 0.18]; // GNOME palette yellow 3
 const RED = [0.88, 0.11, 0.14]; // GNOME palette red 3
 const WAIT_TRIES = 40; // GNOME builds the system indicator a little later
+const BATTERY_INDICATOR_ICON_UUID = 'battery-indicator-icon@Deminder';
 
 export class CircleBattery {
     constructor(settings) {
@@ -41,13 +46,28 @@ export class CircleBattery {
         this._tries = 0;
         this._settingsIds = ['battery-circle', 'battery-circle-text'].map(key =>
             settings.connect(`changed::${key}`, () => this._sync()));
+        // Battery Indicator Icon switched on or off while GNOME runs
+        this._extId = Main.extensionManager.connect('extension-state-changed',
+            (_m, ext) => {
+                if (ext?.uuid === BATTERY_INDICATOR_ICON_UUID)
+                    this._sync();
+            });
         this._sync();
+    }
+
+    // Battery Indicator Icon is active in this mode (session, lock or login
+    // screen): the battery is its own
+    _theirsActive() {
+        return Main.extensionManager.lookup(BATTERY_INDICATOR_ICON_UUID)?.state === ExtensionState.ACTIVE;
     }
 
     destroy() {
         for (const id of this._settingsIds)
             this._settings.disconnect(id);
         this._settingsIds = [];
+        if (this._extId)
+            Main.extensionManager.disconnect(this._extId);
+        this._extId = 0;
         if (this._waitId)
             GLib.source_remove(this._waitId);
         this._waitId = 0;
@@ -56,7 +76,7 @@ export class CircleBattery {
 
     // On or off, and the circle drawn again (e.g. the text switched off)
     _sync() {
-        if (!this._settings.get_boolean('battery-circle')) {
+        if (!this._settings.get_boolean('battery-circle') || this._theirsActive()) {
             this._unhook();
             return;
         }
@@ -141,7 +161,8 @@ export class CircleBattery {
         this._waitId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
             this._waitId = 0;
             this._tries++;
-            if (this._settings?.get_boolean('battery-circle') && !this._area)
+            if (this._settings?.get_boolean('battery-circle') && !this._area &&
+                !this._theirsActive())
                 this._hook();
             return GLib.SOURCE_REMOVE;
         });
