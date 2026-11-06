@@ -321,6 +321,24 @@ and scrolling):
 `externalPageFeatures` lists what the installed hub offers: `'side'`,
 `'side-header'`, `'kit'`, `'message'`, `'side-count'`, `'update'`.
 
+## How this was made
+
+Smart Calendar Hub is a hands-on collaboration between a person and an AI —
+pair programming, with the human in charge.
+
+Michele, its creator, maintainer, and a daily GNOME user, designed the
+product: what it does, how it looks, and how it behaves. He made every
+decision and tested every change on his own GNOME desktop before it went in.
+Claude (Anthropic) worked as his coding partner, writing the implementation
+under his direction, and is openly credited in the commit history.
+
+No change is merged without being tested by hand and checked with code
+review. Michele takes full ownership and accountability for this code — its
+stability, maintenance, bug fixes, and future development.
+
+AI provided the working hands; the direction is human: what this hub does,
+and why, comes from someone who uses GNOME every day.
+
 ## License
 
 GPL-2.0-or-later. See [LICENSE](LICENSE).
