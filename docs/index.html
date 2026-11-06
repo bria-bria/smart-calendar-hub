@@ -223,6 +223,9 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
 .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .badges span { font-size: 13px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
 .shot.wide img { width: 100%; height: auto; display: block; border-radius: 16px; }
+.why-list { color: var(--muted); max-width: 680px; padding-left: 20px; margin: 0 0 24px; }
+.why-list li { margin-bottom: 8px; }
+.why-list strong { color: var(--text); }
 </style>
 </head>
 <body>
@@ -256,6 +259,7 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
   <header class="top">
     <div class="brand"><div class="brand-mark"><svg class="i" aria-hidden="true"><use href="#i-hub"/></svg></div>Smart Calendar Hub</div>
     <nav>
+      <a href="#why">Why</a>
       <a href="#clock-menu">Clock menu</a>
       <a href="#one-place">One place</a>
       <a href="#tour">Tour</a>
@@ -311,6 +315,19 @@ footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--m
     </div>
   </section>
 
+
+  <section class="block" id="why">
+    <h2>Why Smart Calendar Hub</h2>
+    <p class="sub">Smart Calendar Hub didn’t happen overnight. It grew out of two decades of daily use: Michele has been working with Linux and GNOME since 2005, and firmly regards GNOME as the cleanest, most reliable, and well-architected desktop on Linux.</p>
+    <p class="sub">The vision was to take that design philosophy one step further. Most extension developers naturally concentrate on the Quick Settings menu or add standalone icons to the top panel. Yet the central panel — the Calendar &amp; Notification menu — has always been a prime, focused canvas with immense untapped potential.</p>
+    <p class="sub">Smart Calendar Hub turns this central space into an organized productivity hub:</p>
+    <ul class="why-list">
+      <li><strong>Clean and clutter-free</strong>: everything you need in one predictable, unified location.</li>
+      <li><strong>Thoughtful integration</strong>: designed to respect GNOME’s native aesthetic while unlocking faster day-to-day workflows.</li>
+      <li><strong>Friendly to the ecosystem</strong>: a structured foundation not just for daily users, but an elegant host for future extension integrations.</li>
+    </ul>
+    <p class="sub">It’s not about changing GNOME — it’s about giving its most central panel the purpose and dynamism it deserves.</p>
+  </section>
 
   <section class="block" id="clock-menu">
     <h2>From GNOME's clock menu to a side panel</h2>

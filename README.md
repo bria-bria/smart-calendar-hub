@@ -23,6 +23,28 @@ or after the clock, with the description for a few seconds after each update;
 unless another extension, such as Weather O'Clock, already does it) and lets
 you move the clock to a different spot of the top bar.
 
+## Why Smart Calendar Hub
+
+Smart Calendar Hub didn’t happen overnight. It grew out of two decades of
+daily use: Michele has been working with Linux and GNOME since 2005, and
+firmly regards GNOME as the cleanest, most reliable, and well-architected
+desktop on Linux.
+
+The vision was to take that design philosophy one step further. Most
+extension developers naturally concentrate on the Quick Settings menu or add
+standalone icons to the top panel. Yet the central panel — the Calendar &
+Notification menu — has always been a prime, focused canvas with immense
+untapped potential.
+
+Smart Calendar Hub turns this central space into an organized productivity hub:
+
+- **Clean and clutter-free**: everything you need in one predictable, unified location.
+- **Thoughtful integration**: designed to respect GNOME’s native aesthetic while unlocking faster day-to-day workflows.
+- **Friendly to the ecosystem**: a structured foundation not just for daily users, but an elegant host for future extension integrations.
+
+It’s not about changing GNOME — it’s about giving its most central panel the
+purpose and dynamism it deserves.
+
 ## Every extension in one place
 
 A click on an icon of the tray opens its menu **inside the panel**, in place
