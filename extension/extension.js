@@ -23,7 +23,7 @@ import {_, loadUserTranslations, unloadUserTranslations} from './sch-i18n.js';
 import {CalendarView} from './sch-calendar.js';
 import {SkyView} from './sch-sky.js';
 import {IP_ROLE, IpView, PanelIpBox} from './sch-net.js';
-import {MENU_TAIL_ROLES, TopBarStyle, clockSlot} from './sch-topbar-style.js';
+import {MENU_TAIL_ROLES, TopBarStyle, moveClock} from './sch-topbar-style.js';
 import {ClockWeather} from './sch-clock-weather.js';
 import {WorldClocksCard, stopTimerCountdowns} from './sch-world-clocks.js';
 import {pageKit} from './sch-page-kit.js';
@@ -31,7 +31,7 @@ import {CityWeather, buildForecast} from './sch-weather.js';
 import {BannerGuard} from './sch-banner-guard.js';
 import {SETTINGS_SWAPS, vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
 import {buildSectionList, buildSectionPage} from './sch-hub-settings.js';
-import {settingsSections} from './sch-settings-model.js';
+import {oneLine, parseMuted, setStrvIfChanged, settingsSections, stillMuted} from './sch-settings-model.js';
 import {logError, logWarning} from './sch-log.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -104,6 +104,22 @@ class NarrowBox extends St.BoxLayout {
         return [0, 0];
     }
 });
+// A menu out of its floating box and back. The box keeps its menu in an
+// St.Bin, which must be emptied with set_child(null).
+function takeOut(box, bin) {
+    if (bin instanceof St.Bin)
+        bin.set_child(null);
+    else
+        bin.remove_child(box);
+}
+
+function putBack(box, bin) {
+    if (bin instanceof St.Bin)
+        bin.set_child(box);
+    else
+        bin.add_child(box);
+}
+
 // Room the calendar days gain in the card beside the panel, where the side
 // bands are narrower (.sch-calendar-card .sch-cal-card in the stylesheet:
 // 4 px instead of 12 px each side, and no 2 px panel padding)
@@ -117,16 +133,16 @@ export default class SmartCalendarHubExtension extends Extension {
     // tray, IP addresses…) only in the user session: it is taken down when
     // the screen locks, so nothing personal shows, and built again on unlock.
     enable() {
-        this._styleSettings = this.getSettings();
-        this._topBarStyle = new TopBarStyle(this._styleSettings);
+        this._topBarStyle = new TopBarStyle(this.getSettings());
         this._modeId = Main.sessionMode.connect('updated', () => this._syncSessionMode());
-        const error = this._syncSessionMode();
-        // A failure while building the panel at enable time is reported to
-        // GNOME (the Extensions app shows the error): undo the top bar style
-        // too, since GNOME will not call disable() after a failed enable().
-        if (error) {
+        // A failure while building the panel is reported to GNOME (the
+        // Extensions app shows the error): the top bar style is undone too,
+        // since GNOME does not call disable() after a failed enable().
+        try {
+            this._syncSessionMode();
+        } catch (e) {
             this.disable();
-            throw error;
+            throw e;
         }
     }
 
@@ -138,10 +154,8 @@ export default class SmartCalendarHubExtension extends Extension {
         stopTimerCountdowns();
         this._topBarStyle?.destroy();
         this._topBarStyle = null;
-        this._styleSettings = null;
     }
 
-    // returns the error if the panel could not be built
     _syncSessionMode() {
         const session = !Main.sessionMode.isLocked && !Main.sessionMode.isGreeter;
         // Back in the session: the clock first goes back where GNOME had it,
@@ -150,31 +164,23 @@ export default class SmartCalendarHubExtension extends Extension {
         // full extension leaves first, then the clock is placed.
         if (session)
             this._topBarStyle?.setClockPlacement(false);
-        let error = null;
         if (session && !this._dateMenu)
-            error = this._enableFull();
+            this._enableFull();
         else if (!session && this._dateMenu)
             this._disableFull();
         if (!session)
             this._topBarStyle?.setClockPlacement(true);
-        return error;
     }
 
+    // If a step fails, everything done so far is undone instead of leaving
+    // the date menu half rebuilt
     _enableFull() {
-        // If a step fails, undo everything done so far instead of leaving the
-        // date menu half rebuilt.
         try {
             this._enable();
         } catch (e) {
-            logError(`enable failed, restoring GNOME: ${e}`);
-            try {
-                this._disableFull();
-            } catch (e2) {
-                logError(`restore failed: ${e2}`);
-            }
-            return e;
+            this._disableFull();
+            throw e;
         }
-        return null;
     }
 
     _enable() {
@@ -182,11 +188,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._calendarWidth = undefined; // the new calendar view gets its width
         this._gnomeWidth = null;
         this._dateMenu = Main.panel.statusArea.dateMenu;
-        if (!this._dateMenu)
-            return;
-
         this._settings = this.getSettings();
-        this._signals = [];
+        this._connected = new Set();
         this._savedParents = [];
         this._movedTrayItems = new Map();
         this._idleId = 0;
@@ -265,55 +268,37 @@ export default class SmartCalendarHubExtension extends Extension {
         this._unsetFreonIcon();
         this._syncAllDay(false);
 
-        // First, so its panel role is freed even if a later step fails
-        try {
-            this._ipPanel?.destroy();
-            this._ipPanel = null;
-            this._ipView?.destroy();
-        } catch (e) {
-            logError(`cannot remove the IP indicator: ${e}`);
-        }
+        // First, so its role in the top bar is freed even if a later step fails
+        this._ipPanel?.destroy();
+        this._ipPanel = null;
+        this._ipView?.destroy();
         this._ipView = null;
 
-        if (this._trayLayoutId) {
+        if (this._trayLayoutId)
             GLib.source_remove(this._trayLayoutId);
-            this._trayLayoutId = 0;
-        }
-        if (this._trayScrollbarId) {
-            GLib.source_remove(this._trayScrollbarId);
-            this._trayScrollbarId = 0;
-        }
-        if (this._pageMessageId) {
+        this._trayLayoutId = 0;
+        if (this._trayArrowsId)
+            GLib.source_remove(this._trayArrowsId);
+        this._trayArrowsId = 0;
+        if (this._pageMessageId)
             GLib.source_remove(this._pageMessageId);
-            this._pageMessageId = 0;
-        }
-        if (this._idleId) {
+        this._pageMessageId = 0;
+        if (this._idleId)
             GLib.source_remove(this._idleId);
-            this._idleId = 0;
-        }
-        if (this._reopenId) {
+        this._idleId = 0;
+        if (this._reopenId)
             GLib.source_remove(this._reopenId);
-            this._reopenId = 0;
-        }
+        this._reopenId = 0;
+        if (this._iconSaveId)
+            GLib.source_remove(this._iconSaveId);
+        this._iconSaveId = 0;
 
-        for (const [obj, id] of this._signals ?? []) {
-            try {
-                obj.disconnect(id);
-            } catch (_e) {
-                // the object may already be gone
-            }
-        }
-        this._signals = null;
+        for (const obj of this._connected ?? [])
+            obj.disconnectObject(this);
+        this._connected = null;
 
-        const safeDisconnect = (obj, id) => {
-            try {
-                obj.disconnect(id);
-            } catch (_e) {
-                // already destroyed
-            }
-        };
-        for (const [source, ids] of this._alertSources ?? [])
-            ids.forEach(id => safeDisconnect(source, id));
+        for (const source of this._alertSources ?? [])
+            source.disconnectObject(this);
         this._alertSources = null;
         for (const source of [...this._bannerPolicies?.keys() ?? []])
             this._releaseBanners(source);
@@ -321,22 +306,19 @@ export default class SmartCalendarHubExtension extends Extension {
         this._unpatchNotificationMessages();
         this._bannerGuard?.destroy();
         this._bannerGuard = null;
+        // a destroyed icon has already left the map (its 'destroy' handler)
         for (const [sni, ids] of this._alertTray ?? []) {
             this._accountTrayIcon(sni); // last stretch of time of its icon
-            ids.forEach(id => safeDisconnect(sni, id));
-        }
-        if (this._iconSaveId) {
-            GLib.source_remove(this._iconSaveId);
-            this._iconSaveId = 0;
+            ids.forEach(id => sni.disconnect(id));
         }
         this._saveIconStats();
         this._alertTray = null;
         this._iconStats = null;
         this._iconShown = null;
         this._alertDot?.destroy();
+        this._alertDot = null;
         this._alertTip?.destroy();
         this._alertTip = null;
-        this._alertDot = null;
 
         this._clockWeather?.destroy();
         this._clockWeather = null;
@@ -357,21 +339,13 @@ export default class SmartCalendarHubExtension extends Extension {
         // Put the original widgets back in reverse order: every saved index
         // was taken after the previous widgets had already been removed.
         for (const {actor, parent, index} of (this._savedParents ?? []).reverse()) {
-            try {
-                actor.get_parent()?.remove_child(actor);
-                parent.insert_child_at_index(actor, index);
-            } catch (e) {
-                logError(`cannot restore a widget: ${e}`);
-            }
+            actor.get_parent()?.remove_child(actor);
+            parent.insert_child_at_index(actor, index);
         }
         this._savedParents = null;
 
         // Undo the bottom-row tweaks after the widgets are back in place.
-        try {
-            this._setBottomCompact(false); // texts back on GNOME's buttons
-        } catch (e) {
-            logError(`cannot restore the bottom buttons: ${e}`);
-        }
+        this._setBottomCompact(false); // texts back on GNOME's buttons
         if (this._clearButton) {
             this._clearButton.remove_style_class_name('sch-clear-button');
             this._clearButton.remove_style_class_name('sch-bottom-btn');
@@ -390,12 +364,10 @@ export default class SmartCalendarHubExtension extends Extension {
             Object.assign(clocks, this._clocksOrig);
             this._clocksOrig = null;
         }
+        this._clocksGrid = null;
+        this._clearLabel = null;
         this._worldClocks?.destroy();
         this._worldClocks = null;
-        this._bottomRow = null;
-        this._clearBox = null;
-        this._clearLabel = null;
-        this._clocksGrid = null;
 
         // One card again (the menu's content box back as it was), then the
         // panel goes: it is connected to GNOME's calendar and events
@@ -403,105 +375,18 @@ export default class SmartCalendarHubExtension extends Extension {
         this._calendarCard?.destroy();
         this._calendarCard = null;
         this._calendarView?.destroy();
+        this._calendarView = null;
         this._skyView?.destroy();
         this._skyView = null;
-        this._vesperalSettings = null;
-        this._skyButton?.destroy();
-        this._skyButton = null;
-        // Our own pieces of the panel (GNOME's widgets are back in their
-        // places already): destroyed and forgotten one by one, then the panel
-        this._trayMenuHost?.destroy();
-        this._trayMenuHost = null;
-        this._trayMenuContent?.destroy();
-        this._trayMenuContent = null;
-        this._trayMenuScroll?.destroy();
-        this._trayMenuScroll = null;
-        this._trayMenuTitle?.destroy();
-        this._trayMenuTitle = null;
-        this._pageMessage?.destroy();
-        this._pageMessage = null;
-        this._traySection?.destroy();
-        this._traySection = null;
-        this._traySpacer?.destroy();
-        this._traySpacer = null;
-        this._trayBox?.destroy();
-        this._trayBox = null;
-        this._trayEndSpacer?.destroy();
-        this._trayEndSpacer = null;
-        this._trayScroll?.destroy();
-        this._trayScroll = null;
-        this._gearButton?.destroy();
-        this._gearButton = null;
-        this._ipPanelBin?.destroy();
-        this._ipPanelBin = null;
-        this._weatherSummary?.destroy();
-        this._weatherSummary = null;
-        this._weatherSummaryIcon?.destroy();
-        this._weatherSummaryIcon = null;
-        this._weatherArrow?.destroy();
-        this._weatherArrow = null;
-        this._weatherBody?.destroy();
-        this._weatherBody = null;
-        this._citySelector?.destroy();
-        this._citySelector = null;
-        this._cityCard?.destroy();
-        this._cityCard = null;
-        this._cityCardBox?.destroy();
-        this._cityCardBox = null;
-        this._gnomeWeatherBin?.destroy();
-        this._gnomeWeatherBin = null;
-        this._dateRow?.destroy();
-        this._dateRow = null;
-        this._calendarLabel?.destroy();
-        this._calendarLabel = null;
-        this._calendarArrow?.destroy();
-        this._calendarArrow = null;
-        this._calendarBox?.destroy();
-        this._calendarBox = null;
-        this._calendarScroll?.destroy();
-        this._calendarScroll = null;
-        this._todayBin?.destroy();
-        this._todayBin = null;
-        this._bottomRow?.destroy();
-        this._bottomRow = null;
-        this._fillSpacer?.destroy();
-        this._fillSpacer = null;
-        this._clearBox?.destroy();
-        this._clearBox = null;
-        this._newEventButton?.destroy();
-        this._newEventButton = null;
-        this._newEventLabel?.destroy();
-        this._newEventLabel = null;
-        this._sidebar?.destroy();
-        this._sidebar = null;
-        this._traySection = null;
-        this._traySpacer = null;
-        this._trayEndSpacer = null;
-        this._unwatchGnomeCard();
-        this._trayScroll = null;
-        this._trayLeft = null;
-        this._trayRight = null;
-        this._ipPanelBin = null;
-        this._trayBox = null;
-        this._calendarBox = null;
-        this._calendarScroll = null;
-        this._calendarView = null;
-        this._newEventButton = null;
-        this._newEventLabel = null;
-        this._calendarArrow = null;
-        this._weatherBody = null;
-        this._weatherArrow = null;
-        this._weatherSummary = null;
-        this._weatherSummaryIcon = null;
         this._cityWeather?.destroy();
         this._cityWeather = null;
-        this._citySelector = null;
-        this._cityCard = null;
-        this._cityCardBox = null;
-        this._gnomeWeatherBin = null;
+        this._vesperalSettings = null;
         this._weatherClient = null;
-        this._calendarLabel = null;
-        this._gearButton = null;
+        // GNOME's widgets are back in their places: the panel goes with
+        // every piece of ours inside it
+        this._sidebar?.destroy();
+        this._forgetSidebar();
+        this._unwatchGnomeCard();
 
         this._origBin?.show();
         this._origBin = null;
@@ -521,12 +406,54 @@ export default class SmartCalendarHubExtension extends Extension {
         this._dateMenu = null;
     }
 
+    // The references to the pieces of the panel, once it is destroyed
+    // (by disable(), or by GNOME Shell at logout)
+    _forgetSidebar() {
+        this._sidebar = null;
+        this._traySection = null;
+        this._traySpacer = null;
+        this._trayBox = null;
+        this._trayEndSpacer = null;
+        this._trayScroll = null;
+        this._trayLeft = null;
+        this._trayRight = null;
+        this._gearButton = null;
+        this._trayMenuHost = null;
+        this._trayMenuContent = null;
+        this._trayMenuScroll = null;
+        this._trayMenuTitle = null;
+        this._pageMessage = null;
+        this._ipPanelBin = null;
+        this._weatherSummary = null;
+        this._weatherSummaryIcon = null;
+        this._weatherArrow = null;
+        this._weatherBody = null;
+        this._citySelector = null;
+        this._cityCard = null;
+        this._cityCardBox = null;
+        this._gnomeWeatherBin = null;
+        this._dateRow = null;
+        this._skyButton = null;
+        this._calendarLabel = null;
+        this._calendarArrow = null;
+        this._calendarBox = null;
+        this._calendarScroll = null;
+        this._todayBin = null;
+        this._fillSpacer = null;
+        this._bottomRow = null;
+        this._clearBox = null;
+        this._newEventButton = null;
+        this._newEventLabel = null;
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
 
+    // Disconnected all together in disable(), or by GNOME when obj is destroyed
     _connect(obj, signal, callback) {
-        this._signals.push([obj, obj.connect(signal, callback)]);
+        obj.connectObject(signal, callback, this);
+        this._connected.add(obj);
     }
 
     _relayout() {
@@ -584,7 +511,7 @@ export default class SmartCalendarHubExtension extends Extension {
         case 'top-bar-spacing':
             for (const info of this._movedTrayItems.values())
                 info.cell.set_style(this._trayCellStyle());
-            this._queueTrayScrollbar();
+            this._queueTrayArrows();
             break;
         case 'sidebar-width':
         case 'sidebar-width-gnome':
@@ -633,13 +560,9 @@ export default class SmartCalendarHubExtension extends Extension {
         return {lists, where};
     }
 
-    // Writes only the lists that actually changed (no needless dconf writes).
     _writeTopBarOrganizer(lists) {
-        for (const key of TBO_KEYS) {
-            const old = this._tbo.get_strv(key);
-            if (old.length !== lists[key].length || old.some((x, i) => x !== lists[key][i]))
-                this._tbo.set_strv(key, lists[key]);
-        }
+        for (const key of TBO_KEYS)
+            setStrvIfChanged(this._tbo, key, lists[key]);
     }
 
     // Called only on enable and when a related setting changes, never on
@@ -647,49 +570,41 @@ export default class SmartCalendarHubExtension extends Extension {
     _syncTopBarOrganizer() {
         if (!this._tbo || !this._settings.get_boolean('sync-top-bar-organizer'))
             return;
-        try {
-            const {lists, where} = this._readTopBarOrganizer();
-            // Remember only where the clock was, so on restore the entries
-            // TBO added in the meantime are kept.
-            if (this._tboOrig === undefined)
-                this._tboOrig = where;
+        const {lists, where} = this._readTopBarOrganizer();
+        // Remember only where the clock was, so on restore the entries
+        // TBO added in the meantime are kept.
+        if (this._tboOrig === undefined)
+            this._tboOrig = where;
 
-            const mode = this._settings.get_string('top-bar-position');
-            const left = lists['left-box-order'];
-            const center = lists['center-box-order'];
-            const right = lists['right-box-order'];
-            if (mode === 'right-between-tray-and-menu') {
-                let i = right.findIndex(r => MENU_TAIL_ROLES.includes(r));
-                if (i === -1)
-                    i = right.length;
-                right.splice(i, 0, 'dateMenu');
-            } else if (mode === 'right-before-tray') {
-                right.unshift('dateMenu');
-            } else if (mode === 'left-after-menu') {
-                left.push('dateMenu');
-            } else {
-                center.splice(Math.min(1, center.length), 0, 'dateMenu');
-            }
-            this._writeTopBarOrganizer(lists);
-        } catch (e) {
-            logError(`Top Bar Organizer sync failed: ${e}`);
+        const mode = this._settings.get_string('top-bar-position');
+        const left = lists['left-box-order'];
+        const center = lists['center-box-order'];
+        const right = lists['right-box-order'];
+        if (mode === 'right-between-tray-and-menu') {
+            let i = right.findIndex(r => MENU_TAIL_ROLES.includes(r));
+            if (i === -1)
+                i = right.length;
+            right.splice(i, 0, 'dateMenu');
+        } else if (mode === 'right-before-tray') {
+            right.unshift('dateMenu');
+        } else if (mode === 'left-after-menu') {
+            left.push('dateMenu');
+        } else {
+            center.splice(Math.min(1, center.length), 0, 'dateMenu');
         }
+        this._writeTopBarOrganizer(lists);
     }
 
     _restoreTopBarOrganizer() {
         if (!this._tbo || this._tboOrig === undefined)
             return;
-        try {
-            const {lists} = this._readTopBarOrganizer();
-            const where = this._tboOrig;
-            if (where) {
-                const list = lists[where.key];
-                list.splice(Math.min(where.index, list.length), 0, 'dateMenu');
-            }
-            this._writeTopBarOrganizer(lists);
-        } catch (e) {
-            logError(`Top Bar Organizer restore failed: ${e}`);
+        const {lists} = this._readTopBarOrganizer();
+        const where = this._tboOrig;
+        if (where) {
+            const list = lists[where.key];
+            list.splice(Math.min(where.index, list.length), 0, 'dateMenu');
         }
+        this._writeTopBarOrganizer(lists);
         this._tboOrig = undefined;
     }
 
@@ -702,20 +617,11 @@ export default class SmartCalendarHubExtension extends Extension {
         if (!container || this._positioning)
             return;
 
-        const mode = this._settings.get_string('top-bar-position');
+        // the move adds the clock to a box of the top bar: not a new icon
+        // for _watchPanelBoxes
         this._positioning = true;
         try {
-            const {box, index} = clockSlot(mode, container);
-
-            const parent = container.get_parent();
-            if (parent !== box) {
-                parent?.remove_child(container);
-                box.insert_child_at_index(container, index);
-            } else if (box.get_children().indexOf(container) !== index) {
-                box.set_child_at_index(container, index);
-            }
-        } catch (e) {
-            logError(`cannot move the clock: ${e}`);
+            moveClock(container, this._settings.get_string('top-bar-position'));
         } finally {
             this._positioning = false;
         }
@@ -762,7 +668,7 @@ export default class SmartCalendarHubExtension extends Extension {
         indicator.insert_child_at_index(icon, 0);
         this._freonIcon = icon;
         // Freon switched off: its button goes, and our icon with it
-        this._connect(icon, 'destroy', () => {
+        icon.connect('destroy', () => {
             this._freonIcon = null;
             this._freonHidden = null;
         });
@@ -782,7 +688,9 @@ export default class SmartCalendarHubExtension extends Extension {
         const suffix = ` · ${_('The whole day')}`;
         const rows = [];
         for (const box of list.get_children()) {
-            const labels = box.get_children?.() ?? [];
+            // with no events the list holds GNOME's "No Events" label, whose
+            // child is a plain Clutter.Text (no style classes)
+            const labels = box.get_children();
             const time = labels.find(l => l.has_style_class_name?.('event-time'));
             const summary = labels.find(l => l.has_style_class_name?.('event-summary'));
             if (time && summary)
@@ -802,13 +710,8 @@ export default class SmartCalendarHubExtension extends Extension {
         const icon = this._freonIcon;
         if (!icon)
             return;
-        for (const child of this._freonHidden ?? []) {
-            try {
-                child.show();
-            } catch (_e) {
-                // Freon replaced it
-            }
-        }
+        for (const child of this._freonHidden ?? [])
+            child.show();
         icon.destroy();
         this._freonIcon = null;
         this._freonHidden = null;
@@ -839,7 +742,7 @@ export default class SmartCalendarHubExtension extends Extension {
     _buildAlertDot() {
         const clock = this._dateMenu._clockDisplay;
         const clockBox = clock?.get_parent();
-        this._alertSources = new Map();
+        this._alertSources = new Set();
         this._alertTray = new Map();
         if (!clockBox)
             return;
@@ -861,7 +764,7 @@ export default class SmartCalendarHubExtension extends Extension {
 
         this._connect(Main.messageTray, 'source-added', (_t, source) => this._watchSource(source));
         this._connect(Main.messageTray, 'source-removed', (_t, source) => {
-            this._alertSources.get(source)?.forEach(id => source.disconnect(id));
+            source.disconnectObject(this);
             this._alertSources.delete(source);
             this._releaseBanners(source);
             this._updateAlertDot();
@@ -881,14 +784,8 @@ export default class SmartCalendarHubExtension extends Extension {
 
     // Parsed once per change of the setting (see _onSettingChanged)
     _mutedEntries() {
-        const now = Date.now() / 1000;
-        this._mutedCache ??= this._settings.get_strv('muted-apps');
-        return this._mutedCache
-            .map(line => {
-                const [key, label = key, until = '0', choice = ''] = line.split('\t');
-                return {key, label, until: Number(until) || 0, choice: choice === '' ? -1 : Number(choice)};
-            })
-            .filter(e => e.key && (e.until === 0 || e.until > now));
+        this._mutedCache ??= parseMuted(this._settings.get_strv('muted-apps'));
+        return this._mutedCache.filter(stillMuted);
     }
 
     _isMuted(key) {
@@ -901,7 +798,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const key = this._sourceKey(source);
         if (!key)
             return;
-        const label = (source.title || key).replace(/[\t\n]/g, ' ');
+        const label = oneLine(source.title || key);
         const list = this._mutedEntries().filter(e => e.key !== key)
             .map(e => `${e.key}\t${e.label}\t${e.until}\t${e.choice}`);
         if (until !== null)
@@ -1018,13 +915,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const messageIds = [];
         bell.connect('destroy', () => {
             delete message._schMuteActors;
-            for (const id of messageIds) {
-                try {
-                    message.disconnect(id);
-                } catch (_e) {
-                    // the message is already gone
-                }
-            }
+            messageIds.forEach(id => message.disconnect(id));
         });
 
         // The notification itself is a button: a click in the gaps of the row
@@ -1137,20 +1028,21 @@ export default class SmartCalendarHubExtension extends Extension {
     _watchSource(source) {
         if (this._alertSources.has(source))
             return;
-        this._alertSources.set(source, [
-            source.connect('notify::count', () => {
+        this._alertSources.add(source);
+        source.connectObject(
+            'notify::count', () => {
                 this._rememberSource(source);
                 this._updateAlertDot();
-            }),
+            },
             // the policy can be replaced: silence the new one too
-            source.connect('notify::policy', () => this._holdBanners(source)),
-        ]);
+            'notify::policy', () => this._holdBanners(source),
+            this);
         this._holdBanners(source);
         this._rememberSource(source);
         this._updateAlertDot();
     }
 
-    // Adds the app to the list shown in the preferences (kept across sessions).
+    // Adds the app to the list shown in our settings (kept across sessions).
     _rememberSource(source) {
         const key = this._sourceKey(source);
         if (key)
@@ -1158,7 +1050,7 @@ export default class SmartCalendarHubExtension extends Extension {
     }
 
     _rememberApp(key, rawLabel) {
-        const label = rawLabel.replace(/[\t\n]/g, ' ');
+        const label = oneLine(rawLabel);
         const line = `${key}\t${label}`;
         const seen = this._settings.get_strv('notify-apps-seen');
         if (seen.includes(line))
@@ -1259,22 +1151,18 @@ export default class SmartCalendarHubExtension extends Extension {
 
     // Name + checksum of the image (and of the overlay, used by some apps)
     _iconFingerprint(sni) {
-        try {
-            const parts = [];
-            for (const icon of [sni.icon, sni.hasOverlayIcon ? sni.overlayIcon : null]) {
-                if (!icon)
-                    continue;
-                parts.push(icon.name ?? '');
-                const pixmap = icon.pixmap;
-                if (pixmap && pixmap.n_children?.() > 0) {
-                    parts.push(GLib.compute_checksum_for_bytes(GLib.ChecksumType.MD5,
-                        pixmap.get_data_as_bytes()));
-                }
+        const parts = [];
+        for (const icon of [sni.icon, sni.hasOverlayIcon ? sni.overlayIcon : null]) {
+            if (!icon)
+                continue;
+            parts.push(icon.name ?? '');
+            // pixmap: a GVariant array of images, when the app sends pixels
+            if (icon.pixmap?.n_children() > 0) {
+                parts.push(GLib.compute_checksum_for_bytes(GLib.ChecksumType.MD5,
+                    icon.pixmap.get_data_as_bytes()));
             }
-            return parts.join('|') || null;
-        } catch (_e) {
-            return null;
         }
+        return parts.join('|') || null;
     }
 
     _loadIconStats() {
@@ -1311,9 +1199,7 @@ export default class SmartCalendarHubExtension extends Extension {
             [...fps].sort((a, b) => b[1] - a[1]).slice(0, 3)
                 .forEach(([fp, secs]) => lines.push(`${id}\t${fp}\t${Math.round(secs)}`));
         }
-        const old = this._settings.get_strv('tray-icon-stats');
-        if (old.length !== lines.length || old.some((l, i) => l !== lines[i]))
-            this._settings.set_strv('tray-icon-stats', lines);
+        setStrvIfChanged(this._settings, 'tray-icon-stats', lines);
     }
 
     // Adds the time the current icon has been shown, then restarts the count
@@ -1422,16 +1308,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // destroyed queue a layout)
         this._connect(this._sidebar, 'destroy', () => {
             this._disabling = true;
-            this._trayBox = null;
-            this._traySection = null;
-            this._traySpacer = null;
-            this._trayEndSpacer = null;
-            this._trayScroll = null;
-            this._trayLeft = null;
-            this._trayRight = null;
-            if (this._insideMenu?.cardsId)
-                GLib.source_remove(this._insideMenu.cardsId);
-            for (const key of ['restoreId', 'sideRestoreId']) {
+            for (const key of ['cardsId', 'restoreId', 'sideRestoreId']) {
                 if (this._insideMenu?.[key])
                     GLib.source_remove(this._insideMenu[key]);
             }
@@ -1439,8 +1316,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 GLib.source_remove(this._pageMessageId);
             this._pageMessageId = 0;
             this._insideMenu = null;
-            this._trayMenuHost = null;
-            this._pageMessage = null;
+            this._forgetSidebar();
         });
         this._trayMenuManager = new PopupMenu.PopupMenuManager(this._sidebar);
 
@@ -1522,7 +1398,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._traySection.add_child(this._trayLeft);
         this._traySection.add_child(trayScroll);
         this._traySection.add_child(this._trayRight);
-        this._connect(trayScroll, 'notify::width', () => this._queueTrayScrollbar());
+        this._connect(trayScroll, 'notify::width', () => this._queueTrayArrows());
         // the arrow at the end of the row is dimmed
         const adjustment = this._trayBox.hadjustment;
         for (const prop of ['value', 'upper', 'page-size'])
@@ -2064,28 +1940,20 @@ export default class SmartCalendarHubExtension extends Extension {
     // of its own with the spacing set on it. null: GNOME's menu is one card,
     // our stylesheet decides (.sch-cards-host)
     _gnomeCardGap() {
-        try {
-            const menu = Main.panel.statusArea.quickSettings?.menu;
-            if (!menu?.actor?.has_style_class_name?.('QSAP-panel-grid') || !menu.box)
-                return null;
-            const gap = Math.round(menu.box.get_theme_node().get_length('spacing'));
-            return gap >= 0 && gap <= 40 ? gap : null;
-        } catch (_e) {
+        const menu = Main.panel.statusArea.quickSettings?.menu;
+        if (!menu?.actor.has_style_class_name('QSAP-panel-grid') || !menu.box)
             return null;
-        }
+        const gap = Math.round(menu.box.get_theme_node().get_length('spacing'));
+        return gap >= 0 && gap <= 40 ? gap : null;
     }
 
     // Padding and border of the menu's content box around the panel, from
     // its style: exact, and available before the menu is drawn
     _measureCardFrame() {
-        try {
-            const node = this._dateMenu.menu.box.get_theme_node();
-            const frame = Math.round(node.get_horizontal_padding() +
-                node.get_border_width(St.Side.LEFT) + node.get_border_width(St.Side.RIGHT));
-            return frame >= 0 && frame < 80 ? frame : 22;
-        } catch (_e) {
-            return 22;
-        }
+        const node = this._dateMenu.menu.box.get_theme_node();
+        const frame = Math.round(node.get_horizontal_padding() +
+            node.get_border_width(St.Side.LEFT) + node.get_border_width(St.Side.RIGHT));
+        return frame >= 0 && frame < 80 ? frame : 22;
     }
 
     // GNOME's "Today" card: not while the calendar is open in the panel
@@ -2146,31 +2014,26 @@ export default class SmartCalendarHubExtension extends Extension {
     _gnomeMenuCard() {
         const menu = Main.panel.statusArea.quickSettings?.menu;
         let actor = menu?._grid ?? null;
-        while (actor && !actor.has_style_class_name?.('quick-settings'))
+        while (actor && !actor.has_style_class_name('quick-settings'))
             actor = actor.get_parent();
         return actor ?? menu?.box ?? null;
     }
 
     // Width of that card minus the frame of our popup content
     _measureGnomeMenu() {
-        try {
-            const card = this._gnomeMenuCard();
-            if (!card || !this._sidebar)
-                return null;
-            this._watchGnomeCard(card);
-            // the width it has on screen, or the one it asks for
-            const [, preferred] = card.get_preferred_width(-1);
-            const cardWidth = card.mapped && card.width > 0 ? card.width : preferred;
-            // the frame of our content box (with the calendar beside the
-            // panel the box is transparent: the frame measured before)
-            const frame = calendarSide ? cardFrame ?? 22 : this._measureCardFrame();
-            const width = Math.round(cardWidth - frame);
-            // a card not drawn yet measures nothing useful
-            return width >= 280 && width <= 900 ? width : null;
-        } catch (e) {
-            logWarning(`cannot measure GNOME's menu: ${e.message}`);
+        const card = this._gnomeMenuCard();
+        if (!card || !this._sidebar)
             return null;
-        }
+        this._watchGnomeCard(card);
+        // the width it has on screen, or the one it asks for
+        const [, preferred] = card.get_preferred_width(-1);
+        const cardWidth = card.mapped && card.width > 0 ? card.width : preferred;
+        // the frame of our content box (with the calendar beside the
+        // panel the box is transparent: the frame measured before)
+        const frame = calendarSide ? cardFrame ?? 22 : this._measureCardFrame();
+        const width = Math.round(cardWidth - frame);
+        // a card not drawn yet measures nothing useful
+        return width >= 280 && width <= 900 ? width : null;
     }
 
     // When that card changes width (its buttons, another extension), the
@@ -2180,45 +2043,33 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         this._unwatchGnomeCard();
         this._gnomeCard = card;
-        this._gnomeCardIds = [
-            card.connect('notify::width', () => {
+        card.connectObject(
+            'notify::width', () => {
                 if (this._settings?.get_boolean('sidebar-width-gnome') && card.mapped)
                     this._updateSidebarSize();
-            }),
-            card.connect('destroy', () => {
+            },
+            'destroy', () => {
                 this._gnomeCard = null;
-                this._gnomeCardIds = [];
-            }),
-        ];
+            },
+            this);
     }
 
     _unwatchGnomeCard() {
-        for (const id of this._gnomeCardIds ?? []) {
-            try {
-                this._gnomeCard?.disconnect(id);
-            } catch (_e) {
-                // already gone
-            }
-        }
+        this._gnomeCard?.disconnectObject(this);
         this._gnomeCard = null;
-        this._gnomeCardIds = [];
     }
 
     // The geometry of GNOME's system menu card (corner radius and padding):
     // {radius, padding} in pixels, or null (then our stylesheet decides)
     _gnomeCardShape() {
-        try {
-            const node = this._gnomeMenuCard()?.get_theme_node();
-            if (!node)
-                return null;
-            const radius = Math.round(node.get_border_radius(St.Corner.TOPLEFT));
-            const padding = Math.round(node.get_padding(St.Side.LEFT));
-            if (radius < 0 || radius > 80 || padding < 0 || padding > 60)
-                return null;
-            return {radius, padding};
-        } catch (_e) {
+        const node = this._gnomeMenuCard()?.get_theme_node();
+        if (!node)
             return null;
-        }
+        const radius = Math.round(node.get_border_radius(St.Corner.TOPLEFT));
+        const padding = Math.round(node.get_padding(St.Side.LEFT));
+        if (radius < 0 || radius > 80 || padding < 0 || padding > 60)
+            return null;
+        return {radius, padding};
     }
 
     // Our cards with the same corners and padding as GNOME's menu card.
@@ -2310,7 +2161,7 @@ export default class SmartCalendarHubExtension extends Extension {
             }
             if (type !== Clutter.EventType.BUTTON_PRESS || event.get_button() !== 1 || !nearEdge(px))
                 return Clutter.EVENT_PROPAGATE;
-            // double click: back to the width of the preferences
+            // double click: back to the width of the settings
             const now = event.get_time();
             if (now - lastPress < 400) {
                 lastPress = 0;
@@ -2458,20 +2309,18 @@ export default class SmartCalendarHubExtension extends Extension {
     // (only when the list changed, to avoid needless dconf writes).
     _publishTrayItems() {
         // With the tray turned off nothing is a candidate: keep the last list,
-        // so the preferences show it greyed out instead of empty.
+        // so our settings show it greyed out instead of empty.
         if (this._settings.get_string('tray-mode') === 'disabled')
             return;
         const items = new Map();
         for (const [role, indicator] of Object.entries(Main.panel.statusArea)) {
             if (this._isTrayCandidate(role, indicator)) {
-                const label = this._trayLabel(role, indicator).replace(/[\t\n]/g, ' ');
+                const label = oneLine(this._trayLabel(role, indicator));
                 items.set(this._trayKey(role, indicator), label);
             }
         }
         const list = [...items].map(([k, l]) => `${k}\t${l}`).sort();
-        const old = this._settings.get_strv('tray-items-seen');
-        if (old.length !== list.length || old.some((x, i) => x !== list[i]))
-            this._settings.set_strv('tray-items-seen', list);
+        setStrvIfChanged(this._settings, 'tray-items-seen', list);
     }
 
     _isTrayCandidate(role, indicator) {
@@ -2525,13 +2374,12 @@ export default class SmartCalendarHubExtension extends Extension {
         this._syncTrayAlerts();
     }
 
-    // Puts the moved icons in rows that fit the panel width.
     // Arrows only when the icons do not fit (checked after the layout)
-    _queueTrayScrollbar() {
-        if (this._trayScrollbarId || !this._trayBox || this._disabling)
+    _queueTrayArrows() {
+        if (this._trayArrowsId || !this._trayBox || this._disabling)
             return;
-        this._trayScrollbarId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            this._trayScrollbarId = 0;
+        this._trayArrowsId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._trayArrowsId = 0;
             const scroll = this._trayScroll;
             if (!scroll || !this._trayBox)
                 return GLib.SOURCE_REMOVE;
@@ -2594,7 +2442,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // AppIndicator reload them)
         const kept = current.filter(c => wanted.has(c));
         if (kept.length === cells.length && kept.every((c, i) => c === cells[i])) {
-            this._queueTrayScrollbar();
+            this._queueTrayArrows();
             return;
         }
         for (const cell of kept)
@@ -2603,7 +2451,7 @@ export default class SmartCalendarHubExtension extends Extension {
             cell.get_parent()?.remove_child(cell);
             this._trayBox.insert_child_below(cell, this._trayEndSpacer);
         }
-        this._queueTrayScrollbar();
+        this._queueTrayArrows();
     }
 
     // A cell as wide as an icon's button in the top bar: the 16 px icon,
@@ -2644,7 +2492,7 @@ export default class SmartCalendarHubExtension extends Extension {
         };
 
         const menu = indicator.menu;
-        if (menu && typeof menu.connect === 'function') {
+        if (menu) {
             // removeMenu() never fails, so check first whether the panel owns it
             info.hadPanelMenu = Main.panel.menuManager._menus?.includes(menu) ?? false;
             if (info.hadPanelMenu)
@@ -2692,7 +2540,7 @@ export default class SmartCalendarHubExtension extends Extension {
             if (!info.cell.visible && this._insideMenu?.info === info)
                 this._closeTrayMenu();
             this._showTraySection(this._anyTrayIconShown());
-            this._queueTrayScrollbar();
+            this._queueTrayArrows();
         };
         info.visibleIds = [container, indicator]
             .filter((actor, i, all) => all.indexOf(actor) === i)
@@ -2708,13 +2556,8 @@ export default class SmartCalendarHubExtension extends Extension {
     // Undoes everything _moveToTray did except the position of the container.
     _releaseTrayItem(indicator, info) {
         info.container.disconnect(info.destroyId);
-        for (const [actor, id] of info.visibleIds ?? []) {
-            try {
-                actor.disconnect(id);
-            } catch (_e) {
-                // already gone
-            }
-        }
+        for (const [actor, id] of info.visibleIds)
+            actor.disconnect(id);
         info.visibleIds = [];
         const menu = indicator.menu;
         if (menu && this._insideMenu?.menu === menu)
@@ -2770,26 +2613,17 @@ export default class SmartCalendarHubExtension extends Extension {
         const button = info.button;
         if (!button)
             return;
-        try {
-            if (info.buttonStyleId)
-                button.disconnect(info.buttonStyleId);
-            button.set_style(info.buttonStyle ?? null);
-        } catch (_e) {
-            // the button is already gone
-        }
+        button.disconnect(info.buttonStyleId);
+        button.set_style(info.buttonStyle ?? null);
         info.button = null;
         info.buttonStyleId = 0;
     }
 
     _restoreTrayItem(indicator, info) {
-        try {
-            this._releaseTrayItem(indicator, info);
-            info.container.get_parent()?.remove_child(info.container);
-            const n = info.parent.get_n_children();
-            info.parent.insert_child_at_index(info.container, Math.min(info.index, n));
-        } catch (e) {
-            logError(`cannot restore a tray icon: ${e}`);
-        }
+        this._releaseTrayItem(indicator, info);
+        info.container.get_parent()?.remove_child(info.container);
+        const n = info.parent.get_n_children();
+        info.parent.insert_child_at_index(info.container, Math.min(info.index, n));
     }
 
     // Inside the panel unless switched off, or chosen floating for this icon.
@@ -2918,10 +2752,7 @@ export default class SmartCalendarHubExtension extends Extension {
             const heldBox = menu.box;
             const heldBin = heldBox?.get_parent();
             if (heldBox && heldBin) {
-                if (heldBin instanceof St.Bin)
-                    heldBin.set_child(null);
-                else
-                    heldBin.remove_child(heldBox);
+                takeOut(heldBox, heldBin);
                 Object.assign(shown, {heldBox, heldBin});
             }
             shown.pageDestroyId = shown.page.connect('destroy', () => {
@@ -2936,11 +2767,7 @@ export default class SmartCalendarHubExtension extends Extension {
             const bin = box?.get_parent();
             if (!box || !bin)
                 return;
-            // the floating box keeps its menu in an St.Bin: emptied properly
-            if (bin instanceof St.Bin)
-                bin.set_child(null);
-            else
-                bin.remove_child(box);
+            takeOut(box, bin);
             this._trayMenuContent.add_child(box);
             box.add_style_class_name('sch-tray-menu-box');
             box.add_style_class_name('sch-hub-page');
@@ -3207,7 +3034,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._trayMenuContent.add_child(page);
         this._watchExternalPage(shown, page);
         this._enterTrayPage(shown, typeof title === 'string' && title ? title : String(id ?? ''));
-        if (typeof buildSidePage === 'function')
+        if (buildSidePage)
             this._showSidePage(shown, buildSidePage, {sideTitle, sideCount, sideActions});
         return true;
     }
@@ -3511,11 +3338,7 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         shown.side = null;
         side.header?.destroy();
-        try {
-            side.scroll.destroy(); // the page with it: the extension frees it on 'destroy'
-        } catch (e) {
-            logError(`side page ${shown.externalId}: ${e}`);
-        }
+        side.scroll.destroy(); // the page with it: the extension frees it on 'destroy'
         if (this._calendarCard)
             this._calendarCard.height = -1;
         this._calendarView?.actor.show();
@@ -3748,13 +3571,9 @@ export default class SmartCalendarHubExtension extends Extension {
         // 'toggle-switch'): clearing it would leave a switch without knob
         if (widget.get_parent()?.has_style_class_name?.('toggle-switch'))
             return false;
-        try {
-            const node = widget.get_theme_node();
-            return node.get_background_color().alpha > 0 ||
-                node.get_border_width(St.Side.TOP) > 0 || node.get_box_shadow() !== null;
-        } catch (_e) {
-            return false; // not styled yet
-        }
+        const node = widget.get_theme_node();
+        return node.get_background_color().alpha > 0 ||
+            node.get_border_width(St.Side.TOP) > 0 || node.get_box_shadow() !== null;
     }
 
     // Close the menu shown inside (its 'open-state-changed' puts it back)
@@ -3779,25 +3598,15 @@ export default class SmartCalendarHubExtension extends Extension {
         if (shown.cardsId)
             GLib.source_remove(shown.cardsId);
         this._hideSidePage(shown);
-        if (shown.actorShowId) {
-            try {
-                shown.menu.actor.disconnect(shown.actorShowId);
-            } catch (_e) {
-                // the menu is gone
-            }
-        }
+        if (shown.actorShowId)
+            shown.menu.actor.disconnect(shown.actorShowId);
         // still alive: a destroyed piece left these lists (its 'destroy')
         for (const [widget, {style, id}] of shown.cleared) {
             widget.disconnect(id);
             widget.set_style(style);
         }
-        for (const restore of shown.onClose ?? []) {
-            try {
-                restore();
-            } catch (e) {
-                logError(`tray menu: ${e}`);
-            }
-        }
+        for (const restore of shown.onClose ?? [])
+            restore();
         for (const [view, {wheel, id}] of shown.wheel ?? []) {
             view.disconnect(id);
             view.enable_mouse_scrolling = wheel;
@@ -3813,8 +3622,9 @@ export default class SmartCalendarHubExtension extends Extension {
         // a page of the extension: built for this visit, destroyed after it
         // (the extension frees its resources on its 'destroy')
         if (shown.page) {
+            shown.page.disconnect(shown.pageDestroyId);
+            // another extension's widget: its own destroy() may throw
             try {
-                shown.page.disconnect(shown.pageDestroyId);
                 shown.page.destroy();
             } catch (e) {
                 logError(`page of ${shown.info?.role ?? shown.externalId}: ${e}`);
@@ -3822,51 +3632,26 @@ export default class SmartCalendarHubExtension extends Extension {
         }
         // the menu of an extension that showed a page of its own goes back
         // into its floating box
-        if (shown.heldBox) {
-            try {
-                if (!shown.heldBox.get_parent()) {
-                    if (shown.heldBin instanceof St.Bin)
-                        shown.heldBin.set_child(shown.heldBox);
-                    else
-                        shown.heldBin.add_child(shown.heldBox);
-                }
-            } catch (e) {
-                logError(`cannot give a tray menu back: ${e}`);
-            }
-        }
-        try {
-            if (shown.box) {
-                shown.box.y_expand = shown.yExpand;
-                shown.box.disconnect(shown.boxDestroyId);
-                shown.box.remove_style_class_name('sch-tray-menu-box');
-                shown.box.remove_style_class_name('sch-hub-page');
-                shown.box.get_parent()?.remove_child(shown.box);
-                if (shown.bin instanceof St.Bin)
-                    shown.bin.set_child(shown.box);
-                else
-                    shown.bin.add_child(shown.box);
-            }
-        } catch (e) {
-            logError(`cannot give a tray menu back: ${e}`);
+        if (shown.heldBox && !shown.heldBox.get_parent())
+            putBack(shown.heldBox, shown.heldBin);
+        if (shown.box) {
+            shown.box.y_expand = shown.yExpand;
+            shown.box.disconnect(shown.boxDestroyId);
+            shown.box.remove_style_class_name('sch-tray-menu-box');
+            shown.box.remove_style_class_name('sch-hub-page');
+            shown.box.get_parent()?.remove_child(shown.box);
+            putBack(shown.box, shown.bin);
         }
         for (const {child, wanted, id} of shown.hidden) {
-            try {
-                child.disconnect(id);
-                child.visible = wanted;
-            } catch (_e) {
-                // already gone
-            }
+            child.disconnect(id);
+            child.visible = wanted;
         }
         // the calendar may have been opened or closed under the menu
         // (tray-menu-fill): notifications, "Today" and the bottom buttons
         // follow it again
         if (this._calendarBox)
             this._setCalendarExpanded(this._calendarBox.visible);
-        try {
-            shown.info?.cell?.remove_style_class_name('sch-tray-cell-open');
-        } catch (_e) {
-            // the icon is gone
-        }
+        shown.info?.cell?.remove_style_class_name('sch-tray-cell-open');
         for (const key of ['restoreId', 'sideRestoreId']) {
             if (shown[key])
                 GLib.source_remove(shown[key]);
@@ -3879,9 +3664,10 @@ export default class SmartCalendarHubExtension extends Extension {
             this._pageMessage.visible = false;
         if (this._fillSpacer)
             this._fillSpacer.visible = false;
-        if (this._trayMenuHost)
+        if (this._trayMenuHost) {
             this._trayMenuHost.y_expand = true;
-        this._trayMenuHost?.hide();
+            this._trayMenuHost.hide();
+        }
     }
 
     _restoreAllTrayItems() {
@@ -3890,6 +3676,5 @@ export default class SmartCalendarHubExtension extends Extension {
         // Reverse order, so saved indices are still valid.
         for (const [indicator, info] of [...this._movedTrayItems].reverse())
             this._restoreTrayItem(indicator, info);
-        this._movedTrayItems.clear();
     }
 }

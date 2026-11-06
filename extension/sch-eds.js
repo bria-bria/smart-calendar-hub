@@ -8,7 +8,6 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-// GNOME Shell already does this; the preferences process does not
 Gio._promisify(Gio.DBusConnection.prototype, 'call');
 
 const EDS_SOURCES = 'org.gnome.evolution.dataserver.Sources5';

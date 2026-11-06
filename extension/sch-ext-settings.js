@@ -56,7 +56,7 @@ function enumValues(settings, key) {
     if (!settings.settings_schema.has_key(key))
         return [];
     const [type, values] = settings.settings_schema.get_key(key).get_range().deepUnpack();
-    return type === 'enum' ? values.deepUnpack?.() ?? values : [];
+    return type === 'enum' ? values.deepUnpack() : [];
 }
 
 export const check = () => new St.Icon({icon_name: 'object-select-symbolic', icon_size: 16});

@@ -22,7 +22,7 @@ const MAX_RESULTS = 8;
 const SEARCH_DELAY_MS = 250;
 
 // The location stored in `key` ({name, latitude, longitude}), or null
-export function storedLocation(settings, key) {
+function storedLocation(settings, key) {
     if (!settings.settings_schema.has_key(key))
         return null;
     const value = settings.get_value(key).get_maybe();

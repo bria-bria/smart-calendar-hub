@@ -4,11 +4,12 @@
 // A small sky next to the date: the sun and the moon move along an arc,
 // each from its own real rising (left) to its real setting (right), both
 // drawn when both are above the horizon; the moon in its real phase.
-// Computed for the city shown in the weather (sch-astro.js, no network);
+// Computed where the caller says (sch-astro.js, no network): Vesperal's
+// place when Vesperal is on, otherwise the city shown in the weather;
 // without coordinates, the sun from sunrise to sunset and the moon at night.
 // When the panel opens the sun or the moon travels along the arc from the
-// rising point to its place (short animation), then it moves on every minute while the panel is
-// open. Two settings: show-sun-moon (arc with sun and moon) and
+// rising point to its place (short animation), then it moves on every
+// minute while the panel is open. Two settings: show-sun-moon (arc with sun and moon) and
 // show-moon-phase (moon drawn in its phase; alone, it shows only the moon).
 
 import 'cairo'; // makes the Cairo context of St.DrawingArea usable
@@ -77,16 +78,12 @@ export class SkyView {
 
     // [latitude, longitude] of the city, or null
     _coords() {
-        try {
-            const location = this._client?.info?.get_location();
-            // a location without coordinates would give 0, 0
-            const coords = this._getCoords?.() ??
-                (location?.has_coords?.() ? location.get_coords() : null);
-            if (coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1]))
-                return coords;
-        } catch (_e) {
-            // no coordinates
-        }
+        const location = this._client?.info?.get_location();
+        // a location without coordinates would give 0, 0
+        const coords = this._getCoords?.() ??
+            (location?.has_coords() ? location.get_coords() : null);
+        if (coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1]))
+            return coords;
         return null;
     }
 

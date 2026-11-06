@@ -124,13 +124,8 @@ export class CalendarView {
             GLib.source_remove(this._waitId);
             this._waitId = 0;
         }
-        for (const [obj, id] of this._signals) {
-            try {
-                obj.disconnect(id);
-            } catch (_e) {
-                // already gone
-            }
-        }
+        for (const [obj, id] of this._signals)
+            obj.disconnect(id);
         this._signals = [];
         this._sourceSignal = null;
         this._grid = null;
@@ -150,15 +145,11 @@ export class CalendarView {
             return;
         if (this._sourceSignal) {
             const [obj, id] = this._sourceSignal;
-            try {
-                obj.disconnect(id);
-            } catch (_e) {
-                // old source already destroyed
-            }
+            obj.disconnect(id);
             this._signals = this._signals.filter(entry => entry !== this._sourceSignal);
             this._sourceSignal = null;
         }
-        if (source && typeof source.connect === 'function')
+        if (source)
             this._sourceSignal = this._connect(source, 'changed', () => this._queueRefresh());
     }
 

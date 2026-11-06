@@ -100,12 +100,6 @@
   .caption li::before { content: ""; position: absolute; left: 0; top: 7px; width: 10px; height: 10px;
     border-radius: 50%; background: var(--accent); }
 
-  .win { position: absolute; left: 40px; top: 60px; width: 530px; height: 680px; background: #222226;
-    border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.6); overflow: hidden; }
-  .tabs { display: flex; justify-content: center; gap: 6px; padding: 10px; }
-  .tab { padding: 6px 14px; border-radius: 8px; font-weight: 700; color: rgba(255,255,255,.85); }
-  .tab.on { background: rgba(255,255,255,.12); }
-  .wbody { padding: 10px 36px; }
   .gt { font-weight: 700; margin: 14px 0 4px; }
   .gd { color: var(--dim); font-size: 13px; margin-bottom: 8px; }
   .list { background: #303034; border-radius: 12px; overflow: hidden; }
@@ -117,9 +111,12 @@
   .sw::after { content: ""; position: absolute; right: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; }
   .sw.off { background: rgba(255,255,255,.2); }
   .sw.off::after { left: 3px; right: auto; }
-  .radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); }
-  .radio.on { border: 5px solid #3a944a; background: #fff; }
   .chev { color: var(--dim); }
+  .panel.side { right: 418px; gap: 6px; }
+  .panel.side .list { background: var(--card); }
+  .panel.side .gt { margin: 8px 4px 0; }
+  .sidehead { display: flex; align-items: center; gap: 10px; font-size: 17px; }
+  .sidehead b { flex: 1; }
 </style>
 </head>
 <body>
@@ -133,7 +130,7 @@
       <li>Weather, date and a sky with the sun or the moon in its phase</li>
       <li>A calendar that fits the panel, with your accounts' colours</li>
       <li>A red dot on the clock for the apps you choose</li>
-      <li>Everything set from a preferences window with tabs</li>
+      <li>Everything set from the gear, in a card beside the panel</li>
     </ul>
   </div>
   <div class="topbar">
@@ -182,54 +179,38 @@
 </section>
 
 <section class="scene" id="prefs">
-  <div class="win">
-    <div class="tabs">
-      <span class="tab">▣ Panel</span><span class="tab">⁙ Tray</span>
-      <span class="tab on">▤ Calendars</span><span class="tab">◉ Notifications</span>
+  <div class="caption" style="width: 300px;">
+    <h1>Settings beside the panel</h1>
+    <h2>The gear opens them next to the panel</h2>
+    <ul>
+      <li>Seven sections: panel, tray, calendars, notifications, network, extensions, by hand</li>
+      <li>Every change is applied at once</li>
+      <li>The calendar steps aside while they are open</li>
+    </ul>
+  </div>
+  <div class="topbar">
+    <div class="clock">Wed Nov 4&nbsp;&nbsp;14:05 <span>☀</span> 12 °C</div>
+    <div class="sysicons"><span>▤</span><span>◔</span><span>✱</span><span>♪</span><span>◐</span></div>
+  </div>
+  <div class="panel side" id="p-settings">
+    <div class="sidehead"><span class="arrow">‹</span><b>Panel</b><span class="arrow">✕</span></div>
+    <div class="gt">Position</div>
+    <div class="list">
+      <div class="li"><div class="tx">Panel side<small>Right edge of the screen</small></div><span class="chev">›</span></div>
+      <div class="li"><div class="tx">Clock in the top bar<small>Right, between tray icons and system menu</small></div><span class="chev">›</span></div>
     </div>
-    <div class="wbody">
-      <div class="gt">Calendars shown</div>
-      <div class="gd">Choose which calendars appear in the panel and in GNOME Calendar. This does not change your online accounts.</div>
-      <div class="list" id="cal-list"></div>
+    <div class="gt">Appearance</div>
+    <div class="list">
+      <div class="li"><div class="tx">Calendar collapsed on opening<small>Click “Calendar and events” to open it</small></div><span class="sw"></span></div>
+      <div class="li"><div class="tx">Align to GNOME’s menu<small>As wide as the system menu (Wi-Fi, volume…)</small></div><span class="sw"></span></div>
+      <div class="li"><div class="tx">Accent colour in the top bar<small>Texts and icons in the accent colour</small></div><span class="sw off"></span></div>
     </div>
   </div>
-  <div class="win" style="left: 610px; top: 120px; width: 630px; height: 620px;">
-    <div class="tabs">
-      <span class="tab on">▣ Panel</span><span class="tab">⁙ Tray</span>
-      <span class="tab">▤ Calendars</span><span class="tab">◉ Notifications</span>
-    </div>
-    <div class="wbody">
-      <div class="gt">Position</div>
-      <div class="gd">Where the side panel opens and where the clock sits in the top bar.</div>
-      <div class="list">
-        <div class="li"><div class="tx">Panel side<small>Right edge of the screen</small></div><span class="chev">⌃</span></div>
-        <div class="li"><span class="radio on"></span><div class="tx">Right edge of the screen</div></div>
-        <div class="li"><span class="radio"></span><div class="tx">Left edge of the screen</div></div>
-        <div class="li"><span class="radio"></span><div class="tx">Under the clock button</div></div>
-        <div class="li"><div class="tx">Clock in the top bar<small>Right, between tray icons and system menu</small></div><span class="chev">⌄</span></div>
-      </div>
-      <div class="gt">Sky</div>
-      <div class="gd">Next to the date. The two options can be used separately or together.</div>
-      <div class="list">
-        <div class="li"><div class="tx">Sun and moon of the day<small>The sun moves along an arc from sunrise to sunset, then the moon</small></div><span class="sw"></span></div>
-        <div class="li"><div class="tx">Moon phase<small>The moon is drawn in its real phase</small></div><span class="sw"></span></div>
-      </div>
-    </div>
-  </div>
+  <div class="panel" id="p-prefs"></div>
 </section>
 
 <script>
 const TRAY = ['#e01b24', '#9a9996', '#2ec27e', '#3584e4', '#c061cb', '#f6d32d', '#deddda'];
-const CALS = [
-  ['Family', '#fa573c', 'work@example.com, home@example.com'],
-  ['Kids', '#ff7537', 'home@example.com'],
-  ['Office deadlines', '#cca6ac', 'work@example.com'],
-  ['Holidays', '#42d692', 'work@example.com, home@example.com'],
-  ['Sports club', '#fbe983', 'home@example.com', true],
-  ['Personal', '#62a0ea', ''],
-  ['Birthdays & Anniversaries', '#ffbe6f', ''],
-];
-
 function sky(mode) {
   const w = 120, h = 62, base = h - 6, r = Math.min(w / 2 - 13, base - 13), cx = w / 2;
   const along = mode === 'sun' ? 0.62 : 0.3;
@@ -312,9 +293,10 @@ document.getElementById('p-night').innerHTML =
   dateRow('moon') + `<div class="expander"><span>Calendar and events</span><span>›</span></div>` + notifs +
   `<div class="bottom"><div class="btn" style="flex:3">Add world clocks…</div><div class="btn" style="flex:2">Clear</div></div>`;
 
-document.getElementById('cal-list').innerHTML = CALS.map(([n, c, acc, off]) =>
-  `<div class="li"><span style="color:${c};font-size:22px">●</span><div class="tx">${n}<small>${acc}</small></div>
-   <span class="sw${off ? ' off' : ''}"></span></div>`).join('');
+document.getElementById('p-prefs').innerHTML =
+  tray() + weatherRow('Weather · 12° Brescia') + dateRow('sun') +
+  `<div class="expander"><span>Calendar and events</span><span>›</span></div>` + notifs +
+  `<div class="bottom"><div class="btn" style="flex:3">Add world clocks…</div><div class="btn" style="flex:2">Clear</div></div>`;
 
 const scene = (location.hash || '#overview').slice(1);
 document.getElementById(scene)?.classList.add('on');

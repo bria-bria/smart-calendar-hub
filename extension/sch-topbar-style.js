@@ -15,7 +15,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {CircleBattery} from './sch-battery.js';
 import {PanelSpacing} from './sch-spacing.js';
-import {logError} from './sch-log.js';
 
 // The clock goes right before GNOME's system menu: second from the right.
 // Every icon left in the top bar (clipboard, emoji, usage meters…) stays on
@@ -24,7 +23,7 @@ export const MENU_TAIL_ROLES = ['quickSettings'];
 
 // Where the clock goes in the top bar for the chosen position:
 // {box, index} (index among the other children of the box)
-export function clockSlot(mode, container) {
+function clockSlot(mode, container) {
     if (mode === 'right-between-tray-and-menu') {
         const box = Main.panel._rightBox;
         const tails = MENU_TAIL_ROLES
@@ -41,6 +40,18 @@ export function clockSlot(mode, container) {
         return {box, index: box.get_children().filter(c => c !== container).length};
     }
     return {box: Main.panel._centerBox, index: 0};
+}
+
+// Moves the clock to its place for the chosen position
+export function moveClock(container, mode) {
+    const {box, index} = clockSlot(mode, container);
+    const parent = container.get_parent();
+    if (parent !== box) {
+        parent?.remove_child(container);
+        box.insert_child_at_index(container, index);
+    } else if (box.get_children().indexOf(container) !== index) {
+        box.set_child_at_index(container, index);
+    }
 }
 
 export class TopBarStyle {
@@ -118,19 +129,11 @@ export class TopBarStyle {
         if (!this._loginScreen || !container || this._placingClock)
             return;
         this._placingClock = true;
+        const parent = container.get_parent();
+        this._clockOrigin ??= parent
+            ? {parent, index: parent.get_children().indexOf(container)} : null;
         try {
-            const parent = container.get_parent();
-            this._clockOrigin ??= parent
-                ? {parent, index: parent.get_children().indexOf(container)} : null;
-            const {box, index} = clockSlot(this._settings.get_string('top-bar-position'), container);
-            if (parent !== box) {
-                parent?.remove_child(container);
-                box.insert_child_at_index(container, index);
-            } else if (box.get_children().indexOf(container) !== index) {
-                box.set_child_at_index(container, index);
-            }
-        } catch (e) {
-            logError(`cannot move the clock: ${e}`);
+            moveClock(container, this._settings.get_string('top-bar-position'));
         } finally {
             this._placingClock = false;
         }

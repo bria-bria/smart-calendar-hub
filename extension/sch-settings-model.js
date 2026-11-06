@@ -52,8 +52,8 @@ export const APPINDICATOR_UUIDS = [
 // circle comes: while it is active it draws the battery and our circle steps
 // aside (sch-battery.js)
 export const BII_UUID = 'battery-indicator-icon@Deminder';
-export const BII_PROJECT_URL = 'https://github.com/Deminder/battery-indicator-icon';
-export const BII_EGO_URL = 'https://extensions.gnome.org/extension/5718/battery-indicator-icon/';
+const BII_PROJECT_URL = 'https://github.com/Deminder/battery-indicator-icon';
+const BII_EGO_URL = 'https://extensions.gnome.org/extension/5718/battery-indicator-icon/';
 
 // The subtitle and the button of the Battery Indicator Icon row, for its
 // state: {subtitle, button, primary, action: 'enable' | url}
@@ -337,16 +337,37 @@ export function setAppOn(settings, apps, key, on) {
     settings.set_strv(apps.listKey, list);
 }
 
+// A name kept in our "key TAB name" lists: no tab or line break inside
+export function oneLine(text) {
+    return text.replace(/[\t\n]/g, ' ');
+}
+
+// Writes a list only when it changed (no needless dconf writes)
+export function setStrvIfChanged(settings, key, list) {
+    const old = settings.get_strv(key);
+    if (old.length !== list.length || old.some((x, i) => x !== list[i]))
+        settings.set_strv(key, list);
+}
+
+// The lines of muted-apps ("key TAB name TAB until TAB choice", until in
+// Unix seconds, 0 = always; choice: the duration button chosen, -1 none)
+export function parseMuted(lines) {
+    return lines.map(line => {
+        const [key, label = key, until = '0', choice = ''] = line.split('\t');
+        return {key, label, until: Number(until) || 0, choice: choice === '' ? -1 : Number(choice)};
+    }).filter(e => e.key);
+}
+
+// The silence has not expired yet
+export function stillMuted(entry) {
+    return entry.until === 0 || entry.until > Date.now() / 1000;
+}
+
 // The apps silenced with the bell of a notification and not expired:
 // [{key, label, when}]
 export function mutedEntries(settings) {
-    const now = Date.now() / 1000;
-    return settings.get_strv('muted-apps')
-        .map(line => {
-            const [key, label = key, until = '0'] = line.split('\t');
-            return {key, label, until: Number(until) || 0};
-        })
-        .filter(e => e.key && (e.until === 0 || e.until > now))
+    return parseMuted(settings.get_strv('muted-apps'))
+        .filter(stillMuted)
         .map(e => ({
             key: e.key,
             label: e.label,

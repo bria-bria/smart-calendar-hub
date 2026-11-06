@@ -123,13 +123,8 @@ export class ClockWeather {
     }
 
     _disconnectAll() {
-        for (const [obj, id] of this._signals) {
-            try {
-                obj.disconnect(id);
-            } catch (_e) {
-                // already destroyed
-            }
-        }
+        for (const [obj, id] of this._signals)
+            obj.disconnect(id);
         this._signals = [];
     }
 

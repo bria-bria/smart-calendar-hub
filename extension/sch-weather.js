@@ -83,13 +83,9 @@ export class CityWeather {
     coords() {
         if (selectedCity === 0)
             return null;
-        try {
-            const location = this._locations[selectedCity];
-            // a location without coordinates would give 0, 0
-            return location?.has_coords() ? location.get_coords() : null;
-        } catch (_e) {
-            return null;
-        }
+        const location = this._locations[selectedCity];
+        // a location without coordinates would give 0, 0
+        return location?.has_coords() ? location.get_coords() : null;
     }
 
     // null for the first city (GNOME's own weather), else {info, name}
@@ -141,7 +137,7 @@ export function buildForecast(info) {
     const now = GLib.DateTime.new_now_local();
     let last = GLib.DateTime.new_from_unix_local(0);
     let count = 0;
-    for (const fc of info?.get_forecast_list?.() ?? []) {
+    for (const fc of info?.get_forecast_list() ?? []) {
         const [valid, ts] = fc.get_value_update();
         if (!valid || ts === 0)
             continue;

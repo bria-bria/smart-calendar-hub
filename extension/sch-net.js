@@ -54,6 +54,21 @@ function lanIconName(kind, ip) {
     return ip ? 'network-workgroup-symbolic' : 'network-offline-symbolic';
 }
 
+// WireGuard, OpenVPN, Tailscale…
+function isVpn(conn) {
+    return conn.get_vpn() || ['wireguard', 'tun', 'vpn'].includes(conn.get_connection_type());
+}
+
+function ipv4Of(conn) {
+    return conn.get_ip4_config()?.get_addresses()?.[0]?.get_address() ?? null;
+}
+
+// a global IPv6 address (not the link-local fe80:…)
+function ipv6Of(conn) {
+    return (conn.get_ip6_config()?.get_addresses() ?? []).map(a => a.get_address())
+        .find(a => a && !a.toLowerCase().startsWith('fe80')) ?? null;
+}
+
 const IpIndicator = GObject.registerClass(
 class IpIndicator extends PanelMenu.Button {
     _init(owner) {
@@ -276,50 +291,40 @@ export class IpView {
     // else a global IPv6 address.
     _lanConnection() {
         // VPN tunnels and the loopback (127.0.0.1) are not the local network
-        const isVpn = c => c.get_vpn?.() ||
-            ['wireguard', 'tun', 'vpn', 'loopback'].includes(c.get_connection_type?.());
-        const actives = (this._client?.get_active_connections() ?? []).filter(c => !isVpn(c));
+        const isLan = c => !isVpn(c) && c.get_connection_type() !== 'loopback';
+        const actives = (this._client?.get_active_connections() ?? []).filter(isLan);
         const primary = this._client?.get_primary_connection();
         const candidates = [
-            ...(primary && !isVpn(primary) ? [primary] : []),
-            ...actives.filter(c => c.get_default?.()),
-            ...actives.filter(c => c.get_default6?.()),
+            ...(primary && isLan(primary) ? [primary] : []),
+            ...actives.filter(c => c.get_default()),
+            ...actives.filter(c => c.get_default6()),
             ...actives,
         ];
         const kindOf = c => {
-            const type = c.get_connection_type?.();
+            const type = c.get_connection_type();
             if (type === '802-11-wireless')
                 return 'wifi';
             if (type === '802-3-ethernet')
                 return 'wired';
             return 'other';
         };
-        for (const conn of candidates) {
-            const v4 = conn.get_ip4_config()?.get_addresses()?.[0]?.get_address();
-            if (v4)
-                return {ip: v4, kind: kindOf(conn)};
-        }
-        for (const conn of candidates) {
-            const v6 = (conn.get_ip6_config()?.get_addresses() ?? [])
-                .map(a => a.get_address())
-                .find(a => a && !a.toLowerCase().startsWith('fe80'));
-            if (v6)
-                return {ip: v6, kind: kindOf(conn)};
+        for (const read of [ipv4Of, ipv6Of]) {
+            for (const conn of candidates) {
+                const ip = read(conn);
+                if (ip)
+                    return {ip, kind: kindOf(conn)};
+            }
         }
         return {ip: null, kind: null};
     }
 
     // The active VPNs (Tailscale, WireGuard, OpenVPN…) with an address
     _vpnConnections() {
-        const isVpn = c => c.get_vpn?.() ||
-            ['wireguard', 'tun', 'vpn'].includes(c.get_connection_type?.());
         const vpns = [];
         for (const conn of (this._client?.get_active_connections() ?? []).filter(isVpn)) {
-            const ip = conn.get_ip4_config()?.get_addresses()?.[0]?.get_address() ??
-                (conn.get_ip6_config()?.get_addresses() ?? []).map(a => a.get_address())
-                    .find(a => a && !a.toLowerCase().startsWith('fe80'));
+            const ip = ipv4Of(conn) ?? ipv6Of(conn);
             if (ip)
-                vpns.push({ip, name: conn.get_id?.() || 'VPN'});
+                vpns.push({ip, name: conn.get_id() || 'VPN'});
         }
         return vpns;
     }

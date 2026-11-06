@@ -44,33 +44,18 @@ function page(...children) {
         if (child)
             box.add_child(child);
     let primary = false;
-    const visit = actor => {
-        for (const c of actor.get_children()) {
-            if (c.has_style_class_name?.('sch-kit-button-primary')) {
-                if (primary)
-                    c.remove_style_class_name('sch-kit-button-primary');
-                primary = true;
-            }
-            visit(c);
-        }
-    };
-    visit(box);
-    // pieces added later follow the same rule
-    box.connect('child-added', (_box, child) => {
-        const added = [child];
-        const all = actor => {
-            for (const c of actor.get_children())
-                added.push(c), all(c);
-        };
-        all(child);
-        for (const c of added) {
-            if (!c.has_style_class_name?.('sch-kit-button-primary'))
-                continue;
+    const demote = actor => {
+        // pages of other extensions may hold plain Clutter actors
+        if (actor.has_style_class_name?.('sch-kit-button-primary')) {
             if (primary)
-                c.remove_style_class_name('sch-kit-button-primary');
+                actor.remove_style_class_name('sch-kit-button-primary');
             primary = true;
         }
-    });
+        actor.get_children().forEach(demote);
+    };
+    box.get_children().forEach(demote);
+    // pieces added later follow the same rule
+    box.connect('child-added', (_box, child) => demote(child));
     return box;
 }
 

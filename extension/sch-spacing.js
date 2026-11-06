@@ -108,13 +108,9 @@ export class PanelSpacing {
         if (!entry)
             return;
         this._buttons.delete(button);
-        try {
-            button.disconnect(entry.id);
-            button.disconnect(entry.destroyId);
-            button.set_style(entry.style ?? null);
-            refresh(button);
-        } catch (_e) {
-            // the button is already gone
-        }
+        button.disconnect(entry.id);
+        button.disconnect(entry.destroyId);
+        button.set_style(entry.style ?? null);
+        refresh(button);
     }
 }

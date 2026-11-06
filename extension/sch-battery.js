@@ -26,6 +26,8 @@ import UPower from 'gi://UPowerGlib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {ExtensionState} from 'resource:///org/gnome/shell/misc/extensionUtils.js';
 
+import {BII_UUID} from './sch-settings-model.js';
+
 const ICON_SIZE = 16; // GNOME's panel icon size (panel.js PANEL_ICON_SIZE)
 const SLIDE_MS = 800;
 const LOW = 20;
@@ -33,7 +35,6 @@ const CRITICAL = 10;
 const YELLOW = [0.96, 0.83, 0.18]; // GNOME palette yellow 3
 const RED = [0.88, 0.11, 0.14]; // GNOME palette red 3
 const WAIT_TRIES = 40; // GNOME builds the system indicator a little later
-const BATTERY_INDICATOR_ICON_UUID = 'battery-indicator-icon@Deminder';
 
 export class CircleBattery {
     constructor(settings) {
@@ -49,7 +50,7 @@ export class CircleBattery {
         // Battery Indicator Icon switched on or off while GNOME runs
         this._extId = Main.extensionManager.connect('extension-state-changed',
             (_m, ext) => {
-                if (ext?.uuid === BATTERY_INDICATOR_ICON_UUID)
+                if (ext?.uuid === BII_UUID)
                     this._sync();
             });
         this._sync();
@@ -58,7 +59,7 @@ export class CircleBattery {
     // Battery Indicator Icon is active in this mode (session, lock or login
     // screen): the battery is its own
     _theirsActive() {
-        return Main.extensionManager.lookup(BATTERY_INDICATOR_ICON_UUID)?.state === ExtensionState.ACTIVE;
+        return Main.extensionManager.lookup(BII_UUID)?.state === ExtensionState.ACTIVE;
     }
 
     destroy() {
@@ -133,21 +134,11 @@ export class CircleBattery {
         if (this._animId)
             GLib.source_remove(this._animId);
         this._animId = 0;
-        for (const [obj, id] of this._ids) {
-            try {
-                obj.disconnect(id);
-            } catch (_e) {
-                // already gone
-            }
-        }
+        for (const [obj, id] of this._ids)
+            obj.disconnect(id);
         this._ids = [];
-        if (this._icon) {
-            try {
-                this._icon.visible = this._iconWasVisible ?? true;
-            } catch (_e) {
-                // GNOME's indicator is gone (shell exit)
-            }
-        }
+        if (this._icon)
+            this._icon.visible = this._iconWasVisible ?? true;
         this._area?.destroy();
         this._area = null;
         this._icon = null;

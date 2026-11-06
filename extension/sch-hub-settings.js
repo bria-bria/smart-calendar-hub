@@ -85,8 +85,8 @@ function modelRows(row, ctx, parentOn = null) {
         break;
     }
     case 'choice': {
-        // as in the Preferences: the chosen value under the title, a click
-        // shows every value, with a check on the chosen one
+        // the chosen value under the title; a click shows every value, with
+        // a check on the chosen one
         let open = false;
         const labelOf = value => row.options.find(([v]) => v === value)?.[1] ?? '';
         const options = [];
