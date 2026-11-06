@@ -28,13 +28,9 @@
     margin: 2px 4px;
 }
 
-.sch-tray-box {
-    spacing: 4px;
-}
-
-/* every icon in a cell of the same size, centred */
+/* no space between the cells: like the top bar, the space is inside the
+   cell (its width is set by _trayCellStyle in extension.js) */
 .sch-tray-cell {
-    width: 32px;
     height: 32px;
 }
 
@@ -67,7 +63,6 @@
 
 /* The button fills its cell; hover shows the whole cell */
 .sch-tray-box .panel-button {
-    min-width: 32px;
     min-height: 32px;
     padding: 0;
     border-radius: 8px;
@@ -567,6 +562,16 @@
 
 .sch-sky {
     margin-left: 8px;
+}
+
+/* the sun and moon open Vesperal's menu, when it is installed */
+.sch-sky-button {
+    padding: 0;
+    border-radius: 12px;
+}
+
+.sch-sky-button:hover {
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Silence an app: bell on the notification and the row of durations */

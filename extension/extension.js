@@ -10,6 +10,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import GWeather from 'gi://GWeather';
+import Gettext from 'gettext';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 
@@ -27,6 +28,8 @@ import {ClockWeather} from './sch-clock-weather.js';
 import {WorldClocksCard, stopTimerCountdowns} from './sch-world-clocks.js';
 import {pageKit} from './sch-page-kit.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
+import {BannerGuard} from './sch-banner-guard.js';
+import {buildVesperalPage, vesperalSettings} from './sch-vesperal.js';
 import {logError, logWarning} from './sch-log.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -56,6 +59,18 @@ const ROLES_NEVER_IN_TRAY = new Set([
     'activities-icon-button',
 ]);
 
+// Vesperal (extensions.gnome.org/extension/11329): with it installed, a click
+// on our sun and moon opens its menu (dawn, sunset, day length) in the panel
+const SKY_MENU_ROLE = 'vesperal@kornifex.github.io';
+
+// Freon (extensions.gnome.org/extension/841): its button shows an icon and a
+// temperature for each chosen sensor; on request, one thermometer instead
+const FREON_ROLE = 'freonMenu';
+const FREON_UUID = 'freon@UshakovVasilii_Github.yahoo.com';
+
+// Names for the icons whose only name is their role in the top bar
+const TRAY_NAMES = {[FREON_ROLE]: 'Freon'};
+
 
 // Weather section open or closed. Module-level on purpose: it survives
 // disable/enable (screen lock) and goes back to closed at the next login.
@@ -65,6 +80,18 @@ let weatherExpanded = false;
 let calendarSide = false;
 // Frame of the menu's content box (see _measureCardFrame)
 let cardFrame = null;
+
+// A box that never asks for less than its full height. A scroll view gives
+// its content only the minimum height: an app's menu whose rows can shrink
+// would be squashed (rows on top of each other) instead of scrolled when
+// there is little room, e.g. with the calendar open under it.
+const FullHeightBox = GObject.registerClass(
+class FullHeightBox extends St.BoxLayout {
+    vfunc_get_preferred_height(forWidth) {
+        const [, natural] = super.vfunc_get_preferred_height(forWidth);
+        return [natural, natural];
+    }
+});
 // Room the calendar days gain in the card beside the panel, where the side
 // bands are narrower (.sch-calendar-card .sch-cal-card in the stylesheet:
 // 4 px instead of 12 px each side, and no 2 px panel padding)
@@ -166,6 +193,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._buildWeatherBadge();
         this._buildAlertDot();
         this._applyTopBarPosition();
+        this._syncSkyIcon();
+        this._syncFreonIcon();
         this._watchPanelBoxes();
         this._ipView = new IpView(this._settings);
         // IP addresses in the side panel, under the tray (if switched on)
@@ -207,6 +236,9 @@ export default class SmartCalendarHubExtension extends Extension {
         this._enableToken = null;
         this._disabling = true;
         unloadUserTranslations();
+        this._showSkyIcon();
+        this._unsetFreonIcon();
+        this._syncAllDay(false);
 
         // First, so its panel role is freed even if a later step fails
         try {
@@ -258,6 +290,8 @@ export default class SmartCalendarHubExtension extends Extension {
             this._releaseBanners(source);
         this._bannerPolicies = null;
         this._unpatchNotificationMessages();
+        this._bannerGuard?.destroy();
+        this._bannerGuard = null;
         for (const [sni, ids] of this._alertTray ?? []) {
             this._accountTrayIcon(sni); // last stretch of time of its icon
             ids.forEach(id => safeDisconnect(sni, id));
@@ -341,6 +375,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._calendarView?.destroy();
         this._skyView?.destroy();
         this._skyView = null;
+        this._skyButton?.destroy();
+        this._skyButton = null;
         // Our own pieces of the panel (GNOME's widgets are back in their
         // places already): destroyed and forgotten one by one, then the panel
         this._trayMenuHost?.destroy();
@@ -498,12 +534,26 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._restoreTopBarOrganizer();
             this._applyTopBarPosition();
             break;
+        case 'vesperal-hide-icon':
+            this._syncSkyIcon();
+            break;
+        case 'freon-single-icon':
+            this._syncFreonIcon();
+            break;
         case 'muted-apps':
             this._mutedCache = null;
             this._updateAlertDot();
             break;
         case 'alert-apps':
             this._updateAlertDot();
+            break;
+        case 'banners-away-from-mouse':
+            this._syncBannerGuard();
+            break;
+        case 'top-bar-spacing':
+            for (const info of this._movedTrayItems.values())
+                info.cell.set_style(this._trayCellStyle());
+            this._queueTrayScrollbar();
             break;
         case 'sidebar-width':
         case 'sidebar-width-gnome':
@@ -640,6 +690,99 @@ export default class SmartCalendarHubExtension extends Extension {
         }
     }
 
+    // Vesperal's own icon next to the clock, hidden on request: its menu
+    // still opens from our sun and moon. Followed when Vesperal is turned on
+    // later (its icon arrives in the top bar).
+    _syncSkyIcon() {
+        const container = Main.panel.statusArea[SKY_MENU_ROLE]?.container ?? null;
+        if (!this._settings.get_boolean('vesperal-hide-icon') || container !== this._hiddenSkyIcon)
+            this._showSkyIcon();
+        if (container && this._settings.get_boolean('vesperal-hide-icon')) {
+            container.hide();
+            this._hiddenSkyIcon = container;
+        }
+    }
+
+    _showSkyIcon() {
+        // shown again only if it is still Vesperal's (not destroyed with it)
+        if (this._hiddenSkyIcon && Main.panel.statusArea[SKY_MENU_ROLE]?.container === this._hiddenSkyIcon)
+            this._hiddenSkyIcon.show();
+        this._hiddenSkyIcon = null;
+    }
+
+    // Freon's button with one thermometer (its own icon) instead of an icon
+    // and a temperature per sensor, which crowd a tray cell. Its pieces are
+    // only hidden: they come back when switched off.
+    _syncFreonIcon() {
+        const indicator = Main.panel.statusArea[FREON_ROLE] ?? null;
+        const want = !!indicator && this._settings.get_boolean('freon-single-icon');
+        if (this._freonIcon && (!want || this._freonIcon.get_parent() !== indicator))
+            this._unsetFreonIcon();
+        if (!want || this._freonIcon)
+            return;
+        const icon = new St.Icon({style_class: 'system-status-icon', icon_name: 'temperature-symbolic'});
+        const path = Main.extensionManager.lookup(FREON_UUID)?.path;
+        if (path)
+            icon.gicon = Gio.icon_new_for_string(`${path}/icons/freon-temperature-symbolic.svg`);
+        this._freonHidden = indicator.get_children();
+        for (const child of this._freonHidden)
+            child.hide();
+        // first: a top bar button lays out only its first child (ButtonBox)
+        indicator.insert_child_at_index(icon, 0);
+        this._freonIcon = icon;
+        // Freon switched off: its button goes, and our icon with it
+        this._connect(icon, 'destroy', () => {
+            this._freonIcon = null;
+            this._freonHidden = null;
+        });
+    }
+
+    // "All Day" of the Today card moved up: next to "Today" ("Today · All
+    // Day") when every event of the day lasts the whole day, otherwise next
+    // to the name of those events; their own "All Day" line goes. With
+    // on = false everything goes back as GNOME wrote it.
+    _syncAllDay(on = true) {
+        const item = this._dateMenu?._eventsItem;
+        const list = item?._eventsList;
+        const title = item?._title;
+        if (!list || !title || !this._allDayText)
+            return;
+        // ours, longer than GNOME's short "All Day": there is room on this line
+        const suffix = ` · ${_('The whole day')}`;
+        const rows = [];
+        for (const box of list.get_children()) {
+            const labels = box.get_children?.() ?? [];
+            const time = labels.find(l => l.has_style_class_name?.('event-time'));
+            const summary = labels.find(l => l.has_style_class_name?.('event-summary'));
+            if (time && summary)
+                rows.push({time, summary, allDay: time.text === this._allDayText});
+        }
+        const every = on && rows.length > 0 && rows.every(r => r.allDay);
+        const base = title.text.endsWith(suffix) ? title.text.slice(0, -suffix.length) : title.text;
+        title.text = every ? base + suffix : base;
+        for (const {time, summary, allDay} of rows) {
+            const name = summary.text.endsWith(suffix) ? summary.text.slice(0, -suffix.length) : summary.text;
+            summary.text = on && allDay && !every ? name + suffix : name;
+            time.visible = !(on && allDay);
+        }
+    }
+
+    _unsetFreonIcon() {
+        const icon = this._freonIcon;
+        if (!icon)
+            return;
+        for (const child of this._freonHidden ?? []) {
+            try {
+                child.show();
+            } catch (_e) {
+                // Freon replaced it
+            }
+        }
+        icon.destroy();
+        this._freonIcon = null;
+        this._freonHidden = null;
+    }
+
     // When other extensions add icons, re-check tray and clock position (once per idle).
     _watchPanelBoxes() {
         for (const box of [Main.panel._leftBox, Main.panel._centerBox, Main.panel._rightBox]) {
@@ -650,6 +793,8 @@ export default class SmartCalendarHubExtension extends Extension {
                     this._idleId = 0;
                     this._syncTray();
                     this._applyTopBarPosition();
+                    this._syncSkyIcon();
+                    this._syncFreonIcon();
                     return GLib.SOURCE_REMOVE;
                 });
             });
@@ -693,6 +838,7 @@ export default class SmartCalendarHubExtension extends Extension {
         for (const source of Main.messageTray.getSources())
             this._watchSource(source);
         this._patchNotificationMessages();
+        this._syncBannerGuard();
         this._buildAlertTip();
         this._syncTrayAlerts();
     }
@@ -779,7 +925,6 @@ export default class SmartCalendarHubExtension extends Extension {
         const proto = MessageList.NotificationMessageGroup?.prototype;
         if (!proto?._addNotification || this._origAddNotification)
             return;
-        this._muteButtons = new Set();
         const ext = this;
         const orig = this._origAddNotification = proto._addNotification;
         this._addNotificationWrapper = proto._addNotification = function (notification) {
@@ -811,14 +956,13 @@ export default class SmartCalendarHubExtension extends Extension {
             logWarning('_addNotification patched by someone else, left as is');
         this._origAddNotification = null;
         this._addNotificationWrapper = null;
-        for (const actor of this._muteButtons ?? []) {
-            try {
-                actor.destroy();
-            } catch (_e) {
-                // the notification is already gone
-            }
+        // A message stays in its group's map until it is destroyed, so this
+        // reaches every bell we added
+        const groups = this._dateMenu._messageList?._messageView?._notificationSourceToGroup;
+        for (const group of groups?.values() ?? []) {
+            for (const message of group._notificationToMessage?.values() ?? [])
+                message._schMuteActors?.forEach(actor => actor.destroy());
         }
-        this._muteButtons = null;
     }
 
     // groupSource: the source of GNOME's message group, which always knows
@@ -827,7 +971,7 @@ export default class SmartCalendarHubExtension extends Extension {
         const sourceOf = () => notification.source ?? groupSource;
         const header = message._header;
         const vbox = message.get_child();
-        if (!header?.closeButton || !vbox || message._schMuteBell)
+        if (!header?.closeButton || !vbox || message._schMuteActors)
             return;
 
         const bell = new St.Button({
@@ -837,13 +981,12 @@ export default class SmartCalendarHubExtension extends Extension {
             accessible_name: _('Silence notifications from this app'),
         });
         header.insert_child_below(bell, header.closeButton);
-        message._schMuteBell = bell;
         // Handlers on GNOME's message: the message outlives the extension
         // (disabled on screen lock, enabled again on unlock), so they go away
         // with the bell instead of touching destroyed widgets later.
         const messageIds = [];
         bell.connect('destroy', () => {
-            delete message._schMuteBell;
+            delete message._schMuteActors;
             for (const id of messageIds) {
                 try {
                     message.disconnect(id);
@@ -942,9 +1085,16 @@ export default class SmartCalendarHubExtension extends Extension {
         }));
         sync();
 
-        for (const actor of [bell, row, note]) {
-            this._muteButtons?.add(actor);
-            actor.connect('destroy', () => this._muteButtons?.delete(actor));
+        message._schMuteActors = [bell, row, note];
+    }
+
+    _syncBannerGuard() {
+        const on = this._settings.get_boolean('banners-away-from-mouse');
+        if (on && !this._bannerGuard) {
+            this._bannerGuard = new BannerGuard();
+        } else if (!on) {
+            this._bannerGuard?.destroy();
+            this._bannerGuard = null;
         }
     }
 
@@ -1483,7 +1633,14 @@ export default class SmartCalendarHubExtension extends Extension {
         // the sky follows the city shown in the weather (arrows): its coordinates
         this._skyView = new SkyView(dm._weatherItem?._weatherClient ?? null, this._settings,
             () => this._cityWeather?.coords() ?? null);
-        dateRow.add_child(this._skyView.actor);
+        this._skyButton = new St.Button({
+            style_class: 'sch-sky-button',
+            child: this._skyView.actor,
+            reactive: false,
+            accessible_name: _('Sunrise and sunset'),
+        });
+        this._connect(this._skyButton, 'clicked', () => this._openSkyMenu());
+        dateRow.add_child(this._skyButton);
         this._adopt(dm._date, dateRow);
         this._dateAlignOrig = [dm._date?._dayLabel, dm._date?._dateLabel]
             .filter(Boolean)
@@ -1550,8 +1707,16 @@ export default class SmartCalendarHubExtension extends Extension {
         });
 
         expander.connect('clicked', () => {
-            // an app's menu or an extension's page shown above (tray-menu-fill):
-            // it goes first, with its side card, then the calendar opens
+            // an app's menu shown above (tray-menu-fill) stays open: the
+            // calendar opens and closes under it, in the panel
+            const shown = this._insideMenu;
+            if (shown && !shown.side && !calendarSide && this._settings.get_boolean('tray-menu-fill')) {
+                this._setCalendarExpanded(!this._calendarBox.visible);
+                // Esc and the arrows keep going to the menu
+                this._trayMenuHost.grab_key_focus();
+                return;
+            }
+            // otherwise the page goes first, with its side card
             this._closeTrayMenu();
             // with the calendar beside the panel, the row brings it back inside
             if (calendarSide) {
@@ -1577,6 +1742,9 @@ export default class SmartCalendarHubExtension extends Extension {
                 this._calendarView?.reloadCalendars();
                 this._cityWeather?.refresh();
                 this._skyView?.start();
+                // clickable only while Vesperal is there
+                if (this._skyButton)
+                    this._skyButton.reactive = !!Main.panel.statusArea[SKY_MENU_ROLE]?.menu;
                 this._worldClocks?.start();
             } else {
                 this._trayMenuManager?.activeMenu?.close();
@@ -1599,6 +1767,16 @@ export default class SmartCalendarHubExtension extends Extension {
                 GObject.signal_stop_emission_by_name(dm._eventsItem, 'clicked');
                 this._setCalendarSide(!calendarSide);
             });
+        }
+        // Under an event that lasts the whole day GNOME writes "All Day" on a
+        // line of its own: moved next to the title (see _syncAllDay). GNOME
+        // builds the list again on every change: each new row is checked as
+        // it arrives.
+        const eventsList = dm._eventsItem?._eventsList;
+        if (eventsList) {
+            this._allDayText = Gettext.domain('gnome-shell').pgettext('event list time', 'All Day');
+            this._connect(eventsList, 'child-added', () => this._syncAllDay());
+            this._syncAllDay();
         }
         this._connect(this._settings, 'changed::show-today-events', () => this._syncToday());
         this._syncToday();
@@ -2135,7 +2313,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // which would rewrite the list at every new message
         return sni?.title || sni?.accessibleName || sni?.id ||
             indicator._icon?.title || indicator._icon?.wm_class ||
-            indicator.accessible_name || role;
+            indicator.accessible_name || TRAY_NAMES[role] || role;
     }
 
     _wantsInTray(role, indicator) {
@@ -2295,6 +2473,12 @@ export default class SmartCalendarHubExtension extends Extension {
         this._queueTrayScrollbar();
     }
 
+    // A cell as wide as an icon's button in the top bar: the 16 px icon,
+    // GNOME's 3 px border on each side and the space chosen for the bar
+    _trayCellStyle() {
+        return `width: ${22 + 2 * this._settings.get_int('top-bar-spacing')}px`;
+    }
+
     // The tray box only with icons; the spacer keeps the settings button on
     // the right when the box is hidden.
     _showTraySection(visible) {
@@ -2321,7 +2505,7 @@ export default class SmartCalendarHubExtension extends Extension {
             xAlign: container.x_align,
             yAlign: container.y_align,
             // a cell of ours, all of the same size, with the icon centred
-            cell: new St.Bin({style_class: 'sch-tray-cell'}),
+            cell: new St.Bin({style_class: 'sch-tray-cell', style: this._trayCellStyle()}),
             menuId: 0,
             destroyId: 0,
         };
@@ -2528,10 +2712,14 @@ export default class SmartCalendarHubExtension extends Extension {
         header.add_child(this._trayMenuTitle);
         this._trayMenuHost.add_child(header);
 
-        this._trayMenuContent = new St.BoxLayout({
+        // the scrolled box holds a box at full height: the menu scrolls,
+        // it is never squashed
+        this._trayMenuContent = new FullHeightBox({
             orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
         });
+        const viewport = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+        viewport.add_child(this._trayMenuContent);
         this._trayMenuScroll = new St.ScrollView({
             style_class: 'sch-tray-menu-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
@@ -2539,7 +2727,7 @@ export default class SmartCalendarHubExtension extends Extension {
             overlay_scrollbars: true,
             x_expand: true,
             y_expand: true,
-            child: this._trayMenuContent,
+            child: viewport,
         });
         this._trayMenuHost.add_child(this._trayMenuScroll);
         // short messages of an extension's page (showPageMessage)
@@ -2647,7 +2835,62 @@ export default class SmartCalendarHubExtension extends Extension {
             ? hub.title
             : this._trayLabel(info.role, indicator).replace(/\s+indicator$/i, '');
         this._enterTrayPage(shown, title);
-        info.cell.add_style_class_name('sch-tray-cell-open');
+        info.cell?.add_style_class_name('sch-tray-cell-open');
+    }
+
+    // The menu of Vesperal in the panel, as a tray menu (its icon stays next
+    // to the clock, with its own floating menu)
+    _openSkyMenu() {
+        const indicator = Main.panel.statusArea[SKY_MENU_ROLE];
+        if (!indicator?.menu)
+            return;
+        indicator.menu.close();
+        this._showTrayMenu(indicator, {role: SKY_MENU_ROLE, key: SKY_MENU_ROLE, cell: null});
+        if (this._insideMenu?.menu === indicator.menu)
+            this._swapSkyPreferences(this._insideMenu);
+    }
+
+    // In the panel, the last item of Vesperal's menu ("Preferences") opens
+    // its main settings in the card beside the panel instead of its window:
+    // for the visit its item is hidden and one of ours takes its place
+    _swapSkyPreferences(shown) {
+        const items = shown.menu._getMenuItems?.() ?? [];
+        const theirs = items[items.length - 1];
+        // its own text, in its own translation: the item it adds with
+        // menu.addAction() with its translated "Preferences"
+        if (!(theirs instanceof PopupMenu.PopupMenuItem) ||
+            theirs.label.text !== Gettext.dgettext('vesperal', 'Preferences'))
+            return;
+        const ours = new PopupMenu.PopupMenuItem(theirs.label.text);
+        this._connect(ours, 'activate', () => this._toggleSkySettings(shown));
+        theirs.hide();
+        shown.menu.addMenuItem(ours);
+        (shown.onClose ??= []).push(() => {
+            ours.destroy();
+            theirs.show();
+        });
+    }
+
+    _toggleSkySettings(shown) {
+        if (this._insideMenu !== shown)
+            return;
+        if (shown.side) {
+            this._hideSidePage(shown);
+            return;
+        }
+        const settings = vesperalSettings();
+        if (!settings) {
+            Main.extensionManager.openExtensionPrefs(SKY_MENU_ROLE, '', {});
+            return;
+        }
+        this._showSidePage(shown, () => buildVesperalPage(settings), {
+            sideTitle: 'Vesperal',
+            sideActions: [{
+                icon: 'window-close-symbolic',
+                label: _('Close'),
+                onClick: () => this._hideSidePage(shown),
+            }],
+        });
     }
 
     // Public, for other extensions: show a page of theirs in the panel, with
@@ -2985,6 +3228,7 @@ export default class SmartCalendarHubExtension extends Extension {
     // empty room before the items when the menu has no check marks at all
     _tidyTrayMenu() {
         this._prefillTraySubmenus();
+        this._passSubmenuScroll();
         // the extension styles itself inside the hub
         if (this._insideMenu?.hub?.keepStyle)
             return;
@@ -3082,6 +3326,29 @@ export default class SmartCalendarHubExtension extends Extension {
         roots.forEach(visit);
     }
 
+    // A sub-menu is a scroll view of its own, sized for a floating menu: in
+    // our card it gets all its height and our card scrolls, so its mouse
+    // wheel is passed on (otherwise a long list, e.g. the temperatures of
+    // Freon, takes the wheel and moves nothing)
+    _passSubmenuScroll() {
+        const shown = this._insideMenu;
+        const root = shown?.box ?? shown?.page;
+        if (!root)
+            return;
+        shown.wheel ??= new Map();
+        const visit = actor => {
+            for (const child of actor.get_children()) {
+                if (child instanceof St.ScrollView && child.has_style_class_name('popup-sub-menu') &&
+                    !shown.wheel.has(child)) {
+                    shown.wheel.set(child, child.enable_mouse_scrolling);
+                    child.enable_mouse_scrolling = false;
+                }
+                visit(child);
+            }
+        };
+        visit(root);
+    }
+
     _isTrayMenuCard(widget) {
         if (widget.reactive || widget instanceof St.Button)
             return false;
@@ -3133,6 +3400,20 @@ export default class SmartCalendarHubExtension extends Extension {
         for (const [widget, style] of shown.cleared) {
             try {
                 widget.set_style(style);
+            } catch (_e) {
+                // the app destroyed it
+            }
+        }
+        for (const restore of shown.onClose ?? []) {
+            try {
+                restore();
+            } catch (e) {
+                logError(`tray menu: ${e}`);
+            }
+        }
+        for (const [view, wheel] of shown.wheel ?? []) {
+            try {
+                view.enable_mouse_scrolling = wheel;
             } catch (_e) {
                 // the app destroyed it
             }
@@ -3191,8 +3472,13 @@ export default class SmartCalendarHubExtension extends Extension {
                 // already gone
             }
         }
+        // the calendar may have been opened or closed under the menu
+        // (tray-menu-fill): notifications, "Today" and the bottom buttons
+        // follow it again
+        if (this._calendarBox)
+            this._setCalendarExpanded(this._calendarBox.visible);
         try {
-            shown.info?.cell.remove_style_class_name('sch-tray-cell-open');
+            shown.info?.cell?.remove_style_class_name('sch-tray-cell-open');
         } catch (_e) {
             // the icon is gone
         }

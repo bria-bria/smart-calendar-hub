@@ -105,6 +105,11 @@
       <summary>The calendar beside the panel when the panel opens: closed, as it was left, or open</summary>
     </key>
 
+    <key name="banners-away-from-mouse" type="b">
+      <default>false</default>
+      <summary>A notification banner waits while the pointer is where it would appear (critical ones do not wait)</summary>
+    </key>
+
     <key name="show-today-events" type="b">
       <default>true</default>
       <summary>Show GNOME's "Today" card with the events of the day above the notifications</summary>
@@ -265,6 +270,17 @@
       <default>false</default>
       <summary>Keep the Top Bar Organizer extension in sync</summary>
       <description>When enabled, the clock position is also written into the settings of the Top Bar Organizer extension, so the two do not fight. The previous order is restored when this extension is disabled.</description>
+    </key>
+
+    <key name="vesperal-hide-icon" type="b">
+      <default>false</default>
+      <summary>Hide the Vesperal icon in the top bar</summary>
+      <description>With the Vesperal extension installed, its icon next to the clock is hidden; its menu still opens with a click on the sun and moon of the panel.</description>
+    </key>
+    <key name="freon-single-icon" type="b">
+      <default>false</default>
+      <summary>One thermometer for Freon</summary>
+      <description>With the Freon extension installed, its button shows a single thermometer icon instead of an icon and a temperature for each chosen sensor. Its temperatures stay in its menu.</description>
     </key>
   </schema>
 </schemalist>

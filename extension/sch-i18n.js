@@ -41,6 +41,58 @@ const IT = {
         "{app} (icona del vassoio)",
     "Weather":
         "Meteo",
+    "Sunrise and sunset":
+        "Alba e tramonto",
+    "The whole day":
+        "Tutta la giornata",
+    // --- Preferences, page "Extensions" (prefs.js) ---
+    "Extensions":
+        "Estensioni",
+    "Orders the icons of the top bar.":
+        "Mette in ordine le icone della barra in alto.",
+    "Sunrise, sunset and day length. With it installed, a click on the sun and moon of the panel opens its menu inside the panel.":
+        "Alba, tramonto e durata del giorno. Se è installata, un clic sul sole e la luna del pannello apre il suo menu dentro il pannello.",
+    "Hide its icon in the top bar":
+        "Nascondi la sua icona nella barra in alto",
+    "Its menu still opens from the sun and moon of the panel":
+        "Il suo menu si apre comunque dal sole e dalla luna del pannello",
+    "Temperatures of the processor, the disks and the graphics card, and the fans.":
+        "Temperature del processore, dei dischi e della scheda video, e le ventole.",
+    // --- Vesperal in the card beside the panel (sch-vesperal.js) ---
+    "Close":
+        "Chiudi",
+    "In the top bar":
+        "Nella barra in alto",
+    "Time until the next sunrise or sunset":
+        "Tempo che manca alla prossima alba o al prossimo tramonto",
+    "Time since the last sunrise or sunset":
+        "Tempo passato dall'ultima alba o dall'ultimo tramonto",
+    "Dawn and dusk":
+        "Alba e crepuscolo",
+    "Civil twilight (6°)":
+        "Crepuscolo civile (6°)",
+    "Nautical twilight (12°)":
+        "Crepuscolo nautico (12°)",
+    "Astronomical twilight (18°)":
+        "Crepuscolo astronomico (18°)",
+    "Arc of the sun":
+        "Arco del sole",
+    "Left of the time":
+        "A sinistra del tempo",
+    "Right of the time":
+        "A destra del tempo",
+    "Location":
+        "Posizione",
+    "From the location services":
+        "Dai servizi di localizzazione",
+    "The city chosen in its preferences":
+        "La città scelta nelle sue preferenze",
+    "All the preferences of Vesperal":
+        "Tutte le preferenze di Vesperal",
+    "One thermometer icon":
+        "Una sola icona a termometro",
+    "Its button shows one thermometer instead of an icon and a temperature for each sensor; the temperatures stay in its menu":
+        "Il suo pulsante mostra un solo termometro invece di un'icona e una temperatura per ogni sensore; le temperature restano nel suo menu",
     "Weather · {temp}° {place}":
         "Meteo · {temp}° {place}",
     "Settings":
@@ -137,6 +189,10 @@ const IT = {
         "Data",
     "Off: no date in the panel, and no sun or moon either":
         "Spento: niente data nel pannello, e niente sole e luna",
+    "Banners away from the mouse":
+        "Avvisi lontani dal mouse",
+    "While the pointer is where a notification would pop up, it waits and appears as soon as the pointer moves away (urgent ones appear at once)":
+        "Se il puntatore è dove apparirebbe una notifica, l'avviso aspetta e compare appena il puntatore si sposta (quelli urgenti compaiono subito)",
     "Today’s events":
         "Impegni di oggi",
     "A card with the events of the day above the notifications; click it to open the calendar beside the panel":

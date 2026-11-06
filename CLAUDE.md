@@ -29,7 +29,8 @@ integrata né spenta; le Preferenze mostrano un avviso se è spenta.
 
 Le icone del vassoio stanno su **una sola riga** (scelta di Michele, 05/11/2026)
 con una freccia per lato (◀ ▶) se non ci stanno, niente barra di scorrimento; ogni icona è in una casella
-nostra (`sch-tray-cell`, 32 px) con l'icona centrata, perché i pulsanti delle
+nostra (`sch-tray-cell`, alta 32 px, larga come un pulsante della barra:
+22 px + 2 × `top-bar-spacing`, 06/11/2026) con l'icona centrata, perché i pulsanti delle
 altre estensioni hanno larghezze diverse (con `set_size` sul contenitore non
 funzionava). NON usare `Clutter.FlowLayout`: su GNOME 51 dà altezza 0 ai
 pulsanti del pannello.
@@ -55,7 +56,8 @@ account di Michele, permesso di scrittura); ogni commit porta anche
 fare commit senza la riga di Claude.
 
 ## Schermate di blocco e di accesso (dal 05/11/2026)
-`session-modes`: user, unlock-dialog, gdm. Due livelli in `extension.js`:
+`session-modes`: user, unlock-dialog (EGO non ammette altro; `gdm` lo aggiunge
+`installa-schermata-accesso.sh` solo nella copia di sistema). Due livelli in `extension.js`:
 `TopBarStyle` (`sch-topbar-style.js`: colore d'accento, spazio icone, su
 blocco schermo e schermata di accesso anche la posizione dell'ora) è sempre
 attivo (allo sblocco l'ora torna prima al suo posto, poi la sistema il resto); tutto il

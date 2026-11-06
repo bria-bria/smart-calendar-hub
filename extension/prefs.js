@@ -402,13 +402,56 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
             title: _('Network'),
             icon_name: 'network-workgroup-symbolic',
         });
+        const pageExtensions = new Adw.PreferencesPage({
+            title: _('Extensions'),
+            icon_name: 'application-x-addon-symbolic',
+        });
         const pageLogin = new Adw.PreferencesPage({
             title: _('By hand'),
             icon_name: 'utilities-terminal-symbolic',
         });
-        for (const page of [pagePanel, pageTray, pageCalendars, pageNotifications, pageNetwork, pageLogin])
+        for (const page of [pagePanel, pageTray, pageCalendars, pageNotifications, pageNetwork, pageExtensions, pageLogin])
             window.add(page);
         byHandPage(window, pageLogin);
+
+        // ---------------- Extensions ----------------
+        // other extensions that Smart Calendar Hub works with: each setting
+        // matters only when that extension is installed
+        const tbo = new Adw.PreferencesGroup({
+            title: 'Top Bar Organizer',
+            description: _('Orders the icons of the top bar.'),
+        });
+        pageExtensions.add(tbo);
+        const tboRow = new Adw.SwitchRow({
+            title: _('Keep Top Bar Organizer in sync'),
+            subtitle: _('Also writes the clock position into the Top Bar Organizer extension settings; the previous order is restored when Smart Calendar Hub is turned off'),
+        });
+        settings.bind('sync-top-bar-organizer', tboRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        tbo.add(tboRow);
+
+        const vesperal = new Adw.PreferencesGroup({
+            title: 'Vesperal',
+            description: _('Sunrise, sunset and day length. With it installed, a click on the sun and moon of the panel opens its menu inside the panel.'),
+        });
+        pageExtensions.add(vesperal);
+        const vesperalRow = new Adw.SwitchRow({
+            title: _('Hide its icon in the top bar'),
+            subtitle: _('Its menu still opens from the sun and moon of the panel'),
+        });
+        settings.bind('vesperal-hide-icon', vesperalRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        vesperal.add(vesperalRow);
+
+        const freon = new Adw.PreferencesGroup({
+            title: 'Freon',
+            description: _('Temperatures of the processor, the disks and the graphics card, and the fans.'),
+        });
+        pageExtensions.add(freon);
+        const freonRow = new Adw.SwitchRow({
+            title: _('One thermometer icon'),
+            subtitle: _('Its button shows one thermometer instead of an icon and a temperature for each sensor; the temperatures stay in its menu'),
+        });
+        settings.bind('freon-single-icon', freonRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        freon.add(freonRow);
 
         // ---------------- Panel ----------------
         const position = new Adw.PreferencesGroup({
@@ -435,13 +478,6 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
                 ['left-after-menu', _('Left, after the menus')],
                 ['center', _('Center (GNOME default)')],
             ]));
-
-        const tboRow = new Adw.SwitchRow({
-            title: _('Keep Top Bar Organizer in sync'),
-            subtitle: _('Also writes the clock position into the Top Bar Organizer extension settings; the previous order is restored when Smart Calendar Hub is turned off'),
-        });
-        settings.bind('sync-top-bar-organizer', tboRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        position.add(tboRow);
 
         const look = new Adw.PreferencesGroup({
             title: _('Appearance'),
@@ -759,6 +795,14 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         }
 
         // ---------------- Notifications ----------------
+        const banners = new Adw.PreferencesGroup();
+        pageNotifications.add(banners);
+        const bannersRow = new Adw.SwitchRow({
+            title: _('Banners away from the mouse'),
+            subtitle: _('While the pointer is where a notification would pop up, it waits and appears as soon as the pointer moves away (urgent ones appear at once)'),
+        });
+        settings.bind('banners-away-from-mouse', bannersRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        banners.add(bannersRow);
         pageNotifications.add(mutedGroup(window, settings));
         pageNotifications.add(appSwitchGroup(window, settings, {
             title: _('Red dot on the clock'),

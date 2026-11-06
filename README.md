@@ -97,11 +97,10 @@ the panel; the preferences window shows a warning when that extension is off.
 ## Settings
 
 Open the preferences (Extensions app → Smart Calendar Hub) or click the gear
-icon next to the tray icons. They are in five tabs:
+icon next to the tray icons. They are in seven tabs:
 
 - **Panel**: panel side (right, left, under the clock), clock position in the
-  top bar, Top Bar Organizer sync (off by default; turn it on if you use Top
-  Bar Organizer, otherwise both extensions try to place the clock), the date
+  top bar, the date
   (it can be switched off, with the sun and the moon), the sky next to the date (sun and moon of the day, moon phase: each can be switched
   on alone), calendar collapsed on opening, panel width (or "Align to GNOME's
   menu": as wide as the system menu, automatically), space between the
@@ -128,7 +127,13 @@ icon next to the tray icons. They are in five tabs:
   under the tray icons with the chosen addresses (local network, every active
   VPN, public), shaped like the weather row, one at a time with arrows;
   click one to copy it.
-
+- **Extensions**: settings for the other extensions the hub works with, used
+  only when they are installed. Top Bar Organizer sync (off by default; turn
+  it on if you use Top Bar Organizer, otherwise both extensions try to place
+  the clock). Vesperal: a click on the sun and moon opens its menu inside the
+  panel (its "Preferences" item opens its main settings in the card beside
+  the panel), and its own icon next to the clock can be hidden. Freon: one
+  thermometer icon instead of an icon and a temperature for each sensor.
 - **By hand**: everything to be done outside the extension, with the
   commands to copy — the apps and extensions it uses, the extensions to switch
   off because they do the same things, calendar reminders that never show up,
@@ -165,7 +170,37 @@ It installs the extension for all users and copies your accent colour,
 tone, icon spacing and clock position to the login screen.
 `sudo ./installa-schermata-accesso.sh --rimuovi` takes it away.
 
-## Install from source
+## Install
+
+Smart Calendar Hub is distributed here on GitHub. Choose one of two ways.
+
+### Guided installer (easiest)
+
+1. Download `install.sh` from the [latest release](https://github.com/bria-bria/smart-calendar-hub/releases/latest).
+   You can open it with a text editor and read what it does first.
+2. Run it:
+   ```bash
+   bash install.sh
+   ```
+
+It checks your GNOME version, downloads the latest version of the extension
+(or uses the zip if you put it next to `install.sh`), checks the file,
+installs it and turns it on. It can also give the login screen the same
+top bar look: it asks first, and only that step needs your password.
+Run it again to update; `bash install.sh --uninstall` removes it.
+
+### By hand
+
+1. Download `smart-calendar-hub@bria-bria.github.io.shell-extension.zip`
+   from the [latest release](https://github.com/bria-bria/smart-calendar-hub/releases/latest).
+2. Install it:
+   ```bash
+   gnome-extensions install --force smart-calendar-hub@bria-bria.github.io.shell-extension.zip
+   ```
+3. Log out and back in, then switch it on in the Extensions app
+   (or run `gnome-extensions enable smart-calendar-hub@bria-bria.github.io`).
+
+### From source
 
 ```bash
 ./installa-smart-calendar-hub.sh
