@@ -272,12 +272,6 @@
       <summary>Width of the side panel in pixels</summary>
     </key>
 
-    <key name="sidebar-width-user" type="i">
-      <range min="0" max="4000"/>
-      <default>0</default>
-      <summary>Width of the panel chosen by dragging its inner edge (0: the width of the preferences)</summary>
-    </key>
-
     <key name="sync-top-bar-organizer" type="b">
       <default>false</default>
       <summary>Keep the Top Bar Organizer extension in sync</summary>

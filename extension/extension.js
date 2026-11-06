@@ -250,6 +250,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._resizeGrab?.dismiss();
         this._resizeGrab = null;
         this._liveWidth = 0;
+        this._draggedWidth = 0;
         this._endResize = null;
         // GNOME's menu box: back to its own cursor
         if (this._resizeHost) {
@@ -582,13 +583,6 @@ export default class SmartCalendarHubExtension extends Extension {
             break;
         case 'sidebar-width':
         case 'sidebar-width-gnome':
-            // a width chosen in the preferences replaces the dragged one
-            if (this._settings.get_int('sidebar-width-user') > 0)
-                this._settings.set_int('sidebar-width-user', 0);
-            this._updateSidebarSize();
-            this._layoutTray();
-            break;
-        case 'sidebar-width-user':
             this._updateSidebarSize();
             this._layoutTray();
             break;
@@ -1780,8 +1774,14 @@ export default class SmartCalendarHubExtension extends Extension {
                     this._skyButton.reactive = !!Main.panel.statusArea[SKY_MENU_ROLE]?.menu;
                 this._worldClocks?.start();
             } else {
-                // the panel closed while its edge was being dragged
+                // the panel closed while its edge was being dragged; it
+                // opens again at its usual width
                 this._endResize?.();
+                if (this._draggedWidth) {
+                    this._draggedWidth = 0;
+                    this._updateSidebarSize();
+                    this._layoutTray();
+                }
                 this._trayMenuManager?.activeMenu?.close();
                 this._closeTrayMenu();
                 this._skyView?.stop();
@@ -2117,9 +2117,8 @@ export default class SmartCalendarHubExtension extends Extension {
         // being dragged, or dragged earlier (the inner edge of the panel)
         if (this._liveWidth)
             return this._liveWidth;
-        const dragged = this._settings.get_int('sidebar-width-user');
-        if (dragged > 0)
-            return dragged;
+        if (this._draggedWidth)
+            return this._draggedWidth;
         if (!this._settings.get_boolean('sidebar-width-gnome'))
             return this._settings.get_int('sidebar-width');
         if (measure || !this._gnomeWidth)
@@ -2240,9 +2239,9 @@ export default class SmartCalendarHubExtension extends Extension {
 
     // The inner edge of the panel (the side towards the middle of the
     // screen) can be dragged to make the panel wider or narrower, to read
-    // the pages of other extensions better. The width is kept (setting
-    // sidebar-width-user) until a double click on the edge, or until the
-    // width is changed in the preferences.
+    // the pages of other extensions better. The wider panel lasts until it
+    // closes (or a double click on the edge): it opens again at its usual
+    // width.
     _setupResizeEdge() {
         const EDGE = 12; // px of the edge that can be taken
         const MIN = 280;
@@ -2269,7 +2268,7 @@ export default class SmartCalendarHubExtension extends Extension {
             this._resizeGrab?.dismiss();
             this._resizeGrab = null;
             if (this._liveWidth)
-                this._settings.set_int('sidebar-width-user', this._liveWidth);
+                this._draggedWidth = this._liveWidth;
             this._liveWidth = 0;
             drag = null;
         };
@@ -2303,7 +2302,10 @@ export default class SmartCalendarHubExtension extends Extension {
             const now = event.get_time();
             if (now - lastPress < 400) {
                 lastPress = 0;
-                this._settings.set_int('sidebar-width-user', 0);
+                this._draggedWidth = 0;
+                this._updateSidebarSize();
+                this._layoutTray();
+                this._relayout();
                 return Clutter.EVENT_STOP;
             }
             lastPress = now;
