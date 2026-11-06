@@ -482,7 +482,7 @@ export default class SmartCalendarHubExtension extends Extension {
         case 'tray-menus-floating':
             this._syncTrayMenuModes();
             break;
-        case 'tray-menu-card':
+        case 'tray-menu-blend':
             this._syncTrayMenuCard();
             break;
         case 'top-bar-position':
@@ -2553,10 +2553,10 @@ export default class SmartCalendarHubExtension extends Extension {
     _syncTrayMenuCard() {
         if (!this._trayMenuHost)
             return;
-        if (this._settings.get_boolean('tray-menu-card'))
-            this._trayMenuHost.remove_style_class_name('sch-tray-menu-host-flat');
-        else
+        if (this._settings.get_boolean('tray-menu-blend'))
             this._trayMenuHost.add_style_class_name('sch-tray-menu-host-flat');
+        else
+            this._trayMenuHost.remove_style_class_name('sch-tray-menu-host-flat');
     }
 
     // The menu leaves its floating box (hidden) for our card; every other
