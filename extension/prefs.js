@@ -939,6 +939,19 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         });
         settings.bind('banners-away-from-mouse', bannersRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         banners.add(bannersRow);
+        const marginRow = new Adw.SpinRow({
+            title: _('Area around the banner (percent)'),
+            subtitle: _('How much larger than the notification the area the mouse must leave is: 0 = only the notification itself'),
+            adjustment: new Gtk.Adjustment({
+                lower: 0,
+                upper: 200,
+                step_increment: 5,
+                page_increment: 25,
+            }),
+        });
+        settings.bind('banners-away-margin', marginRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('banners-away-from-mouse', marginRow, 'sensitive', Gio.SettingsBindFlags.GET);
+        banners.add(marginRow);
         pageNotifications.add(mutedGroup(window, settings));
         pageNotifications.add(appSwitchGroup(window, settings, {
             title: _('Red dot on the clock'),

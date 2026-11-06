@@ -43,6 +43,10 @@ const IT = {
         "Meteo",
     "Sunrise and sunset":
         "Alba e tramonto",
+    "Area around the banner (percent)":
+        "Area intorno all'avviso (percentuale)",
+    "How much larger than the notification the area the mouse must leave is: 0 = only the notification itself":
+        "Quanto è più grande dell'avviso l'area da cui il mouse deve uscire: 0 = solo l'avviso stesso",
     "The whole day":
         "Tutta la giornata",
     // --- Preferences, page "Extensions" (prefs.js) ---

@@ -110,6 +110,12 @@
       <summary>A notification banner waits while the pointer is where it would appear (critical ones do not wait)</summary>
     </key>
 
+    <key name="banners-away-margin" type="i">
+      <range min="0" max="200"/>
+      <default>50</default>
+      <summary>How much larger than the banner the area kept free of the mouse is, in percent</summary>
+    </key>
+
     <key name="show-today-events" type="b">
       <default>true</default>
       <summary>Show GNOME's "Today" card with the events of the day above the notifications</summary>

@@ -4,7 +4,8 @@
 // Notification banners away from the mouse. GNOME shows a banner (at the top
 // centre, or where an extension moved it) even when the pointer is right
 // there, so a click meant for a window opens the notification instead.
-// While the pointer is inside the area where the banner would appear (50% larger), the notification waits in
+// While the pointer is inside the area where the banner would appear (larger by the
+// percentage of the setting banners-away-margin), the notification waits in
 // GNOME's own queue (same order, nothing lost) and shows up as soon as the
 // pointer leaves. Critical notifications are never held back.
 
@@ -17,7 +18,6 @@ import {Urgency} from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {logWarning} from './sch-log.js';
 
-const MARGIN = 0.5;
 const CHECK_INTERVAL_MS = 200;
 
 // Where an aligned box sits in the free space: 0 start, 0.5 centre, 1 end
@@ -28,7 +28,8 @@ function alignShift(align) {
 }
 
 export class BannerGuard {
-    constructor() {
+    constructor(settings) {
+        this._settings = settings;
         const tray = Main.messageTray;
         const original = tray._showNotification;
         this._checkId = 0;
@@ -92,11 +93,13 @@ export class BannerGuard {
         let xShift = alignShift(bin.x_align);
         if (bin.get_text_direction() === Clutter.TextDirection.RTL)
             xShift = 1 - xShift;
-        const x = area.x + (area.width - width) * xShift - width * MARGIN / 2;
-        const y = area.y + (area.height - height) * alignShift(bin.y_align) - height * MARGIN / 2;
+        // the setting, read at each check: a change applies at once
+        const margin = this._settings.get_int('banners-away-margin') / 100;
+        const x = area.x + (area.width - width) * xShift - width * margin / 2;
+        const y = area.y + (area.height - height) * alignShift(bin.y_align) - height * margin / 2;
         const [px, py] = global.get_pointer();
-        return px >= x && px < x + width * (1 + MARGIN) &&
-            py >= y && py < y + height * (1 + MARGIN);
+        return px >= x && px < x + width * (1 + margin) &&
+            py >= y && py < y + height * (1 + margin);
     }
 
     // Size of the last banner GNOME showed; before the first one, the size

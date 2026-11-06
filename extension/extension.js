@@ -1106,7 +1106,7 @@ export default class SmartCalendarHubExtension extends Extension {
     _syncBannerGuard() {
         const on = this._settings.get_boolean('banners-away-from-mouse');
         if (on && !this._bannerGuard) {
-            this._bannerGuard = new BannerGuard();
+            this._bannerGuard = new BannerGuard(this._settings);
         } else if (!on) {
             this._bannerGuard?.destroy();
             this._bannerGuard = null;
