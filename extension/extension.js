@@ -251,6 +251,12 @@ export default class SmartCalendarHubExtension extends Extension {
         this._resizeGrab = null;
         this._liveWidth = 0;
         this._endResize = null;
+        // GNOME's menu box: back to its own cursor
+        if (this._resizeHost) {
+            this._resizeHost.set_cursor_type(Clutter.CursorType.INHERIT);
+            this._resizeHost.reactive = this._resizeHostReactive;
+        }
+        this._resizeHost = null;
         this._showSkyIcon();
         this._unsetFreonIcon();
         this._syncAllDay(false);
@@ -2238,20 +2244,26 @@ export default class SmartCalendarHubExtension extends Extension {
     // sidebar-width-user) until a double click on the edge, or until the
     // width is changed in the preferences.
     _setupResizeEdge() {
-        const EDGE = 8; // px of the edge that can be taken
+        const EDGE = 12; // px of the edge that can be taken
         const MIN = 280;
+        // GNOME's box of the clock menu holds the panel (and the calendar
+        // card beside it): its events are watched, so the edge works also on
+        // the padding around the panel; the visible card is that box, or the
+        // panel itself when the calendar is in a card of its own
+        const host = this._dateMenu.menu.box;
+        const card = () => (calendarSide ? this._sidebar : host);
         let drag = null;
         let lastPress = 0;
         const innerLeft = () => {
-            const [x] = this._sidebar.get_transformed_position();
+            const [x] = card().get_transformed_position();
             const monitor = Main.layoutManager.monitors[
                 Main.layoutManager.findIndexForActor(this._sidebar)] ?? Main.layoutManager.primaryMonitor;
-            return x + this._sidebar.width / 2 > monitor.x + monitor.width / 2;
+            return x + card().width / 2 > monitor.x + monitor.width / 2;
         };
         const nearEdge = px => {
-            const [x] = this._sidebar.get_transformed_position();
-            const w = this._sidebar.width;
-            return innerLeft() ? px >= x && px < x + EDGE : px <= x + w && px > x + w - EDGE;
+            const [x] = card().get_transformed_position();
+            const w = card().width;
+            return innerLeft() ? px >= x - 2 && px < x + EDGE : px <= x + w + 2 && px > x + w - EDGE;
         };
         const end = this._endResize = () => {
             this._resizeGrab?.dismiss();
@@ -2261,7 +2273,11 @@ export default class SmartCalendarHubExtension extends Extension {
             this._liveWidth = 0;
             drag = null;
         };
-        this._connect(this._sidebar, 'captured-event', (_actor, event) => {
+        this._resizeHost = host;
+        // its padding must receive the pointer too (given back in disable)
+        this._resizeHostReactive = host.reactive;
+        host.reactive = true;
+        this._connect(host, 'captured-event', (_actor, event) => {
             const type = event.type();
             const [px] = event.get_coords();
             if (drag) {
@@ -2277,7 +2293,7 @@ export default class SmartCalendarHubExtension extends Extension {
                 return Clutter.EVENT_STOP;
             }
             if (type === Clutter.EventType.MOTION) {
-                this._sidebar.set_cursor_type(nearEdge(px)
+                host.set_cursor_type(nearEdge(px)
                     ? Clutter.CursorType.EW_RESIZE : Clutter.CursorType.INHERIT);
                 return Clutter.EVENT_PROPAGATE;
             }
@@ -2295,7 +2311,7 @@ export default class SmartCalendarHubExtension extends Extension {
             const area = Main.layoutManager.getWorkAreaForMonitor(monitor);
             drag = {x: px, left: innerLeft(), width: this._sidebarWidth(), max: Math.round(area.width * 0.6)};
             // the drag goes on outside the panel too
-            this._resizeGrab = global.stage.grab(this._sidebar);
+            this._resizeGrab = global.stage.grab(host);
             return Clutter.EVENT_STOP;
         });
     }
@@ -3612,6 +3628,10 @@ export default class SmartCalendarHubExtension extends Extension {
         const classes = widget.get_style_class_name() ?? '';
         // the pieces of our page kit already have the panel's look
         if (/popup-menu-item|popup-sub-menu|button|toggle|slider|switch|sch-kit-/.test(classes))
+            return false;
+        // the knob of a switch (GNOME's Switch: a plain 'handle' inside a
+        // 'toggle-switch'): clearing it would leave a switch without knob
+        if (widget.get_parent()?.has_style_class_name?.('toggle-switch'))
             return false;
         try {
             const node = widget.get_theme_node();
