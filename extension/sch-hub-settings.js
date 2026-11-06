@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
-// Our own settings in the card beside the panel (the settings button of the
-// panel opens them): the list of the sections, then the settings of one,
-// built with our page kit from sch-settings-model.js, the same description
-// the Preferences window uses. Every change is written at once and the
-// panel follows it; changes made elsewhere (the Preferences window) show up
-// here too.
+// Our own settings in the card beside the panel, their only home (the
+// settings button of the panel opens them): the list of the sections, then
+// the settings of one, built with our page kit from sch-settings-model.js.
+// Every change is written at once and the panel follows it.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -20,7 +18,10 @@ import {_} from './sch-i18n.js';
 import {logError} from './sch-log.js';
 import {check as checkIcon, roundButton} from './sch-ext-settings.js';
 import {pageKit as kit} from './sch-page-kit.js';
-import {BII_UUID, biiRowTexts, settingsSections} from './sch-settings-model.js';
+import {
+    APPINDICATOR_UUIDS, BII_UUID, appItems, biiRowTexts, calendarRows, mutedEntries,
+    setAppOn, setCalendarShown, settingsSections, unmuteApp,
+} from './sch-settings-model.js';
 
 // 'active', 'off' (installed, can be switched on) or 'missing' (not
 // installed, or broken: to be taken again from extensions.gnome.org)
@@ -32,17 +33,17 @@ function biiState() {
     return ext.state === ExtensionState.ACTIVE ? 'active' : 'off';
 }
 
-const arrowIcon = open => new St.Icon({icon_name: open ? 'pan-down-symbolic' : 'pan-end-symbolic', icon_size: 16});
-
-// The sections the card shows: those described in sch-settings-model.js
-// (the others are only in the Preferences window, for now)
-export function hubSections() {
-    return settingsSections().filter(section => section.groups);
+// Whether the extension that makes the tray icons is on
+function appIndicatorOn() {
+    return APPINDICATOR_UUIDS.some(uuid =>
+        Main.extensionManager.lookup(uuid)?.state === ExtensionState.ACTIVE);
 }
+
+const arrowIcon = open => new St.Icon({icon_name: open ? 'pan-down-symbolic' : 'pan-end-symbolic', icon_size: 16});
 
 // The list of the sections, a row each; onOpen(id) on a click
 export function buildSectionList(onOpen) {
-    return kit.page(kit.card(hubSections().map(section => kit.row({
+    return kit.page(kit.card(settingsSections().map(section => kit.row({
         icon: section.icon,
         title: section.title,
         trailing: kit.chevron(),
@@ -156,6 +157,25 @@ function modelRows(row, ctx, parentOn = null) {
         });
         break;
     }
+    case 'info':
+        actors.push(kit.row({icon: row.icon ?? null, title: row.title, subtitle: row.subtitle ?? '', wrap: true}));
+        break;
+    case 'command': {
+        // the button turns into a check once the command is copied
+        const copy = roundButton('edit-copy-symbolic', _('Copy the command'), () => {
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, row.command);
+            copy.child.icon_name = 'object-select-symbolic';
+        });
+        actors.push(kit.row({title: row.title, subtitle: row.command, trailing: copy, wrap: true}));
+        parts = [copy];
+        break;
+    }
+    case 'link': {
+        const open = pillButton(row.button, () => openPage(ctx, row.url));
+        actors.push(kit.row({title: row.title, subtitle: row.subtitle ?? '', trailing: open, wrap: true}));
+        parts = [open];
+        break;
+    }
     case 'custom':
         if (row.id === 'bii') {
             const bii = biiRow(ctx);
@@ -181,30 +201,38 @@ function modelRows(row, ctx, parentOn = null) {
     return [...actors, ...children];
 }
 
+// A pill button for the right of a row
+function pillButton(label, onClick) {
+    const button = kit.button({label, onClick});
+    button.x_expand = false;
+    button.y_align = Clutter.ActorAlign.CENTER;
+    return button;
+}
+
+// A page in the browser, which opens above the panel: the panel goes
+function openPage(ctx, url) {
+    ctx.closePanel();
+    try {
+        Gio.AppInfo.launch_default_for_uri(url, null);
+    } catch (e) {
+        logError(`cannot open ${url}: ${e}`);
+    }
+}
+
 // Battery Indicator Icon by Deminder: its project page while it is active,
 // "Turn on" if installed but off, "Get it" (its page on extensions.gnome.org)
 // if missing
 function biiRow(ctx) {
     let action = null;
-    const button = kit.button({
-        onClick: () => {
-            if (action === 'enable') {
-                // false when GNOME refuses (e.g. all extensions are off)
-                if (!Main.extensionManager.enableExtension(BII_UUID))
-                    row.subtitleLabel.text = _('GNOME did not turn it on: check that extensions are on in the Extensions app');
-            } else if (action) {
-                // the browser opens above the panel: the panel goes
-                ctx.closePanel();
-                try {
-                    Gio.AppInfo.launch_default_for_uri(action, null);
-                } catch (e) {
-                    logError(`cannot open ${action}: ${e}`);
-                }
-            }
-        },
+    const button = pillButton('', () => {
+        if (action === 'enable') {
+            // false when GNOME refuses (e.g. all extensions are off)
+            if (!Main.extensionManager.enableExtension(BII_UUID))
+                row.subtitleLabel.text = _('GNOME did not turn it on: check that extensions are on in the Extensions app');
+        } else if (action) {
+            openPage(ctx, action);
+        }
     });
-    button.x_expand = false;
-    button.y_align = Clutter.ActorAlign.CENTER;
     const row = kit.row({
         icon: 'battery-good-symbolic',
         title: 'Battery Indicator Icon',
@@ -224,23 +252,159 @@ function biiRow(ctx) {
     return {row, button};
 }
 
-// The settings of section `id`, or null when the card has no such section.
-// closePanel: closes the panel (before a browser opens)
-export function buildSectionPage(settings, id, {closePanel}) {
-    const section = hubSections().find(s => s.id === id);
+// One switch per app of an 'apps' group. The rows are built again only
+// when the apps change; a switch only follows its value.
+function appsCard(group, ctx) {
+    const {settings, syncs} = ctx;
+    const apps = group.apps;
+    const card = kit.card();
+    let shape = null;
+    let switches = new Map();
+    let rows = [];
+    syncs.push(() => {
+        const items = appItems(settings, apps);
+        const now = JSON.stringify(items.map(item => [item.key, item.label]));
+        if (now !== shape) {
+            shape = now;
+            card.destroy_all_children();
+            switches = new Map();
+            rows = [];
+            if (!items.length)
+                card.add_child(kit.row({title: apps.emptyTitle, subtitle: apps.emptySubtitle, wrap: true}));
+            for (const item of items) {
+                const sw = kit.toggle({onToggle: on => setAppOn(settings, apps, item.key, on)});
+                const row = kit.row({
+                    title: item.label,
+                    subtitle: item.key !== item.label ? item.key : '',
+                    trailing: sw,
+                    wrap: true,
+                });
+                card.add_child(row);
+                switches.set(item.key, sw);
+                rows.push(row);
+            }
+        }
+        for (const item of items) {
+            const sw = switches.get(item.key);
+            if (sw.state !== item.on)
+                sw.state = item.on;
+        }
+        const on = apps.enabledWhen?.(settings) ?? true;
+        rows.forEach(row => row.setSensitive(on));
+    });
+    return card;
+}
+
+// The apps silenced with the bell of a notification, each with a button
+// that turns it back on
+function mutedCard(group, ctx) {
+    const card = kit.card();
+    let shape = null;
+    ctx.syncs.push(() => {
+        const entries = mutedEntries(ctx.settings);
+        const now = JSON.stringify(entries);
+        if (now === shape)
+            return;
+        shape = now;
+        card.destroy_all_children();
+        if (!entries.length)
+            card.add_child(kit.row({title: group.emptyTitle}));
+        for (const entry of entries) {
+            card.add_child(kit.row({
+                title: entry.label,
+                subtitle: entry.when,
+                trailing: pillButton(group.unmute, () => unmuteApp(ctx.settings, entry.key)),
+                wrap: true,
+            }));
+        }
+    });
+    return card;
+}
+
+// One switch per calendar, with its colour and account, read without
+// blocking GNOME Shell (the card fills in when the answer comes)
+function calendarsCard(group, ctx) {
+    const card = kit.card();
+    const cancellable = new Gio.Cancellable();
+    card.connect('destroy', () => cancellable.cancel());
+    const fill = calendars => {
+        if (!calendars.length)
+            card.add_child(kit.row({title: group.emptyTitle, subtitle: group.emptySubtitle, wrap: true}));
+        for (const cal of calendars)
+            card.add_child(calendarRow(cal, ctx, cancellable));
+    };
+    // the card may be gone by the time the answer comes
+    calendarRows(cancellable)
+        .then(calendars => !cancellable.is_cancelled() && fill(calendars))
+        .catch(e => {
+            if (e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                return;
+            logError(`cannot read the calendars: ${e}`);
+            fill([]);
+        });
+    return card;
+}
+
+function calendarRow(cal, ctx, cancellable) {
+    // Writes run one after another (quick toggles keep their order); if a
+    // write fails the switch goes back, so it never lies.
+    let queue = Promise.resolve();
+    const sw = kit.toggle({
+        active: cal.selected,
+        onToggle: wanted => {
+            queue = queue
+                // not cancelled with the card: a switch flipped stays flipped
+                .then(() => setCalendarShown(cal, wanted))
+                .then(() => ctx.reloadCalendars())
+                .catch(e => {
+                    logError(`cannot change calendar ${cal.name}: ${e}`);
+                    if (!cancellable.is_cancelled())
+                        sw.state = !wanted;
+                });
+        },
+    });
+    const row = kit.row({title: cal.name, subtitle: cal.account, trailing: sw, wrap: true});
+    // the dot in the colour of the calendar, as in the panel
+    row.get_child().insert_child_at_index(new St.Widget({
+        style: `background-color: ${cal.color}; border-radius: 6px;`,
+        width: 12,
+        height: 12,
+        y_align: Clutter.ActorAlign.CENTER,
+    }), 0);
+    // shared only for reading: nothing to switch
+    row.setSensitive(cal.paths.length > 0);
+    return row;
+}
+
+// The warning while the extension that makes the tray icons is off
+function appIndicatorNotice(group, ctx) {
+    const notice = kit.notice({icon: 'dialog-warning-symbolic', text: group.text});
+    ctx.syncs.push(() => {
+        notice.visible = !ctx.env.appIndicator && ctx.settings.get_string('tray-mode') !== 'disabled';
+    });
+    return notice;
+}
+
+const GROUP_CARDS = {apps: appsCard, muted: mutedCard, calendars: calendarsCard};
+
+// The settings of section `id`, or null when there is no such section.
+// closePanel: closes the panel (before a browser opens); reloadCalendars:
+// the calendar of the panel reads its calendars again
+export function buildSectionPage(settings, id, {closePanel, reloadCalendars}) {
+    const section = settingsSections().find(s => s.id === id);
     if (!section)
         return null;
-    const env = {bii: biiState()};
+    const env = {bii: biiState(), appIndicator: appIndicatorOn()};
     const syncs = [];
-    const ctx = {settings, env, syncs, closePanel};
+    const ctx = {settings, env, syncs, closePanel, reloadCalendars};
     const pieces = [];
     for (const group of section.groups) {
-        // the groups each place builds itself: not in the card yet
-        if (group.custom)
+        if (group.kind === 'appindicator') {
+            pieces.push(appIndicatorNotice(group, ctx));
             continue;
-        const rows = group.rows.flatMap(row => modelRows(row, ctx));
-        if (!rows.length)
-            continue;
+        }
+        const card = GROUP_CARDS[group.kind]?.(group, ctx) ??
+            (group.rows.length ? kit.card(group.rows.flatMap(row => modelRows(row, ctx))) : null);
         if (group.title)
             pieces.push(kit.section(group.title));
         if (group.description) {
@@ -256,16 +420,18 @@ export function buildSectionPage(settings, id, {closePanel}) {
             syncs.push(sync);
             pieces.push(text);
         }
-        pieces.push(kit.card(rows));
+        if (card)
+            pieces.push(card);
     }
     const page = kit.page(pieces);
     const sync = () => syncs.forEach(fn => fn());
     sync();
     const settingsId = settings.connect('changed', sync);
     const extId = Main.extensionManager.connect('extension-state-changed', (_m, ext) => {
-        if (ext?.uuid !== BII_UUID)
+        if (ext?.uuid !== BII_UUID && !APPINDICATOR_UUIDS.includes(ext?.uuid))
             return;
         env.bii = biiState();
+        env.appIndicator = appIndicatorOn();
         sync();
     });
     page.connect('destroy', () => {

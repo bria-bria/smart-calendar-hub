@@ -69,7 +69,7 @@
     <key name="tray-items-seen" type="as">
       <default>[]</default>
       <summary>Icons currently available (written by the extension)</summary>
-      <description>"identifier TAB name" of each icon that can be moved inside the panel; used by the preferences window.</description>
+      <description>"identifier TAB name" of each icon that can be moved inside the panel; used by the settings in the panel.</description>
     </key>
 
     <key name="alert-apps" type="as">
@@ -92,7 +92,7 @@
     <key name="notify-apps-seen" type="as">
       <default>[]</default>
       <summary>Apps that sent notifications (written by the extension)</summary>
-      <description>"identifier TAB name" of each app seen in the notification list; used by the preferences window.</description>
+      <description>"identifier TAB name" of each app seen in the notification list; used by the settings in the panel.</description>
     </key>
 
     <key name="calendar-side-reopen" type="s">

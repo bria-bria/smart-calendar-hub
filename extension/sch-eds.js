@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
 // Calendars known to evolution-data-server (name, colour, account), read over
-// D-Bus. Gio/GLib only, so both the side panel (sch-calendar.js) and the
-// preferences window (prefs.js) can use it.
+// D-Bus. Gio/GLib only: used by the calendar of the panel (sch-calendar.js)
+// and by the settings (sch-settings-model.js).
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';

@@ -30,7 +30,8 @@ import {pageKit} from './sch-page-kit.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 import {BannerGuard} from './sch-banner-guard.js';
 import {SETTINGS_SWAPS, vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
-import {buildSectionList, buildSectionPage, hubSections} from './sch-hub-settings.js';
+import {buildSectionList, buildSectionPage} from './sch-hub-settings.js';
+import {settingsSections} from './sch-settings-model.js';
 import {logError, logWarning} from './sch-log.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -215,10 +216,11 @@ export default class SmartCalendarHubExtension extends Extension {
 
         this._connect(this._settings, 'changed', (_s, key) => this._onSettingChanged(key));
 
-        // Languages other than Italian/English: load the user's file, then
-        // translate again the texts already shown (only if still enabled).
+        // Languages other than Italian/English: create or complete the user's
+        // file (new sentences appended at the end), load it, then translate
+        // again the texts already shown (only if still enabled).
         const token = this._enableToken = {};
-        loadUserTranslations()
+        loadUserTranslations({merge: true})
             .then(() => {
                 if (this._enableToken === token)
                     this._applyStaticTexts();
@@ -2452,7 +2454,7 @@ export default class SmartCalendarHubExtension extends Extension {
             !this._excludedTray.has(this._trayKey(role, indicator));
     }
 
-    // Writes the icons that can be moved, for the preferences window
+    // Writes the icons that can be moved, for the settings (section Tray)
     // (only when the list changed, to avoid needless dconf writes).
     _publishTrayItems() {
         // With the tray turned off nothing is a candidate: keep the last list,
@@ -3442,13 +3444,10 @@ export default class SmartCalendarHubExtension extends Extension {
             sideTitle: 'Smart Calendar Hub',
             sideActions: this._hubSettingsActions(),
         });
-        if (hub.side) {
+        if (hub.side)
             this._hubSettings = hub;
-            return;
-        }
-        // no card beside the panel (it could not be made): the window
-        this._dateMenu?.menu?.close();
-        this.openPreferences();
+        else
+            logWarning('no card beside the panel for the settings');
     }
 
     _hubSettingsActions() {
@@ -3465,6 +3464,7 @@ export default class SmartCalendarHubExtension extends Extension {
             return buildSectionList(sectionId => this._showHubSection(sectionId));
         return buildSectionPage(this._settings, id, {
             closePanel: () => this._dateMenu?.menu?.close(),
+            reloadCalendars: () => this._calendarView?.reloadCalendars(),
         });
     }
 
@@ -3481,7 +3481,7 @@ export default class SmartCalendarHubExtension extends Extension {
             return;
         const title = id === null
             ? 'Smart Calendar Hub'
-            : hubSections().find(section => section.id === id)?.title ?? '';
+            : settingsSections().find(section => section.id === id)?.title ?? '';
         const header = this._sideHeader(title, null, this._hubSettingsActions(),
             id === null ? null : () => this._showHubSection(null));
         inner.insert_child_above(page, side.page);

@@ -118,6 +118,7 @@ function row({icon = null, title = '', subtitle = '', trailing = null, onActivat
     if (wrap) {
         for (const l of [titleLabel, subtitleLabel]) {
             l.clutter_text.line_wrap = true;
+            l.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
             l.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
         }
     }

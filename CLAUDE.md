@@ -25,7 +25,7 @@ Organizer; la vecchia estensione lo sincronizzava sempre).
 Le icone del vassoio le crea l'estensione AppIndicator
 (`appindicatorsupport@rgcjonas.gmail.com`): Smart Calendar Hub le sposta
 soltanto. Deciso da Michele il 04/11/2026: AppIndicator resta accesa, non va
-integrata né spenta; le Preferenze mostrano un avviso se è spenta.
+integrata né spenta; le impostazioni (sezione Vassoio) mostrano un avviso se è spenta.
 
 Le icone del vassoio stanno su **una sola riga** (scelta di Michele, 05/11/2026)
 con una freccia per lato (◀ ▶) se non ci stanno, niente barra di scorrimento; ogni icona è in una casella
@@ -67,14 +67,20 @@ l'estensione in /usr/share e le impostazioni di Michele nel dconf di gdm,
 `/etc/dconf/db/gdm.d/90-smart-calendar-hub`); `--rimuovi` per togliere.
 Da rilanciare dopo aver cambiato colore/spazio/posizione o aggiornato.
 
+## Impostazioni (dal 06/11/2026)
+Decisione di Michele: **niente finestra Preferenze** (`prefs.js` tolto). L'unica casa delle
+impostazioni è il riquadro accanto al pannello, aperto dalla rotella: `sch-settings-model.js`
+(descrizione di sezioni, gruppi e righe, senza St) + `sch-hub-settings.js` (le costruisce con il
+kit). Un'impostazione nuova si aggiunge nel modello.
+
 ## Traduzioni (dal 04/11/2026, come BlueHub)
 Testi del codice in **inglese**, passati a `_()` di `extension/sch-i18n.js`, con i
 valori come segnaposto `{nome}` (mai pezzi di frase concatenati). L'italiano è
 nella tabella `IT` dello stesso file, che è anche l'elenco completo delle frasi:
 **ogni frase nuova va aggiunta a `IT`**. Controllo: `strumenti/controlla-traduzioni.py`
 (lo lancia anche `installa-smart-calendar-hub.sh`). Le altre lingue le traducono
-gli utenti in `~/.config/smart-calendar-hub/translations/<lingua>.json`: le
-Preferenze aggiungono in fondo le frasi nuove senza toccare quelle tradotte.
+gli utenti in `~/.config/smart-calendar-hub/translations/<lingua>.json`:
+l'estensione, a ogni avvio, aggiunge in fondo le frasi nuove senza toccare quelle tradotte.
 Il vecchio gettext (`po/`) è stato tolto.
 
 **Alla fine di ogni modifica importante fare la revisione con la skill

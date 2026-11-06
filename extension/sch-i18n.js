@@ -7,7 +7,7 @@
 //   of sentences.
 // - Every other language is translated by users in
 //   ~/.config/smart-calendar-hub/translations/<language>.json (e.g. fr.json).
-//   The preferences window creates the file the first time and, after every
+//   The panel creates the file the first time and, after every
 //   update, APPENDS only the new sentences at the end: translations already
 //   written are never changed or removed. Empty sentences ("") stay in English.
 // Words in braces, e.g. {app}, are replaced with real values and must be kept
@@ -49,7 +49,7 @@ const IT = {
         "Quanto è più grande dell'avviso l'area da cui il mouse deve uscire: 0 = solo l'avviso stesso",
     "The whole day":
         "Tutta la giornata",
-    // --- Preferences, page "Extensions" (prefs.js) ---
+    // --- Settings, section "Extensions" (sch-settings-model.js) ---
     "Extensions":
         "Estensioni",
     "Orders the icons of the top bar.":
@@ -258,7 +258,7 @@ const IT = {
     "Next city":
         "Città successiva",
 
-    // --- IP addresses (sch-net.js, prefs.js) ---
+    // --- IP addresses (sch-net.js, sch-settings-model.js) ---
     "IP addresses":
         "Indirizzi IP",
     "Refresh":
@@ -453,8 +453,6 @@ const IT = {
         "2. Poi",
     "Copy the command":
         "Copia il comando",
-    "Command copied":
-        "Comando copiato",
     "Lock screen":
         "Blocco schermo",
     "Automatic: on the lock screen the top bar keeps the accent colour, the space between the icons, the clock position and the battery circle. The side panel, the notifications and the calendar are taken away while the screen is locked, so nothing personal shows.":
@@ -554,7 +552,7 @@ const IT = {
     "The address seen on the Internet. To know it, the extension asks api.ipify.org (when the network changes and every 30 minutes); that service sees the request.":
         "L'indirizzo visto su Internet. Per saperlo l'estensione lo chiede ad api.ipify.org (quando cambia la rete e ogni 30 minuti); quel servizio vede la richiesta.",
 
-    // --- Silencing apps (extension.js, prefs.js) ---
+    // --- Silencing apps (extension.js, sch-settings-model.js) ---
     "Silence notifications from this app":
         "Silenzia le notifiche di questa app",
     "1 hour":
@@ -600,7 +598,7 @@ const IT = {
     "(no title)":
         "(senza titolo)",
 
-    // --- Calendars shown (prefs.js) ---
+    // --- Calendars shown (sch-settings-model.js) ---
     "Tray":
         "Vassoio",
     "Calendars":
@@ -626,7 +624,7 @@ const IT = {
     "Calendars come from the online accounts in GNOME Settings":
         "I calendari arrivano dagli account online nelle Impostazioni di GNOME",
 
-    // --- Preferences window (prefs.js) ---
+    // --- Settings (sch-settings-model.js, sch-hub-settings.js) ---
     "Tray icons need the “AppIndicator and KStatusNotifierItem Support” extension: turn it on":
         "Le icone del vassoio richiedono l'estensione «AppIndicator and KStatusNotifierItem Support»: attivala",
     "Where the side panel opens and where the clock sits in the top bar.":
@@ -741,7 +739,7 @@ async function ensureDir(path) {
 }
 
 // Loads the user's translation file for the system language.
-// With merge=true (used by the preferences window) it creates the file if it
+// With merge=true (at every start of the panel) it creates the file if it
 // is missing and appends the new sentences at the end, never changing the
 // ones already there. If the file contains a mistake it is left untouched and
 // English is used. Returns the file path, or null for Italian/English.
