@@ -275,15 +275,16 @@ function readingDetails(settings) {
 const notifying = settings => settings.get_boolean('notifications');
 
 // Vesperal (extensions.gnome.org/extension/11329): everything of its
-// window (version 4: the year at a glance and the notifications first,
-// then what the top bar shows, the twilight, the bounds of the day, the
-// location), in the card; the
+// window (version 4: the year at a glance, the location and the
+// notifications first, then what the top bar shows, the twilight, the
+// bounds of the day), in the card; the
 // keys an older version does not have are left out
 function vesperalCards() {
     return [
-        // first, at Michele's request: the year at a glance, then the
-        // notifications, then the rest
+        // first, at Michele's request: the year at a glance, the location
+        // (search and coordinates), the notifications, then the rest
         {build: vesperalYear},
+        {build: buildLocation},
         {title: _('Notifications'), switches: [['notifications', _('Send notifications')]]},
         {title: '', flags: {key: 'notification-events', values: [
             ['dawn', _('Dawn')],
@@ -328,7 +329,6 @@ function vesperalCards() {
         }, subtitles: () => ({
             'dawn-dusk': _('As long as there is the light of the twilight above'),
         })},
-        {build: buildLocation},
     ];
 }
 
