@@ -5,3 +5,7 @@ __pycache__/
 dist/
 originale-raven-calendar/
 privato/
+
+# Local working notes (copy with history in privato/note-di-lavoro/)
+CLAUDE.md
+00_INDICE.md

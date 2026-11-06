@@ -21,13 +21,13 @@ From top to bottom the panel shows:
 It also shows the weather inside the clock pill (icon and temperature, before
 or after the clock, with the description for a few seconds after each update;
 unless another extension, such as Weather O'Clock, already does it) and lets
-you move the clock to a different spot of the top bar.
+you move the clock to a different spot in the top bar.
 
 ## Why Smart Calendar Hub
 
 Smart Calendar Hub didn’t happen overnight. It grew out of two decades of
 daily use: Michele has been working with Linux and GNOME since 2005, and
-firmly regards GNOME as the cleanest, most reliable, and well-architected
+firmly regards GNOME as the cleanest, most reliable, and best-architected
 desktop on Linux.
 
 The vision was to take that design philosophy one step further. Most
@@ -47,10 +47,10 @@ purpose and dynamism it deserves.
 
 ## Every extension in one place
 
-A click on an icon of the tray opens its menu **inside the panel**, in place
+A click on a tray icon opens its menu **inside the panel**, in place
 of the cards, instead of a floating menu: the panel keeps its size, the menu
-takes the same measure as the rest (items, separators, section titles) and
-the backgrounds of its containers become transparent. Back with the arrow,
+uses the same sizes as the rest (items, separators, section titles) and
+the backgrounds of its containers become transparent. Go back with the arrow,
 Esc or another click on the icon. It can be switched off, for all icons or
 icon by icon (Settings → Tray).
 
@@ -94,14 +94,14 @@ location there to see the temperature.
 Tray icons of applications are created by the
 [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/)
 extension: keep it enabled. Smart Calendar Hub only moves those icons inside
-the panel; its settings (section Tray) show a warning when that extension is off.
+the panel; its settings (Tray section) show a warning when that extension is off.
 
 ## Settings
 
 All the settings live in the panel itself: click the gear icon next to
 the tray icons and they open in the card beside the panel, in the style of
-the panel, with the list of the sections; click one to see its settings, the
-arrow in the header goes back to the list. Every change is applied at once.
+the panel, with the list of sections; click one to see its settings, and the
+arrow in the header takes you back to the list. Every change is applied at once.
 There is no separate preferences window (the Extensions app shows no
 settings button). The seven sections:
 
@@ -166,7 +166,7 @@ anywhere; calendars, notifications and settings stay on your computer.
 ## Lock screen and login screen
 
 The look of the top bar (accent colour, space between the icons, clock
-position) stays the same on the lock screen. Nothing else of the extension runs there: the side
+position) stays the same on the lock screen. No other part of the extension runs there: the side
 panel, notifications, calendar and tray are taken down while the screen is
 locked and built again when you unlock.
 
@@ -174,12 +174,12 @@ For the login screen (GDM), which belongs to the system, run once, and again
 after changing those settings:
 
 ```bash
-sudo ./installa-schermata-accesso.sh
+sudo ./install-login-screen.sh
 ```
 
 It installs the extension for all users and copies your accent colour,
 tone, icon spacing and clock position to the login screen.
-`sudo ./installa-schermata-accesso.sh --rimuovi` takes it away.
+`sudo ./install-login-screen.sh --remove` takes it away.
 
 ## Install
 
@@ -214,7 +214,7 @@ Run it again to update; `bash install.sh --uninstall` removes it.
 ### From source
 
 ```bash
-./installa-smart-calendar-hub.sh
+./build-and-install.sh
 ```
 
 The script builds `dist/smart-calendar-hub@bria-bria.github.io.shell-extension.zip`,
@@ -260,7 +260,7 @@ file, so it can be included for everyone in the next version.
 For developers: every sentence is passed in English to `_()` in
 `extension/sch-i18n.js`, with values as placeholders
 (`_('{app} (tray icon)', {app: name})`), and must have its Italian translation
-in the `IT` table of the same file. `strumenti/controlla-traduzioni.py` checks
+in the `IT` table of the same file. `tools/check-translations.py` checks
 this (the install script runs it).
 
 ## For extension developers
@@ -274,7 +274,7 @@ keeps working the same without it:
 this._button.smartCalendarHub = {
     // title above the menu (default: the name of the icon)
     title: 'My extension',
-    // optional: a page of your own instead of the menu, built at every
+    // optional: a page of your own instead of the menu, built on every
     // visit and destroyed after it (free timers and signals on 'destroy')
     buildPage: () => new St.Label({text: 'Hello'}),
     // optional: true = the hub leaves your backgrounds alone
@@ -327,7 +327,7 @@ Pages shown in the hub follow one model, so every extension looks like part
 of the panel:
 
 1. **The header is the hub's**: back arrow and title. Never draw your own.
-2. **Section titles** small and grey, above groups of rows.
+2. **Section titles**, small and grey, above groups of rows.
 3. **Rows**, all alike, inside rounded cards: icon, title, one line of detail,
    and on the right one thing only — a switch, a value or a chevron.
 4. **Pill buttons**, and **one** primary (accent colour) button per page.
@@ -342,7 +342,7 @@ of the panel:
 Only theme colours and GNOME's accent colour, no backgrounds of your own, no
 windows or menus popping out of the panel.
 
-The **page kit** gives you these pieces ready made, with the look of the
+The **page kit** gives you these pieces ready-made, with the look of the
 panel; if the look changes, your page follows:
 
 ```js
@@ -395,7 +395,7 @@ Smart Calendar Hub wants to be the place where GNOME extensions meet.
 - **You already have an extension:** tell us about it with the
   [integration proposal form](https://github.com/bria-bria/smart-calendar-hub/issues/new?template=integration.yml).
   We try it inside the panel and, if we like it, we work on our side so it
-  fits in at its best, without touching your code; then it joins the
+  fits in as well as possible, without touching your code; then it joins the
   recommended extensions.
 - **You want to build one for the hub:** the page model and the page kit
   above are public. If you need something that is missing, ask: we add it

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # SPDX-FileCopyrightText: 2026 bria-bria
 #
-# Guided installer of Smart Calendar Hub, for people who don't want to type
+# Guided installer for Smart Calendar Hub, for people who don't want to type
 # commands. Download it from the latest release, read it if you like, then:
 #
 #   bash install.sh              install or update
@@ -18,7 +18,7 @@ set -euo pipefail
 UUID=smart-calendar-hub@bria-bria.github.io
 REPO=bria-bria/smart-calendar-hub
 ZIP_NAME="$UUID.shell-extension.zip"
-LOGIN_SCRIPT=installa-schermata-accesso.sh
+LOGIN_SCRIPT=install-login-screen.sh
 RELEASE_URL="https://github.com/$REPO/releases/latest/download"
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
@@ -88,7 +88,7 @@ if [[ "${1:-}" == "--uninstall" ]]; then
             "È anche sulla schermata di accesso: la tolgo anche da lì?"; then
         SCRIPT=$(login_script)
         if [[ -n "$SCRIPT" ]]; then
-            sudo bash "$SCRIPT" --rimuovi
+            sudo bash "$SCRIPT" --remove
         else
             say "Skipped: the login screen keeps it." "Saltato: la schermata di accesso la tiene."
         fi
@@ -146,8 +146,8 @@ if [[ "$(gsettings get org.gnome.shell disable-user-extensions 2>/dev/null)" == 
         gsettings set org.gnome.shell disable-user-extensions false
     fi
 fi
-# On Wayland GNOME sees a new extension only after logging in again:
-# then it is written straight into the list of enabled extensions
+# On Wayland GNOME sees a new extension only after logging in again,
+# so it is written straight into the list of enabled extensions
 if ! gnome-extensions enable "$UUID" 2>/dev/null; then
     CURRENT=$(gsettings get org.gnome.shell enabled-extensions)
     if [[ "$CURRENT" != *"'$UUID'"* ]]; then
@@ -185,7 +185,7 @@ say "  1. Log out and log back in (GNOME loads new extensions only then)." \
     "  1. Fai logout e poi login (GNOME carica le estensioni nuove solo così)."
 say "  2. Click the clock in the top bar: the side panel opens." \
     "  2. Clicca l'ora nella barra in alto: si apre il pannello laterale."
-say "  3. Settings: Extensions app → Smart Calendar Hub, or: gnome-extensions prefs $UUID" \
-    "  3. Impostazioni: app Estensioni → Smart Calendar Hub, oppure: gnome-extensions prefs $UUID"
+say "  3. Settings: the gear button in the panel, next to the tray icons." \
+    "  3. Impostazioni: la rotella nel pannello, accanto alle icone del vassoio."
 say "  To update later, run this installer again. To remove it: bash install.sh --uninstall" \
     "  Per aggiornarla, rilancia questo installer. Per toglierla: bash install.sh --uninstall"

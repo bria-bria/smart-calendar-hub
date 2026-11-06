@@ -344,7 +344,7 @@ section.block p.sub { margin: 0 0 16px; }
 
   <section class="block" id="why">
     <h2>Why Smart Calendar Hub</h2>
-    <p class="sub">Smart Calendar Hub didn’t happen overnight. It grew out of two decades of daily use: Michele has been working with Linux and GNOME since 2005, and firmly regards GNOME as the cleanest, most reliable, and well-architected desktop on Linux.</p>
+    <p class="sub">Smart Calendar Hub didn’t happen overnight. It grew out of two decades of daily use: Michele has been working with Linux and GNOME since 2005, and firmly regards GNOME as the cleanest, most reliable, and best-architected desktop on Linux.</p>
     <p class="sub">The vision was to take that design philosophy one step further. Most extension developers naturally concentrate on the Quick Settings menu or add standalone icons to the top panel. Yet the central panel — the Calendar &amp; Notification menu — has always been a prime, focused canvas with immense untapped potential.</p>
     <p class="sub">Smart Calendar Hub turns this central space into an organized productivity hub:</p>
     <ul class="why-list">
@@ -410,7 +410,7 @@ section.block p.sub { margin: 0 0 16px; }
 
   <section class="block" id="tour">
     <h2>A closer look</h2>
-    <p class="sub">A few of the cards of the panel, as they look on your desktop.</p>
+    <p class="sub">A few of the panel's cards, as they look on your desktop.</p>
     <div class="tour">
       <figure class="shot">
         <div class="panel mini">
@@ -471,7 +471,7 @@ section.block p.sub { margin: 0 0 16px; }
   </section>
   <section class="block" id="features">
     <h2>A side panel that does the everyday things well</h2>
-    <p class="sub">Everything can be switched on or off from a preferences window with tabs.</p>
+    <p class="sub">Everything can be switched on or off in the settings, which open in the card beside the panel.</p>
     <div class="grid">
       <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-apps"/></svg></div><h3>Tray in one row</h3><p>The icons of your apps at the top of the panel, arrows when they don't fit, and their menus inside the panel.</p></div>
       <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg></div><h3>Weather and sky</h3><p>The weather in the clock pill and in the panel, and a small sky with the real position of the sun and the moon.</p></div>
@@ -498,7 +498,7 @@ section.block p.sub { margin: 0 0 16px; }
 
   <section class="block" id="built-for-the-hub">
     <h2>Built for the hub: BlueHub</h2>
-    <p class="sub">BlueHub, our other extension, manages several Bluetooth devices at once — gamepads, headphones, speakers — sharing the channels of your adapters and the audio. On its own it opens a full window of settings. With Smart Calendar Hub it lives inside the panel, following the page model: its controls in the column, its device lists in the card beside it.</p>
+    <p class="sub">BlueHub, our other extension, manages several Bluetooth devices at once — gamepads, headphones, speakers — sharing the channels of your adapters and the audio. On its own it opens a full settings window. With Smart Calendar Hub it lives inside the panel, following the page model: its controls in the column, its device lists in the card beside it.</p>
     <figure class="shot wide">
       <img src="img/bluehub.webp" alt="BlueHub without the hub, a long settings window, and with the hub: controls in the side panel and the list of Bluetooth devices in the card beside it" loading="lazy">
       <figcaption>Without the hub, and inside it<span>Left: BlueHub's own window. Right: the same extension inside Smart Calendar Hub, built with the page kit — two panels, one look.</span></figcaption>
@@ -519,7 +519,7 @@ section.block p.sub { margin: 0 0 16px; }
           <li>Inside the hub your content carries the style class <code>sch-hub-page</code>.</li>
         </ul>
         <p><strong>No top bar icon?</strong> Call <code>showExternalPage({id, title, buildPage, keepStyle})</code> on the hub (<code>Main.extensionManager.lookup('smart-calendar-hub@bria-bria.github.io')?.stateObj</code>): the panel opens on your page. Need more room? Add <code>buildSidePage</code> for a second page in a card beside the panel. It returns <code>false</code> when the hub isn't available, so you can fall back to your own window. <a href="https://github.com/bria-bria/smart-calendar-hub#open-a-page-without-a-tray-icon">Details →</a></p>
-        <p><strong>One page model for everyone.</strong> The header and scrolling are the hub's; pages are built from standard pieces — section titles, cards of rows, one primary button, an empty state — and the side card is always the calendar's card, same size and alignment. The <code>pageKit</code> gives you those pieces ready made. <a href="https://github.com/bria-bria/smart-calendar-hub#page-model">Read the page model →</a></p>
+        <p><strong>One page model for everyone.</strong> The header and scrolling are the hub's; pages are built from standard pieces — section titles, cards of rows, one primary button, an empty state — and the side card is always the calendar's card, same size and alignment. The <code>pageKit</code> gives you those pieces ready-made. <a href="https://github.com/bria-bria/smart-calendar-hub#page-model">Read the page model →</a></p>
         <p><a href="https://github.com/bria-bria/smart-calendar-hub/tree/main/examples/hello-hub@bria-bria.github.io">See the complete example →</a></p>
       </div>
 <pre><code>// Optional integration metadata on your PanelMenu.Button
@@ -542,7 +542,7 @@ this._button.smartCalendarHub = {
     <h2>Bring your extension to the hub</h2>
     <p class="sub">Smart Calendar Hub wants to be the place where GNOME extensions meet. Do you have an extension, or an idea for one?</p>
     <div class="grid">
-      <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-apps"/></svg></div><h3>You already have an extension</h3><p>Tell us about it. We try it inside the panel and, if we like it, we work on our side so it fits in at its best, without touching your code. Then it joins our recommended extensions, with a link to your page.</p></div>
+      <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-apps"/></svg></div><h3>You already have an extension</h3><p>Tell us about it. We try it inside the panel and, if we like it, we work on our side so it fits in as well as possible, without touching your code. Then it joins our recommended extensions, with a link to your page.</p></div>
       <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-hub"/></svg></div><h3>You want to build one for the hub</h3><p>The page model and the page kit are public. Use them, and if you need something that is missing, ask: we add it for everyone.</p></div>
       <div class="feature"><div class="icon"><svg class="i" aria-hidden="true"><use href="#i-smile"/></svg></div><h3>You only have an idea</h3><p>Write it down. We collect the community's ideas, and the most wanted ones become part of the hub or a new extension.</p></div>
     </div>

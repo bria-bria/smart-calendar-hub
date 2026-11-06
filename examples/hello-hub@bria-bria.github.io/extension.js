@@ -28,7 +28,7 @@ export default class HelloHubExtension extends Extension {
         let clicks = 0;
         this._button.smartCalendarHub = {
             title: 'Hello Hub',
-            // a page of our own, built at every visit and destroyed after it
+            // a page of our own, built on every visit and destroyed after it
             buildPage: () => {
                 const page = new St.BoxLayout({
                     orientation: 1, // vertical
