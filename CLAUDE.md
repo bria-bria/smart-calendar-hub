@@ -48,6 +48,12 @@ I commit usano l'email anonima 301696067+bria-bria@users.noreply.github.com
 (configurata in questo repository). Il 04/11/2026 l'email personale è stata
 tolta anche dai primi 3 commit (storia riscritta prima di renderlo pubblico).
 
+**Squadra fissa (regola di Michele, 06/11/2026): in questo progetto si è sempre in tre.**
+Su GitHub i collaboratori sono `bria-bria` (proprietario) e `micheleperani76` (l'altro
+account di Michele, permesso di scrittura); ogni commit porta anche
+`Co-Authored-By: Claude …` come coautore. Non togliere nessuno dei due account e non
+fare commit senza la riga di Claude.
+
 ## Schermate di blocco e di accesso (dal 05/11/2026)
 `session-modes`: user, unlock-dialog, gdm. Due livelli in `extension.js`:
 `TopBarStyle` (`sch-topbar-style.js`: colore d'accento, spazio icone, su
