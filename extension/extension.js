@@ -29,7 +29,7 @@ import {WorldClocksCard, stopTimerCountdowns} from './sch-world-clocks.js';
 import {pageKit} from './sch-page-kit.js';
 import {CityWeather, buildForecast} from './sch-weather.js';
 import {BannerGuard} from './sch-banner-guard.js';
-import {SETTINGS_SWAPS} from './sch-ext-settings.js';
+import {SETTINGS_SWAPS, vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
 import {logError, logWarning} from './sch-log.js';
 
 const TBO_SCHEMA = 'org.gnome.shell.extensions.top-bar-organizer';
@@ -401,6 +401,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._calendarView?.destroy();
         this._skyView?.destroy();
         this._skyView = null;
+        this._vesperalSettings = null;
         this._skyButton?.destroy();
         this._skyButton = null;
         // Our own pieces of the panel (GNOME's widgets are back in their
@@ -1659,7 +1660,7 @@ export default class SmartCalendarHubExtension extends Extension {
         syncDate();
         // the sky follows the city shown in the weather (arrows): its coordinates
         this._skyView = new SkyView(dm._weatherItem?._weatherClient ?? null, this._settings,
-            () => this._cityWeather?.coords() ?? null);
+            () => this._skyCoords());
         this._skyButton = new St.Button({
             style_class: 'sch-sky-button',
             child: this._skyView.actor,
@@ -2961,6 +2962,18 @@ export default class SmartCalendarHubExtension extends Extension {
 
     // The menu of Vesperal in the panel, as a tray menu (its icon stays next
     // to the clock, with its own floating menu)
+    // Where our sun and moon are computed: Vesperal's place when it is on
+    // (the same as its menu), otherwise the city shown in the weather
+    _skyCoords() {
+        if (Main.panel.statusArea[SKY_MENU_ROLE]) {
+            this._vesperalSettings ??= vesperalSettings();
+            const coords = vesperalCoords(this._vesperalSettings);
+            if (coords)
+                return coords;
+        }
+        return this._cityWeather?.coords() ?? null;
+    }
+
     _openSkyMenu() {
         const indicator = Main.panel.statusArea[SKY_MENU_ROLE];
         if (!indicator?.menu)

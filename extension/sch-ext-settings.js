@@ -39,6 +39,18 @@ function extensionSettings(uuid, schemaId) {
     }
 }
 
+// Vesperal's settings (null without it), kept by the caller
+export function vesperalSettings() {
+    return extensionSettings('vesperal@kornifex.github.io', 'org.gnome.shell.extensions.vesperal');
+}
+
+// The place Vesperal is using, as [latitude, longitude], for our sun and
+// moon next to the date, so they match its menu; null without a place
+export function vesperalCoords(settings) {
+    const place = settings ? vesperalLocation(settings) : null;
+    return place ? [place.latitude, place.longitude] : null;
+}
+
 // The values an enum key accepts, from the schema: [] if it is not one
 function enumValues(settings, key) {
     if (!settings.settings_schema.has_key(key))
