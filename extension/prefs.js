@@ -661,6 +661,13 @@ export default class SmartCalendarHubPreferences extends ExtensionPreferences {
         settings.bind('tray-menu-blend', cardRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('tray-menus-inside', cardRow, 'sensitive', Gio.SettingsBindFlags.GET);
         menusGroup.add(cardRow);
+        const fillRow = new Adw.SwitchRow({
+            title: _('Calendar and clocks under the menus'),
+            subtitle: _('On: under the menu of an app the calendar row, the world clocks with alarms and timers, and the bottom buttons stay visible, in the room the menu leaves free.'),
+        });
+        settings.bind('tray-menu-fill', fillRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('tray-menus-inside', fillRow, 'sensitive', Gio.SettingsBindFlags.GET);
+        menusGroup.add(fillRow);
         pageTray.add(menusGroup);
         pageTray.add(appSwitchGroup(window, settings, {
             title: _('Menu inside the panel, icon by icon'),

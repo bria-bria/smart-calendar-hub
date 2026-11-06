@@ -42,6 +42,12 @@
       <description>Identifiers of the icons that stay in the top bar instead of moving inside the panel.</description>
     </key>
 
+    <key name="tray-menu-fill" type="b">
+      <default>false</default>
+      <summary>Calendar and clocks under the menus of the tray icons</summary>
+      <description>When on, the calendar row, the world clocks with alarms and timers, and the bottom buttons stay visible under the menu of a tray icon (or the page of an extension), in the room it leaves free.</description>
+    </key>
+
     <key name="tray-menu-blend" type="b">
       <default>false</default>
       <summary>Blend the menus of the tray icons into the panel</summary>

@@ -397,6 +397,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._todayBin = null;
         this._bottomRow?.destroy();
         this._bottomRow = null;
+        this._fillSpacer?.destroy();
+        this._fillSpacer = null;
         this._clearBox?.destroy();
         this._clearBox = null;
         this._newEventButton?.destroy();
@@ -1608,6 +1610,10 @@ export default class SmartCalendarHubExtension extends Extension {
         // 4b. World clocks: a card of analogue clocks, always the last one
         // above the bottom row (the notifications above take the free room)
         this._worldClocks = new WorldClocksCard(() => dm.menu.close());
+        // free room above the clocks while an app's menu is shown with the
+        // calendar and the clocks under it (tray-menu-fill)
+        this._fillSpacer = new St.Widget({y_expand: true, visible: false});
+        this._sidebar.add_child(this._fillSpacer);
         this._sidebar.add_child(this._worldClocks.actor);
 
         // 5. Bottom row, three buttons of the same shape and width:
@@ -2921,8 +2927,15 @@ export default class SmartCalendarHubExtension extends Extension {
     // The card takes the place of every other card of the panel (they stay
     // hidden even if something shows them meanwhile), with the title on top
     _enterTrayPage(shown, title) {
+        // with tray-menu-fill the calendar, the clocks and the bottom buttons
+        // stay under the menu, which then takes only the room it needs
+        const fill = this._settings.get_boolean('tray-menu-fill');
+        const keep = fill ? this._fillKeepers() : new Set();
+        this._trayMenuHost.y_expand = !fill;
+        if (this._fillSpacer)
+            this._fillSpacer.visible = fill;
         for (const child of this._sidebar.get_children()) {
-            if (child === this._trayMenuHost || child === this._traySection?.get_parent())
+            if (child === this._trayMenuHost || child === this._traySection?.get_parent() || keep.has(child))
                 continue;
             const entry = {child, wanted: child.visible};
             entry.id = child.connect('notify::visible', () => {
@@ -2948,6 +2961,21 @@ export default class SmartCalendarHubExtension extends Extension {
         // the keys go to our card (Esc: back, arrows: into the menu); no item
         // lit up at the start, as in a floating menu opened with the mouse
         this._trayMenuHost.grab_key_focus();
+    }
+
+    // The pieces of the panel that stay under an app's menu: the rows of the
+    // panel that hold the calendar, the world clocks and the bottom buttons
+    _fillKeepers() {
+        const keep = new Set();
+        for (const actor of [this._calendarLabel, this._calendarScroll, this._fillSpacer,
+            this._worldClocks?.actor, this._bottomRow]) {
+            let row = actor;
+            while (row && row.get_parent() !== this._sidebar)
+                row = row.get_parent();
+            if (row)
+                keep.add(row);
+        }
+        return keep;
     }
 
     // The same measure for every app: its cards without background, and no
@@ -3175,6 +3203,10 @@ export default class SmartCalendarHubExtension extends Extension {
         this._pageMessageId = 0;
         if (this._pageMessage)
             this._pageMessage.visible = false;
+        if (this._fillSpacer)
+            this._fillSpacer.visible = false;
+        if (this._trayMenuHost)
+            this._trayMenuHost.y_expand = true;
         this._trayMenuHost?.hide();
     }
 

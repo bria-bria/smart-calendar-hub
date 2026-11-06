@@ -283,6 +283,10 @@ const IT = {
         "Menu integrato nel pannello",
     "On: the menu of the app sits directly on the panel, without a card around it, so it looks part of the panel.":
         "Acceso: il menu dell'app sta direttamente sul pannello, senza una scheda intorno, così sembra parte del pannello.",
+    "Calendar and clocks under the menus":
+        "Calendario e orologi sotto i menu",
+    "On: under the menu of an app the calendar row, the world clocks with alarms and timers, and the bottom buttons stay visible, in the room the menu leaves free.":
+        "Acceso: sotto il menu di un'app restano visibili la riga del calendario, gli orologi con sveglie e timer e i pulsanti in fondo, nello spazio che il menu lascia libero.",
     "Menus of the icons":
         "Menu delle icone",
     "Menus inside the panel":
