@@ -13,6 +13,6 @@
     "unlock-dialog"
   ],
   "settings-schema": "org.gnome.shell.extensions.smart-calendar-hub",
-  "version-name": "1.0",
+  "version-name": "1.1",
   "url": "https://github.com/bria-bria/smart-calendar-hub"
 }
