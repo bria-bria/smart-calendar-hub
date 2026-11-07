@@ -42,8 +42,10 @@ function appIndicatorOn() {
 const arrowIcon = open => new St.Icon({icon_name: open ? 'pan-down-symbolic' : 'pan-end-symbolic', icon_size: 16});
 
 // The list of the sections, a row each; onOpen(id) on a click
-export function buildSectionList(onOpen) {
-    return kit.page(kit.card(settingsSections().map(section => kit.row({
+// extra: more entries after the sections ({id, title, icon}), pages of
+// their own that open in the same card (e.g. "System updates")
+export function buildSectionList(onOpen, extra = []) {
+    return kit.page(kit.card([...settingsSections(), ...extra].map(section => kit.row({
         icon: section.icon,
         title: section.title,
         trailing: kit.chevron(),

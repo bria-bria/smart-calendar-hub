@@ -278,6 +278,7 @@ export class PanelPages {
         if (!this._visit)
             return;
         this._panel.swaps.swap(this._visit);
+        this._panel.updates.attach(this._visit);
         tidyMenu(this._visit);
     }
 

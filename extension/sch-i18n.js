@@ -695,6 +695,41 @@ const IT = {
         "Clicca su «Calendario ed eventi» per aprirlo",
     "Panel width (pixels)":
         "Larghezza del pannello (pixel)",
+    // --- System updates (sch-updates.js) ---
+    "System updates":
+        "Aggiornamenti di sistema",
+    "System packages":
+        "Pacchetti di sistema",
+    "Snap packages":
+        "Pacchetti Snap",
+    "Flatpak apps":
+        "App Flatpak",
+    "Firmware":
+        "Firmware",
+    "Install pacman-contrib to count them":
+        "Installa pacman-contrib per contarli",
+    "fwupd is not installed":
+        "fwupd non è installato",
+    "Check again":
+        "Controlla di nuovo",
+    "Update with {app}":
+        "Aggiorna con {app}",
+    "Open GNOME Software":
+        "Apri GNOME Software",
+    "Read only: the hub counts the updates, {app} installs them.":
+        "Sola lettura: l'hub conta gli aggiornamenti, li installa {app}.",
+    "Last checked at {time}":
+        "Ultimo controllo alle {time}",
+    "The check took too long":
+        "Il controllo ha impiegato troppo tempo",
+    "Checking…":
+        "Controllo in corso…",
+    "Could not check":
+        "Controllo non riuscito",
+    "No updates":
+        "Nessun aggiornamento",
+    "{names} and {count} more":
+        "{names} e altri {count}",
 };
 
 // Translations read from the user's file (languages other than it/en); null = none

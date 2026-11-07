@@ -28,6 +28,7 @@ import {PanelPages} from './sch-panel-pages.js';
 import {ResizeEdge} from './sch-resize-edge.js';
 import {SettingsSwaps} from './sch-settings-swaps.js';
 import {SideCard} from './sch-side-card.js';
+import {SystemUpdates} from './sch-updates.js';
 import {SkyView} from './sch-sky.js';
 import {TodayCard} from './sch-today.js';
 import {TopBarOrganizer} from './sch-top-bar-organizer.js';
@@ -113,6 +114,7 @@ export class SidePanel {
         this.pages?.close();
         this.tray?.destroy();
         this.swaps?.destroy();
+        this.updates?.destroy();
         this.geometry?.destroy();
 
         if (this.dateMenu._messageList)
@@ -255,6 +257,7 @@ export class SidePanel {
         this._buildCalendar();
         this.side = new SideCard(this);
         this.swaps = new SettingsSwaps(this);
+        this.updates = new SystemUpdates(this);
 
         // GNOME's "Today" card, above the notifications
         this.today = new TodayCard(this);

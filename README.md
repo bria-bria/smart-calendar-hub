@@ -72,6 +72,19 @@ there — always on our side: their code stays exactly as their authors wrote it
 | [Battery Indicator Icon](https://extensions.gnome.org/extension/5718/battery-indicator-icon/) | by Deminder, where the idea of our battery circle comes from ([project](https://github.com/Deminder/battery-indicator-icon)): while it is on, the hub's own circle steps aside and lets it draw the battery, also on the lock screen |
 | [Freon](https://extensions.gnome.org/extension/841/freon/) | temperatures of the processor, disks and graphics card, and fan speeds: its menu opens in the panel, its "Sensor Settings" item opens all its settings (what the menu and the top bar show, grouping, unit, polling interval, sensor sources) in the card beside the panel, the mouse wheel scrolls its long sensor lists, and an optional switch shows one thermometer in the tray instead of a reading per sensor |
 
+### System updates
+
+With [Octopi](https://tintaescura.com/projects/octopi/) in the tray (Arch,
+CachyOS), a click on its icon opens its menu in the panel and, in the card
+beside it, **System updates**: how many updates there are for the system
+packages, the Flatpak apps and the firmware, with the first names of each.
+On systems without Octopi (Fedora, Ubuntu…) the same page is in Settings,
+after the sections. It only counts: **Update with Octopi** (or Cachy-Update, or
+Ubuntu's Software Updater) and **Open GNOME Software** open the program that
+installs them. The counts come from `checkupdates` (pacman-contrib) on Arch,
+PackageKit elsewhere, `snap`, `flatpak` and fwupd; nothing runs as root and
+no package manager runs inside GNOME Shell.
+
 ### Built for the hub
 
 [BlueHub](https://github.com/bria-bria/bluehub),
@@ -160,7 +173,11 @@ and every 30 minutes. That service sees the request.
 When GNOME Weather has more than one city and you scroll to another city in
 the panel, its weather is downloaded with GWeather from the same services
 GNOME uses for the first city (MET Norway, airport METAR stations), at most
-every 15 minutes while it is shown. Nothing else is sent
+every 15 minutes while it is shown. When you open **System updates** (at
+most every 10 minutes, or on **Check again**), `checkupdates` and `flatpak`
+ask your package mirrors and Flatpak remotes for their lists of updates, as
+the update programs do; PackageKit and fwupd only answer from what they
+already know. Nothing else is sent
 anywhere; calendars, notifications and settings stay on your computer.
 
 ## Lock screen and login screen
