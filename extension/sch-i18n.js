@@ -736,6 +736,37 @@ const IT = {
         "Pulsante degli aggiornamenti di sistema",
     "When no update program has an icon of its own in the tray, a button next to the gear shows how many updates there are, only while there are some, and opens the System updates page. Checked when the panel opens, at most once an hour.":
         "Se nessun programma di aggiornamento ha una sua icona nel vassoio, un pulsante accanto alla rotella mostra quanti aggiornamenti ci sono, solo quando ce ne sono, e apre la pagina Aggiornamenti di sistema. Controllo all'apertura del pannello, al massimo una volta all'ora.",
+    // --- New versions of the hub (sch-version-check.js) ---
+    "New versions":
+        "Nuove versioni",
+    "Check for new versions":
+        "Controlla se ci sono nuove versioni",
+    "When you open the settings, at most once a day, asks GitHub for the latest release of Smart Calendar Hub and shows it at the bottom of the list. Nothing about you is sent.":
+        "Quando apri le impostazioni, al massimo una volta al giorno, chiede a GitHub l'ultima versione di Smart Calendar Hub e la mostra in fondo all'elenco. Non viene inviato nulla che ti riguardi.",
+    "Version {version} · up to date":
+        "Versione {version} · aggiornata",
+    "Version {version}":
+        "Versione {version}",
+    "You have version {version}":
+        "Hai la versione {version}",
+    "Downloading…":
+        "Scaricamento…",
+    "Installing…":
+        "Installazione…",
+    "Log out and back in to use the new version":
+        "Esci e rientra nella sessione per usare la nuova versione",
+    "The update did not work: {error}":
+        "L'aggiornamento non è riuscito: {error}",
+    "What’s new":
+        "Novità",
+    "Update":
+        "Aggiorna",
+    "Smart Calendar Hub {version} is available":
+        "È disponibile Smart Calendar Hub {version}",
+    "the download is not a zip file":
+        "il file scaricato non è uno zip",
+    "the gnome-extensions program is missing":
+        "manca il programma gnome-extensions",
 };
 
 // Translations read from the user's file (languages other than it/en); null = none

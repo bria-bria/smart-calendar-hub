@@ -43,14 +43,15 @@ const arrowIcon = open => new St.Icon({icon_name: open ? 'pan-down-symbolic' : '
 
 // The list of the sections, a row each; onOpen(id) on a click
 // extra: more entries after the sections ({id, title, icon}), pages of
-// their own that open in the same card (e.g. "System updates")
-export function buildSectionList(onOpen, extra = []) {
+// their own that open in the same card (e.g. "System updates"); footer: a
+// piece under them (the version of the hub)
+export function buildSectionList(onOpen, extra = [], footer = null) {
     return kit.page(kit.card([...settingsSections(), ...extra].map(section => kit.row({
         icon: section.icon,
         title: section.title,
         trailing: kit.chevron(),
         onActivate: () => onOpen(section.id),
-    }))));
+    }))), footer);
 }
 
 // The rows of one row of the description (a switch with the rows inside it,
@@ -173,7 +174,7 @@ function modelRows(row, ctx, parentOn = null) {
         break;
     }
     case 'link': {
-        const open = pillButton(row.button, () => openPage(ctx, row.url));
+        const open = pillButton(row.button, () => openPage(ctx.closePanel, row.url));
         actors.push(kit.row({title: row.title, subtitle: row.subtitle ?? '', trailing: open, wrap: true}));
         parts = [open];
         break;
@@ -212,8 +213,9 @@ function pillButton(label, onClick) {
 }
 
 // A page in the browser, which opens above the panel: the panel goes
-function openPage(ctx, url) {
-    ctx.closePanel();
+// (closePanel)
+export function openPage(closePanel, url) {
+    closePanel();
     try {
         Gio.AppInfo.launch_default_for_uri(url, null);
     } catch (e) {
@@ -232,7 +234,7 @@ function biiRow(ctx) {
             if (!Main.extensionManager.enableExtension(BII_UUID))
                 row.subtitleLabel.text = _('GNOME did not turn it on: check that extensions are on in the Extensions app');
         } else if (action) {
-            openPage(ctx, action);
+            openPage(ctx.closePanel, action);
         }
     });
     const row = kit.row({

@@ -12,6 +12,7 @@ import {TopBarStyle} from './sch-topbar-style.js';
 import {pageKit} from './sch-page-kit.js';
 import {stopTimerCountdowns} from './sch-world-clocks.js';
 import {forgetUpdatesCheck} from './sch-updates.js';
+import {forgetInstalledVersion} from './sch-version-check.js';
 
 export default class SmartCalendarHubExtension extends Extension {
     enable() {
@@ -43,6 +44,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._panel = null;
         stopTimerCountdowns();
         forgetUpdatesCheck();
+        forgetInstalledVersion();
         this._topBarStyle?.destroy();
         this._topBarStyle = null;
     }
@@ -56,7 +58,8 @@ export default class SmartCalendarHubExtension extends Extension {
         if (session)
             this._topBarStyle.setClockPlacement(false);
         if (session && !this._panel) {
-            this._panel = new SidePanel(Main.panel.statusArea.dateMenu, this.getSettings());
+            this._panel = new SidePanel(Main.panel.statusArea.dateMenu, this.getSettings(),
+                this.metadata['version-name']);
         } else if (!session && this._panel) {
             this._panel.destroy();
             this._panel = null;

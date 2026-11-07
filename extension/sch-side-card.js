@@ -14,7 +14,7 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import {_} from './sch-i18n.js';
-import {buildSectionList, buildSectionPage} from './sch-hub-settings.js';
+import {buildSectionList, buildSectionPage, openPage} from './sch-hub-settings.js';
 import {logError, logWarning} from './sch-log.js';
 import {settingsSections} from './sch-settings-model.js';
 import {UPDATES_SECTION} from './sch-updates.js';
@@ -290,8 +290,11 @@ export class SideCard {
 
     // The list of the sections (id null) or the settings of section `id`
     _hubSettingsPage(id) {
-        if (id === null)
-            return buildSectionList(sectionId => this._showHubSection(sectionId), this._extraSections());
+        if (id === null) {
+            // the version of the hub at the bottom, and a new one when there is
+            const version = this._panel.versionCheck.buildNotice(url => openPage(() => this._panel.dateMenu.menu.close(), url));
+            return buildSectionList(sectionId => this._showHubSection(sectionId), this._extraSections(), version);
+        }
         if (id === UPDATES_SECTION) {
             return this._panel.updates.buildPage(count => {
                 const label = this._hubSettings?.side?.countLabel;

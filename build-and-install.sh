@@ -76,6 +76,7 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-ext-icons.js" \
     --extra-source="sch-top-bar-organizer.js" \
     --extra-source="sch-updates.js" \
+    --extra-source="sch-version-check.js" \
     --extra-source="icons" \
     --extra-source="$PROJ_DIR/LICENSE"
 echo "Package built: $ZIP"

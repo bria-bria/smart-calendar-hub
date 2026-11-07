@@ -152,7 +152,8 @@ settings button). The seven sections:
   is shown in the bar too. **IP address in Smart Calendar Hub** adds a box
   under the tray icons with the chosen addresses (local network, every active
   VPN, public), shaped like the weather row, one at a time with arrows;
-  click one to copy it.
+  click one to copy it. **Check for new versions** (on by default): see
+  *Privacy and network use*.
 - **Extensions**: settings for the other extensions the hub works with, used
   only when they are installed. Top Bar Organizer sync (off by default; turn
   it on if you use Top Bar Organizer, otherwise both extensions try to place
@@ -181,7 +182,19 @@ every 15 minutes while it is shown. When you open **System updates** (at
 most every 10 minutes, or on **Check again**), `checkupdates` and `flatpak`
 ask your package mirrors and Flatpak remotes for their lists of updates, as
 the update programs do; PackageKit and fwupd only answer from what they
-already know. Nothing else is sent
+already know.
+
+**Check for new versions** (Settings → Network, on by default): when you
+open the list of the settings, at most once a day, the extension makes one
+request, `GET https://api.github.com/repos/bria-bria/smart-calendar-hub/releases/latest`,
+with the generic User-Agent `Smart-Calendar-Hub` and nothing about you. If
+a newer release is out, the bottom of the list shows it, with **What's new**
+(its page) and **Update**, which downloads that release's zip from this
+repository and installs it with `gnome-extensions install --force`; the new
+version starts at your next login. Otherwise the bottom of the list shows
+your version. Switch it off and no request is made.
+
+Nothing else is sent
 anywhere; calendars, notifications and settings stay on your computer.
 
 ## Lock screen and login screen

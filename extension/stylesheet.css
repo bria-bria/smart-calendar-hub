@@ -1105,6 +1105,11 @@
     padding: 0 8px;
 }
 
+/* the version of the hub at the bottom of the list of our settings */
+.sch-version-line {
+    padding-top: 4px;
+}
+
 .sch-kit-row.sch-set-child {
     padding-left: 30px;
 }

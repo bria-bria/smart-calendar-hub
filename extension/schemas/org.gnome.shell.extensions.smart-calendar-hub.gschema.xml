@@ -42,6 +42,21 @@
       <description>Identifiers of the icons that stay in the top bar instead of moving inside the panel.</description>
     </key>
 
+    <key name="check-new-versions" type="b">
+      <default>true</default>
+      <summary>Check for new versions of Smart Calendar Hub</summary>
+      <description>When the list of the settings opens, at most once a day, the latest release is read from the GitHub repository of the extension (one request, nothing about the user is sent). A newer one is shown at the bottom of the list.</description>
+    </key>
+    <key name="version-checked-at" type="x">
+      <default>0</default>
+      <summary>Time of the last check for a new version</summary>
+      <description>Seconds since 1970; used so that the check runs at most once a day.</description>
+    </key>
+    <key name="version-latest" type="s">
+      <default>''</default>
+      <summary>Latest release found</summary>
+      <description>The tag of the latest release of Smart Calendar Hub found by the last check (for example v1.2), empty before the first one.</description>
+    </key>
     <key name="updates-tray-icon" type="b">
       <default>true</default>
       <summary>Button for system updates next to the settings button</summary>

@@ -29,6 +29,7 @@ import {ResizeEdge} from './sch-resize-edge.js';
 import {SettingsSwaps} from './sch-settings-swaps.js';
 import {SideCard} from './sch-side-card.js';
 import {SystemUpdates} from './sch-updates.js';
+import {VersionCheck} from './sch-version-check.js';
 import {SkyView} from './sch-sky.js';
 import {TodayCard} from './sch-today.js';
 import {TopBarOrganizer} from './sch-top-bar-organizer.js';
@@ -40,9 +41,11 @@ import {moveClock} from './sch-topbar-style.js';
 import {vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
 
 export class SidePanel {
-    constructor(dateMenu, settings) {
+    // version: the version-name of our metadata.json
+    constructor(dateMenu, settings, version) {
         this.dateMenu = dateMenu;
         this.settings = settings;
+        this.version = version;
         // true once the panel is going: callbacks still queued do nothing
         this.disabling = false;
         this._savedParents = [];
@@ -115,6 +118,7 @@ export class SidePanel {
         this.tray?.destroy();
         this.swaps?.destroy();
         this.updates?.destroy();
+        this.versionCheck?.destroy();
         this.geometry?.destroy();
 
         if (this.dateMenu._messageList)
@@ -258,6 +262,7 @@ export class SidePanel {
         this.side = new SideCard(this);
         this.swaps = new SettingsSwaps(this);
         this.updates = new SystemUpdates(this);
+        this.versionCheck = new VersionCheck(this.settings, this.version);
 
         // GNOME's "Today" card, above the notifications
         this.today = new TodayCard(this);

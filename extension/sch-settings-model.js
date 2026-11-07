@@ -274,6 +274,13 @@ function networkGroups() {
                     subtitle: _('Asks api.ipify.org, like the top bar'), enabledWhen: panelIpOn},
             ],
         },
+        {
+            title: _('New versions'),
+            rows: [
+                {type: 'switch', key: 'check-new-versions', title: _('Check for new versions'),
+                    subtitle: _('When you open the settings, at most once a day, asks GitHub for the latest release of Smart Calendar Hub and shows it at the bottom of the list. Nothing about you is sent.')},
+            ],
+        },
     ];
 }
 
