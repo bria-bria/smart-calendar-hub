@@ -401,6 +401,7 @@ export class SidePanel {
             this.setCalendarExpanded(false);
         this.side.panelOpened();
         this.tray.sync();
+        this.updates.panelOpened();
         this.geometry.update();
         this.calendarView.reloadCalendars();
         this.weather.refresh();

@@ -452,6 +452,13 @@ function trayGroups() {
             ],
         },
         {
+            title: _('System updates'),
+            rows: [
+                {type: 'switch', key: 'updates-tray-icon', title: _('Button for system updates'),
+                    subtitle: _('When no update program has an icon of its own in the tray, a button next to the gear shows how many updates there are, only while there are some, and opens the System updates page. Checked when the panel opens, at most once an hour.')},
+            ],
+        },
+        {
             kind: 'apps',
             title: _('Menu inside the panel, icon by icon'),
             description: _('Switch off an icon to keep its menu floating (e.g. an app whose menu does not look right inside).'),

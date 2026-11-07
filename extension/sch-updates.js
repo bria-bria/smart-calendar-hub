@@ -20,11 +20,21 @@
 // The page opens beside the menu of Octopi's tray icon (with our item on
 // top of it to close and open it again) and, on systems without Octopi,
 // from the list of our settings (the gear).
+//
+// When no update program has an icon of its own in the top bar (e.g. Ubuntu
+// or Debian with only GNOME Software), a button of ours sits next to the
+// gear, only while there are updates, with their number: never two ways
+// in for the same thing. Its check runs when the panel opens, at most once
+// an hour (setting updates-tray-icon switches it off).
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
+import Clutter from 'gi://Clutter';
+import St from 'gi://St';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {_} from './sch-i18n.js';
@@ -49,7 +59,13 @@ const OCTOPI_NOTIFIER = 'octopi-notifier';
 // The id of the page among our settings
 export const UPDATES_SECTION = 'system-updates';
 
+// The StatusNotifierItem ids of update programs with a tray icon of their
+// own (Octopi, Cachy-Update, Pamac, Ubuntu's and Mint's notifiers, Discover)
+const UPDATER_IN_TRAY = /octopi|arch-?update|cachy-?update|pamac|update-?notifier|mintupdate|discover/i;
+
+// a check of the page is good for ten minutes, the one for our button an hour
 const KEEP_RESULT_MS = 10 * 60 * 1000;
+const BUTTON_CHECK_MS = 60 * 60 * 1000;
 const CHECK_TIMEOUT_S = 120;
 
 const PACKAGEKIT = 'org.freedesktop.PackageKit';
@@ -57,6 +73,15 @@ const PACKAGEKIT_TRANSACTION = 'org.freedesktop.PackageKit.Transaction';
 // the "none" filter of PackageKit: every update
 const PACKAGEKIT_FILTER_NONE = 1 << 1;
 const FWUPD = 'org.freedesktop.fwupd';
+
+// The last check that ended: {time, results: Map(source → result)}, plain
+// data only. Kept while the panel is taken down on screen lock (so the
+// button checks at most once an hour), forgotten in disable().
+let lastCheck = null;
+
+export function forgetUpdatesCheck() {
+    lastCheck = null;
+}
 
 function desktopApp(id) {
     return Shell.AppSystem.get_default().lookup_app(id);
@@ -242,17 +267,69 @@ export class SystemUpdates {
         this._destroyed = false;
         // what this system is and which sources it has
         this._system = null;
-        // the last check that ended: {time, results: Map(source → result)}
-        this._lastCheck = null;
         this._ready = findSystem().then(found => {
             this._system = found;
+            this._syncButton();
         });
+        this._button = this._buildButton();
+        panel.tray.addButton(this._button);
+        panel.settings.connectObject('changed::updates-tray-icon', () => this._syncButton(), this._button);
     }
 
     destroy() {
         this._destroyed = true;
         this._listeners.clear();
         this._stop();
+        this._button?.destroy();
+    }
+
+    // Our button next to the gear: an icon and the number of updates
+    _buildButton() {
+        const box = new St.BoxLayout({y_align: Clutter.ActorAlign.CENTER});
+        box.add_child(new St.Icon({icon_name: 'software-update-available-symbolic', icon_size: 14}));
+        this._buttonCount = new St.Label({style_class: 'sch-updates-count', y_align: Clutter.ActorAlign.CENTER});
+        box.add_child(this._buttonCount);
+        const button = new St.Button({
+            style_class: 'sch-gear-button sch-updates-button',
+            can_focus: true,
+            accessible_name: _('System updates'),
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: false,
+            child: box,
+        });
+        button.connect('clicked', () => this._panel.side.toggleHubPage(UPDATES_SECTION));
+        // gone with the panel (GNOME Shell destroys it at logout)
+        button.connect('destroy', () => {
+            this._button = null;
+        });
+        return button;
+    }
+
+    // The button is wanted when switched on and no update program has an
+    // icon of its own in the top bar
+    _buttonWanted() {
+        if (!this._system || !this._panel.settings.get_boolean('updates-tray-icon'))
+            return false;
+        return !Object.values(Main.panel.statusArea).some(indicator =>
+            UPDATER_IN_TRAY.test(indicator?._indicator?.id ?? ''));
+    }
+
+    // Shown only while the last check found updates
+    _syncButton() {
+        if (!this._button)
+            return;
+        const count = this._buttonWanted() && lastCheck ? total(lastCheck.results) : 0;
+        this._buttonCount.text = count > 0 ? String(count) : '';
+        this._button.accessible_name = count > 0
+            ? _('System updates: {count}', {count}) : _('System updates');
+        this._button.visible = count > 0;
+    }
+
+    // The panel opens: the button's check, at most once an hour
+    panelOpened() {
+        this._syncButton();
+        if (this._buttonWanted())
+            this.check(BUTTON_CHECK_MS);
     }
 
     // The entry of the page among our settings, on systems without Octopi
@@ -328,8 +405,8 @@ export class SystemUpdates {
         page.connect('destroy', () => {
             state.destroyed = true;
             this._listeners.delete(state.listener);
-            // nobody left to show the result to
-            if (!this._listeners.size)
+            // nobody left to show the result to (our button waits for it)
+            if (!this._listeners.size && !this._buttonWanted())
                 this._stop();
         });
         this._ready.then(() => {
@@ -352,7 +429,7 @@ export class SystemUpdates {
         const time = kit.section('');
         page.add_child(time);
 
-        const check = kit.button({label: _('Check again'), onClick: () => this.check(true)});
+        const check = kit.button({label: _('Check again'), onClick: () => this.check(0)});
         const installer = system.installer;
         const install = installer
             ? kit.button({
@@ -386,32 +463,29 @@ export class SystemUpdates {
                 row.setTrailing(kit.value(result.state === 'done' ? String(result.names.length) : '–'));
             }
             check.setSensitive(!this._cancellable);
-            const lastCheck = this._lastCheck;
             time.text = lastCheck && !this._cancellable
                 ? _('Last checked at {time}', {
                     time: GLib.DateTime.new_from_unix_local(Math.floor(lastCheck.time / 1000)).format('%H:%M'),
                 })
                 : '';
             time.visible = !!time.text;
-            const done = [...results.values()].filter(result => result.state === 'done');
-            onCount?.(this._cancellable || !done.length
-                ? null
-                : done.reduce((n, result) => n + result.names.length, 0));
+            onCount?.(this._cancellable ? null : total(results) ?? null);
         };
         this._listeners.add(sync);
         sync();
-        this.check(false);
+        this.check();
         return sync;
     }
 
     // What the rows show now: the check running, or the last one
     _results() {
-        return this._cancellable ? this._partial : this._lastCheck?.results ?? new Map();
+        return this._cancellable ? this._partial : lastCheck?.results ?? new Map();
     }
 
     _notify() {
         for (const listener of this._listeners)
             listener();
+        this._syncButton();
     }
 
     _launch(start) {
@@ -424,16 +498,16 @@ export class SystemUpdates {
         this._panel.dateMenu.menu.close();
     }
 
-    // A check, unless one is running or (without force) the last one is recent
-    check(force) {
-        this._check(force).catch(e => logWarning(`system updates: ${e}`));
+    // A check, unless one is running or the last one is younger than maxAge
+    check(maxAge = KEEP_RESULT_MS) {
+        this._check(maxAge).catch(e => logWarning(`system updates: ${e}`));
     }
 
-    async _check(force) {
+    async _check(maxAge) {
         const system = this._system;
         if (this._cancellable || this._destroyed || !system)
             return;
-        if (!force && this._lastCheck && Date.now() - this._lastCheck.time < KEEP_RESULT_MS)
+        if (lastCheck && Date.now() - lastCheck.time < maxAge)
             return;
         const cancellable = this._cancellable = new Gio.Cancellable();
         const partial = this._partial = new Map();
@@ -471,7 +545,7 @@ export class SystemUpdates {
         this._timeoutId = 0;
         this._cancellable = null;
         this._partial = null;
-        this._lastCheck = {time: Date.now(), results: partial};
+        lastCheck = {time: Date.now(), results: partial};
         this._notify();
     }
 
@@ -484,6 +558,12 @@ export class SystemUpdates {
         this._partial = null;
         cancellable?.cancel();
     }
+}
+
+// The number of updates the sources found (null when none answered)
+function total(results) {
+    const done = [...results.values()].filter(result => result.state === 'done');
+    return done.length ? done.reduce((n, result) => n + result.names.length, 0) : null;
 }
 
 // The line under the title of a row

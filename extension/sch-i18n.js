@@ -730,6 +730,12 @@ const IT = {
         "Nessun aggiornamento",
     "{names} and {count} more":
         "{names} e altri {count}",
+    "System updates: {count}":
+        "Aggiornamenti di sistema: {count}",
+    "Button for system updates":
+        "Pulsante degli aggiornamenti di sistema",
+    "When no update program has an icon of its own in the tray, a button next to the gear shows how many updates there are, only while there are some, and opens the System updates page. Checked when the panel opens, at most once an hour.":
+        "Se nessun programma di aggiornamento ha una sua icona nel vassoio, un pulsante accanto alla rotella mostra quanti aggiornamenti ci sono, solo quando ce ne sono, e apre la pagina Aggiornamenti di sistema. Controllo all'apertura del pannello, al massimo una volta all'ora.",
 };
 
 // Translations read from the user's file (languages other than it/en); null = none

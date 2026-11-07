@@ -79,7 +79,11 @@ CachyOS), a click on its icon opens its menu in the panel and, in the card
 beside it, **System updates**: how many updates there are for the system
 packages, the Flatpak apps and the firmware, with the first names of each.
 On systems without Octopi (Fedora, Ubuntu…) the same page is in Settings,
-after the sections. It only counts: **Update with Octopi** (or Cachy-Update, or
+after the sections. When no update program has a tray icon of its own (e.g.
+Ubuntu or Debian with only GNOME Software), a button next to the gear shows
+the number of updates, only while there are some, and opens the same page;
+it checks when the panel opens, at most once an hour (Settings → Tray →
+System updates). It only counts: **Update with Octopi** (or Cachy-Update, or
 Ubuntu's Software Updater) and **Open GNOME Software** open the program that
 installs them. The counts come from `checkupdates` (pacman-contrib) on Arch,
 PackageKit elsewhere, `snap`, `flatpak` and fwupd; nothing runs as root and

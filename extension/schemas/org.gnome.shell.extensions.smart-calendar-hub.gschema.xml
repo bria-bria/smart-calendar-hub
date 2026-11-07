@@ -42,6 +42,12 @@
       <description>Identifiers of the icons that stay in the top bar instead of moving inside the panel.</description>
     </key>
 
+    <key name="updates-tray-icon" type="b">
+      <default>true</default>
+      <summary>Button for system updates next to the settings button</summary>
+      <description>When on and no update program has a tray icon of its own, a button next to the settings button shows how many updates there are (only while there are some) and opens the System updates page. Checked when the panel opens, at most once an hour.</description>
+    </key>
+
     <key name="tray-menu-fill" type="b">
       <default>false</default>
       <summary>Calendar and clocks under the menus of the tray icons</summary>

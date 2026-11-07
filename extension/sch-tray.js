@@ -188,6 +188,11 @@ export class Tray {
         return this._syncing;
     }
 
+    // A button of another part of the panel, before the gear (it frees it)
+    addButton(button) {
+        this.actor.insert_child_below(button, this._gear);
+    }
+
     retranslate() {
         this._gear.accessible_name = _('Settings');
     }

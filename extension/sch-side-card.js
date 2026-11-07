@@ -38,6 +38,8 @@ export class SideCard {
     constructor(panel) {
         this._panel = panel;
         this._hubSettings = null;
+        // the page of our settings on screen (null: the list)
+        this._hubSection = null;
         this._hostOrientation = undefined;
         // popup-menu-content: the look of a menu
         this.card = new St.BoxLayout({
@@ -258,10 +260,24 @@ export class SideCard {
             sideTitle: 'Smart Calendar Hub',
             sideActions: this._hubSettingsActions(),
         });
-        if (hub.side)
+        if (hub.side) {
             this._hubSettings = hub;
+            this._hubSection = null;
+        }
         else
             logWarning('no card beside the panel for the settings');
+    }
+
+    // Straight to one page of our settings (the updates button); a second
+    // click on it closes the card
+    toggleHubPage(id) {
+        if (this._hubSettings && this._hubSection === id) {
+            this.closeHubSettings();
+            return;
+        }
+        if (!this._hubSettings)
+            this.toggleHubSettings();
+        this._showHubSection(id);
     }
 
     _hubSettingsActions() {
@@ -276,8 +292,13 @@ export class SideCard {
     _hubSettingsPage(id) {
         if (id === null)
             return buildSectionList(sectionId => this._showHubSection(sectionId), this._extraSections());
-        if (id === UPDATES_SECTION)
-            return this._panel.updates.buildPage();
+        if (id === UPDATES_SECTION) {
+            return this._panel.updates.buildPage(count => {
+                const label = this._hubSettings?.side?.countLabel;
+                if (label && this._hubSection === UPDATES_SECTION)
+                    label.text = count === null ? '' : String(count);
+            });
+        }
         return buildSectionPage(this._panel.settings, id, {
             closePanel: () => this._panel.dateMenu.menu.close(),
             reloadCalendars: () => this._panel.calendarView.reloadCalendars(),
@@ -301,7 +322,9 @@ export class SideCard {
         const page = this._hubSettingsPage(id);
         const title = id === null
             ? 'Smart Calendar Hub'
-            : [...settingsSections(), ...this._extraSections()].find(section => section.id === id)?.title ?? '';
+            : id === UPDATES_SECTION
+                ? _('System updates')
+                : settingsSections().find(section => section.id === id)?.title ?? '';
         const header = this.sideHeader(title, null, this._hubSettingsActions(),
             id === null ? null : () => this._showHubSection(null));
         inner.insert_child_above(page, side.page);
@@ -313,6 +336,7 @@ export class SideCard {
         side.header = header;
         side.countLabel = header.countLabel;
         side.scroll.vadjustment.value = 0;
+        this._hubSection = id;
     }
 
     // Our settings away from the card: the calendar back as it was

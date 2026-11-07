@@ -11,6 +11,7 @@ import {SidePanel} from './sch-side-panel.js';
 import {TopBarStyle} from './sch-topbar-style.js';
 import {pageKit} from './sch-page-kit.js';
 import {stopTimerCountdowns} from './sch-world-clocks.js';
+import {forgetUpdatesCheck} from './sch-updates.js';
 
 export default class SmartCalendarHubExtension extends Extension {
     enable() {
@@ -41,6 +42,7 @@ export default class SmartCalendarHubExtension extends Extension {
         this._panel?.destroy();
         this._panel = null;
         stopTimerCountdowns();
+        forgetUpdatesCheck();
         this._topBarStyle?.destroy();
         this._topBarStyle = null;
     }

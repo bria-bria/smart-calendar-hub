@@ -152,6 +152,19 @@
     background-color: rgba(255, 255, 255, 0.18);
 }
 
+/* the updates button, next to the gear: as wide as its icon and number */
+.sch-updates-button {
+    width: auto;
+    min-width: 26px;
+    padding: 0 7px;
+}
+
+.sch-updates-count {
+    padding-left: 4px;
+    font-size: 9pt;
+    font-weight: bold;
+}
+
 /* 1. Weather */
 .sch-sidebar-box .weather-button {
     margin: 2px 4px;
