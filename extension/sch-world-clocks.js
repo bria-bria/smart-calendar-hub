@@ -16,11 +16,9 @@
 // GNOME Clocks (a click opens it). With nothing to show, one short line that
 // opens GNOME Clocks (the card never disappears without a word).
 //
-// Where the alarms and timers are: GNOME Clocks installed from the system
-// keeps them in GSettings (schema org.gnome.clocks); installed as a Flatpak
-// (Flathub gives it no access to dconf) in the keyfile of its sandbox,
-// read here asynchronously and again whenever it changes. The cities come
-// to GNOME Shell over D-Bus in both cases (org.gnome.shell.world-clocks).
+// The alarms and timers come from sch-clocks-source.js, the alarms that could
+// not ring from sch-alarm-watch.js: they stand first in the row until clicked.
+// The cities come to GNOME Shell over D-Bus (org.gnome.shell.world-clocks).
 
 import 'cairo'; // makes the Cairo context of St.DrawingArea usable
 import Clutter from 'gi://Clutter';
@@ -36,38 +34,14 @@ import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {_} from './sch-i18n.js';
 import {logError} from './sch-log.js';
+import {forgetMissed, MISSED_KEY, nextRing} from './sch-alarm-watch.js';
+import {CLOCKS_DESKTOP, ClocksSource} from './sch-clocks-source.js';
 
 const DIAL = 34; // px, before the screen scale
 const TICK_SECONDS = 30;
 const FINISH_CHECK_MS = 60000; // at least once a minute: late after a suspend
 const IDLE_ICON = 'appointment-soon-symbolic';
 const PAUSE_ICON = 'media-playback-pause-symbolic';
-
-const CLOCKS_ID = 'org.gnome.clocks';
-const CLOCKS_DESKTOP = `${CLOCKS_ID}.desktop`;
-// the keyfile of GLib's settings inside the Flatpak sandbox, and its group
-// for the schema org.gnome.clocks (path /org/gnome/clocks/)
-const FLATPAK_KEYFILE = ['.var', 'app', CLOCKS_ID, 'config', 'glib-2.0', 'settings', 'keyfile'];
-const KEYFILE_GROUP = 'org/gnome/clocks';
-const KEYFILE_DELAY_MS = 300; // one read for the burst of events of one save
-
-Gio._promisify(Gio.File.prototype, 'load_contents_async');
-
-// {alarms, timers} of the keyfile of GNOME Clocks in Flatpak, unpacked like
-// GSettings values; a key never changed in GNOME Clocks is not in the file
-function parseClocksKeyfile(bytes) {
-    const keyfile = new GLib.KeyFile();
-    keyfile.load_from_bytes(new GLib.Bytes(bytes), GLib.KeyFileFlags.NONE);
-    // (has_key() is not available from JavaScript)
-    const keys = keyfile.has_group(KEYFILE_GROUP) ? keyfile.get_keys(KEYFILE_GROUP)[0] : [];
-    const read = key => {
-        if (!keys.includes(key))
-            return [];
-        const text = keyfile.get_value(KEYFILE_GROUP, key);
-        return GLib.Variant.parse(new GLib.VariantType('aa{sv}'), text, null, null).recursiveUnpack();
-    };
-    return {alarms: read('alarms'), timers: read('timers')};
-}
 
 // Our countdowns of the timers of GNOME Clocks, by timer:
 // {name, duration, end (µs, wall clock) while running | left (s) while
@@ -159,7 +133,8 @@ function formatDuration(seconds) {
 
 export class WorldClocksCard {
     // onOpen(): called before GNOME Clocks is opened (closes the panel)
-    constructor(onOpen) {
+    constructor(settings, onOpen) {
+        this._hubSettings = settings;
         this._onOpen = onOpen;
         this._clocks = []; // {name, tz, area}
         this._timerId = 0;
@@ -236,17 +211,10 @@ export class WorldClocksCard {
             this._loadChips();
             this._repaintAll();
         });
-        // alarms and timers: from the GNOME Clocks that is installed (system
-        // or Flatpak), again when apps are installed or removed
         this._chips = [];
-        this._clocksKind = null; // 'host', 'flatpak' or 'none'
-        this._clocksLoaded = false; // alarms and timers read at least once
-        this._clocksValues = {alarms: [], timers: []}; // read from the Flatpak keyfile
-        this._keyfileId = 0;
-        this._appSystem = Shell.AppSystem.get_default();
-        this._appSystem.connectObject('installed-changed', () => this._syncClocksSource(), this);
+        this._hubSettings.connectObject(`changed::${MISSED_KEY}`, () => this._loadChips(), this);
+        this._source = new ClocksSource(() => this._loadChips());
         this.actor.connect('destroy', () => this._cleanup());
-        this._syncClocksSource(false);
         this._load();
         this._onFinish = () => this._checkFinished();
         onFinish = this._onFinish;
@@ -273,9 +241,10 @@ export class WorldClocksCard {
             this._interface?.disconnect(this._formatId);
         this._formatId = 0;
         this._interface = null;
-        this._appSystem?.disconnectObject(this);
-        this._appSystem = null;
-        this._dropClocksSource();
+        this._hubSettings?.disconnectObject(this);
+        this._hubSettings = null;
+        this._source?.destroy();
+        this._source = null;
         if (this._scaleId)
             this._theme?.disconnect(this._scaleId);
         this._scaleId = 0;
@@ -395,7 +364,17 @@ export class WorldClocksCard {
         };
         const now = GLib.DateTime.new_now_local();
         try {
-            const alarms = this._readClocks('alarms');
+            for (const [when, name] of this._hubSettings.get_value(MISSED_KEY).deepUnpack()) {
+                const ring = GLib.DateTime.new_from_unix_local(when);
+                const date = ring.format('%A %e %B').replace(/\s+/g, ' ');
+                const time = this._format(ring);
+                const tip = name
+                    ? _('Missed alarm · {name} · {date} · click to dismiss', {name, date})
+                    : _('Missed alarm · {date} · click to dismiss', {date});
+                add('dialog-warning-symbolic', _('Missed · {time}', {time}), () => tip,
+                    () => this._dismissMissed(when, name)).chip.add_style_class_name('sch-clock-chip-missed');
+            }
+            const alarms = this._source.read('alarms');
             // only the alarms still to ring today: GNOME Clocks saves the
             // next ring of the alarms that are on (it already follows the
             // days of the week); one that rang today, or rings another day,
@@ -403,8 +382,7 @@ export class WorldClocksCard {
             const today = now.format('%F');
             const isLater = when => when && when.compare(now) > 0 && when.format('%F') === today;
             const next = alarms
-                .map(a => ({name: a.name ?? '', when: a.ring_time
-                    ? GLib.DateTime.new_from_iso8601(a.ring_time, null)?.to_local() : null}))
+                .map(a => ({name: a.name ?? '', when: nextRing(a, now)}))
                 .filter(a => isLater(a.when))
                 .sort((a, b) => a.when.compare(b.when));
             for (const alarm of next) {
@@ -432,7 +410,7 @@ export class WorldClocksCard {
                     : _('Alarm · {time}', {time})}\n${_('Off · click to switch it on in GNOME Clocks')}`;
                 add(PAUSE_ICON, time, () => tip).chip.add_style_class_name('sch-clock-chip-off');
             }
-            const timers = this._readClocks('timers');
+            const timers = this._source.read('timers');
             // by duration and name (the n-th timer equal to it), not by
             // position: adding or deleting another timer keeps the countdown
             const keys = new Set();
@@ -452,7 +430,7 @@ export class WorldClocksCard {
             // timers deleted in GNOME Clocks: their countdown goes too (not
             // before the keyfile of a Flatpak GNOME Clocks has been read)
             for (const key of [...runs.keys()]) {
-                if (this._clocksLoaded && !keys.has(key))
+                if (this._source.loaded && !keys.has(key))
                     runs.delete(key);
             }
             this._syncTimers();
@@ -470,12 +448,12 @@ export class WorldClocksCard {
         this._scroll.visible = !empty;
         this._empty.visible = empty;
         // the keyfile of a Flatpak GNOME Clocks is still being read
-        this.actor.visible = !empty || this._clocksLoaded;
+        this.actor.visible = !empty || this._source.loaded;
         if (!empty)
             return;
         this._left.visible = false;
         this._right.visible = false;
-        const installed = this._clocksKind !== 'none';
+        const installed = this._source.kind !== 'none';
         this._emptyLabel.text = installed
             ? _('No alarms today · add cities and alarms in Clocks')
             : _('Install GNOME Clocks for world clocks and alarms');
@@ -484,100 +462,10 @@ export class WorldClocksCard {
         this._empty.accessible_name = this._emptyLabel.text;
     }
 
-    // The alarms or the timers of GNOME Clocks, unpacked: [] when it is not
-    // installed or has none
-    _readClocks(key) {
-        if (this._clocksKind === 'host')
-            return this._clocksSettings.get_value(key).recursiveUnpack();
-        return this._clocksValues[key] ?? [];
-    }
-
-    // Which GNOME Clocks is installed: the one GNOME starts (its .desktop
-    // file; a Flatpak one has X-Flatpak), else the schema of a system one
-    _syncClocksSource(reload = true) {
-        const info = this._appSystem.lookup_app(CLOCKS_DESKTOP)?.get_app_info();
-        const schema = Gio.SettingsSchemaSource.get_default()?.lookup(CLOCKS_ID, true);
-        let kind = 'none';
-        if (info?.has_key('X-Flatpak'))
-            kind = 'flatpak';
-        else if (schema)
-            kind = 'host';
-        if (kind === this._clocksKind)
-            return;
-        this._dropClocksSource();
-        this._clocksKind = kind;
-        this._clocksLoaded = kind !== 'flatpak';
-        if (kind === 'host') {
-            this._clocksSettings = new Gio.Settings({settings_schema: schema});
-            this._clocksSettings.connectObject(
-                'changed::alarms', () => this._loadChips(),
-                'changed::timers', () => this._loadChips(), this);
-        } else if (kind === 'flatpak') {
-            this._keyfile = Gio.File.new_for_path(
-                GLib.build_filenamev([GLib.get_home_dir(), ...FLATPAK_KEYFILE]));
-            // GLib saves the keyfile by writing a new one and renaming it:
-            // any event on it means "read it again"
-            this._keyfileMonitor = this._keyfile.monitor_file(Gio.FileMonitorFlags.NONE, null);
-            this._keyfileMonitor.connectObject('changed', () => this._scheduleKeyfileRead(), this);
-            this._readKeyfile();
-        }
-        if (reload)
-            this._loadChips();
-    }
-
-    _dropClocksSource() {
-        this._clocksSettings?.disconnectObject(this);
-        this._clocksSettings = null;
-        this._keyfileMonitor?.disconnectObject(this);
-        this._keyfileMonitor?.cancel();
-        this._keyfileMonitor = null;
-        this._keyfileCancel?.cancel();
-        this._keyfileCancel = null;
-        this._keyfile = null;
-        if (this._keyfileId)
-            GLib.source_remove(this._keyfileId);
-        this._keyfileId = 0;
-        this._clocksValues = {alarms: [], timers: []};
-        this._clocksKind = null;
-    }
-
-    _scheduleKeyfileRead() {
-        if (this._keyfileId)
-            GLib.source_remove(this._keyfileId);
-        this._keyfileId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, KEYFILE_DELAY_MS, () => {
-            this._keyfileId = 0;
-            this._readKeyfile();
-            return GLib.SOURCE_REMOVE;
-        });
-    }
-
-    // The keyfile of GNOME Clocks in Flatpak, read without blocking GNOME
-    // Shell; missing (GNOME Clocks never saved anything): no alarms. Not
-    // readable: what was read before stays (and so do the countdowns)
-    async _readKeyfile() {
-        this._keyfileCancel?.cancel();
-        const cancel = new Gio.Cancellable();
-        this._keyfileCancel = cancel;
-        let values = {alarms: [], timers: []};
-        try {
-            const [bytes] = await this._keyfile.load_contents_async(cancel);
-            values = parseClocksKeyfile(bytes);
-        } catch (e) {
-            if (e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                return;
-            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND)) {
-                logError(`GNOME Clocks (Flatpak): ${e}`);
-                if (this._keyfileCancel === cancel)
-                    this._keyfileCancel = null;
-                return;
-            }
-        }
-        if (this._keyfileCancel !== cancel)
-            return;
-        this._keyfileCancel = null;
-        this._clocksValues = values;
-        this._clocksLoaded = true;
-        this._loadChips();
+    // The clicked chip goes away from under the pointer: so does its label
+    _dismissMissed(when, name) {
+        this._tip?.hide();
+        forgetMissed(this._hubSettings, when, name);
     }
 
     _resize() {
@@ -670,7 +558,7 @@ export class WorldClocksCard {
 
     // GNOME Clocks, if installed (else a click does nothing)
     _openClocks() {
-        const app = Shell.AppSystem.get_default().lookup_app('org.gnome.clocks.desktop');
+        const app = Shell.AppSystem.get_default().lookup_app(CLOCKS_DESKTOP);
         if (!app)
             return;
         this._onOpen?.();

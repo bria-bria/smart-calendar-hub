@@ -7,6 +7,7 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {AlarmWatch} from './sch-alarm-watch.js';
 import {SidePanel} from './sch-side-panel.js';
 import {TopBarStyle} from './sch-topbar-style.js';
 import {pageKit} from './sch-page-kit.js';
@@ -17,6 +18,9 @@ import {forgetInstalledVersion} from './sch-version-check.js';
 export default class SmartCalendarHubExtension extends Extension {
     enable() {
         this._topBarStyle = new TopBarStyle(this.getSettings());
+        // also on the lock screen, where it shows nothing: alarms ring there too
+        if (!Main.sessionMode.isGreeter)
+            this._alarmWatch = new AlarmWatch(this.getSettings());
         this._modeId = Main.sessionMode.connect('updated', () => this._syncSessionMode());
         // A failure while building the panel is reported to GNOME (the
         // Extensions app shows the error): the top bar style is undone too,
@@ -42,6 +46,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._modeId = 0;
         this._panel?.destroy();
         this._panel = null;
+        this._alarmWatch?.destroy();
+        this._alarmWatch = null;
         stopTimerCountdowns();
         forgetUpdatesCheck();
         forgetInstalledVersion();

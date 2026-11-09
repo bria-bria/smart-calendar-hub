@@ -40,6 +40,8 @@ gnome-extensions pack "$EXT_SRC" \
     --out-dir="$DIST" \
     --schema="schemas/org.gnome.shell.extensions.smart-calendar-hub.gschema.xml" \
     --extra-source="sch-i18n.js" \
+    --extra-source="sch-clocks-source.js" \
+    --extra-source="sch-alarm-watch.js" \
     --extra-source="sch-calendar.js" \
     --extra-source="sch-eds.js" \
     --extra-source="sch-sky.js" \

@@ -309,5 +309,10 @@
       <summary>One thermometer for Freon</summary>
       <description>With the Freon extension installed, its button shows a single thermometer icon instead of an icon and a temperature for each chosen sensor. Its temperatures stay in its menu.</description>
     </key>
+    <key name="missed-alarms" type="a(xs)">
+      <default>[]</default>
+      <summary>Missed alarms</summary>
+      <description>Alarms of GNOME Clocks that could not ring because GNOME Clocks had no window open: time (Unix seconds) and name. Each stays in the world clocks card until clicked.</description>
+    </key>
   </schema>
 </schemalist>

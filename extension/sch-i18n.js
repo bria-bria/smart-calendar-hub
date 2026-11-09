@@ -397,6 +397,12 @@ const IT = {
         "Un anello che si svuota con la carica, nel colore della barra; giallo sotto il 20%, rosso sotto il 10%. Il fulmine solo quando sta davvero caricando",
     "Percentage inside the circle":
         "Percentuale dentro il cerchio",
+    "Missed · {time}":
+        "Persa · {time}",
+    "Missed alarm · {name} · {date} · click to dismiss":
+        "Sveglia persa · {name} · {date} · clic per togliere",
+    "Missed alarm · {date} · click to dismiss":
+        "Sveglia persa · {date} · clic per togliere",
     "Alarm · {name} · {time}":
         "Sveglia · {name} · {time}",
     "Alarm · {time}":

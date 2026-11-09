@@ -532,6 +532,16 @@
     color: rgba(255, 255, 255, 0.6);
 }
 
+.sch-clock-chip-missed {
+    background-color: #c01c28;
+    color: #ffffff;
+}
+
+.sch-clock-chip-missed:hover,
+.sch-clock-chip-missed:focus {
+    background-color: #e01b24;
+}
+
 .sch-clock-chip-line {
     spacing: 6px;
 }

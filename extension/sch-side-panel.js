@@ -277,7 +277,7 @@ export class SidePanel {
 
         // World clocks: a card of analogue clocks, always the last one above
         // the bottom row (the notifications above take the free room)
-        this.worldClocks = new WorldClocksCard(() => dm.menu.close());
+        this.worldClocks = new WorldClocksCard(this.settings, () => dm.menu.close());
         // free room above the clocks while an app's menu is shown with the
         // calendar and the clocks under it (tray-menu-fill)
         this.fillSpacer = new St.Widget({y_expand: true, visible: false});
