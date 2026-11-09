@@ -305,6 +305,7 @@ export class SideCard {
         return buildSectionPage(this._panel.settings, id, {
             closePanel: () => this._panel.dateMenu.menu.close(),
             reloadCalendars: () => this._panel.calendarView.reloadCalendars(),
+            widgetRegistry: this._panel.widgetRegistry,
         });
     }
 

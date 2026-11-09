@@ -22,6 +22,7 @@ import {
     APPINDICATOR_UUIDS, BII_UUID, appItems, biiRowTexts, calendarRows, mutedEntries,
     setAppOn, setCalendarShown, settingsSections, unmuteApp,
 } from './sch-settings-model.js';
+import {FIXED_WIDGETS, HUB_WIDGETS, moveWidget, setWidgetOn, widgetOrder} from './sch-widgets.js';
 
 // 'active', 'off' (installed, can be switched on) or 'missing' (not
 // installed, or broken: to be taken again from extensions.gnome.org)
@@ -389,18 +390,63 @@ function appIndicatorNotice(group, ctx) {
     return notice;
 }
 
-const GROUP_CARDS = {apps: appsCard, muted: mutedCard, calendars: calendarsCard};
+// The widgets of the panel in their order: a switch each and two arrows.
+// Rebuilt when the list changes (an arrow moves a row: the keyboard focus
+// goes back to its arrow)
+function widgetsCard(group, ctx) {
+    const {settings, syncs, widgetRegistry: registry} = ctx;
+    const card = kit.card();
+    let shape = null;
+    syncs.push(() => {
+        const order = widgetOrder(settings, registry.ids);
+        const now = JSON.stringify(order);
+        if (now === shape)
+            return;
+        shape = now;
+        const focused = global.stage.get_key_focus()?.schWidgetArrow ?? null;
+        card.destroy_all_children();
+        order.forEach(({id, on}, i) => {
+            const arrow = (icon, label, delta, enabled) => {
+                const button = roundButton(icon, label, () => moveWidget(settings, registry.ids, id, delta));
+                button.schWidgetArrow = `${id}:${delta}`;
+                kit.setSensitive(button, enabled);
+                return button;
+            };
+            const up = arrow('go-up-symbolic', _('Move up'), -1, i > 0);
+            const down = arrow('go-down-symbolic', _('Move down'), 1, i < order.length - 1);
+            const fixed = FIXED_WIDGETS.includes(id);
+            const sw = kit.toggle({active: on, onToggle: state => setWidgetOn(settings, registry.ids, id, state)});
+            kit.setSensitive(sw, !fixed);
+            const trailing = new St.BoxLayout({style_class: 'sch-ext-stepper', y_align: Clutter.ActorAlign.CENTER});
+            [up, down, sw].forEach(piece => trailing.add_child(piece));
+            let subtitle = '';
+            if (fixed)
+                subtitle = _('Always shown: it holds the settings button');
+            else if (!HUB_WIDGETS.includes(id) && !registry.get(id))
+                subtitle = _('Not available: its extension is off or not installed');
+            card.add_child(kit.row({title: registry.title(id), subtitle, trailing, wrap: true}));
+            for (const button of [up, down]) {
+                if (button.schWidgetArrow === focused)
+                    button.grab_key_focus();
+            }
+        });
+    });
+    return card;
+}
+
+const GROUP_CARDS = {apps: appsCard, muted: mutedCard, calendars: calendarsCard, widgets: widgetsCard};
 
 // The settings of section `id`, or null when there is no such section.
 // closePanel: closes the panel (before a browser opens); reloadCalendars:
-// the calendar of the panel reads its calendars again
-export function buildSectionPage(settings, id, {closePanel, reloadCalendars}) {
+// the calendar of the panel reads its calendars again; widgetRegistry: the
+// widgets of other extensions
+export function buildSectionPage(settings, id, {closePanel, reloadCalendars, widgetRegistry}) {
     const section = settingsSections().find(s => s.id === id);
     if (!section)
         return null;
     const env = {bii: biiState(), appIndicator: appIndicatorOn()};
     const syncs = [];
-    const ctx = {settings, env, syncs, closePanel, reloadCalendars};
+    const ctx = {settings, env, syncs, closePanel, reloadCalendars, widgetRegistry};
     const pieces = [];
     for (const group of section.groups) {
         if (group.kind === 'appindicator') {

@@ -401,6 +401,28 @@ const IT = {
         "Un anello che si svuota con la carica, nel colore della barra; giallo sotto il 20%, rosso sotto il 10%. Il fulmine solo quando sta davvero caricando",
     "Percentage inside the circle":
         "Percentuale dentro il cerchio",
+    "Tray icons":
+        "Icone del vassoio",
+    "Date, sun and moon":
+        "Data, sole e luna",
+    "World clocks and alarms":
+        "Orologi del mondo e sveglie",
+    "Panel sections":
+        "Sezioni del pannello",
+    "Sections":
+        "Sezioni",
+    "Switch the sections of the panel on or off and move them with the arrows. Those of other extensions start switched off. The buttons at the bottom always stay last.":
+        "Accendi o spegni le sezioni del pannello e spostale con le frecce. Quelle delle altre estensioni partono spente. I pulsanti in fondo restano sempre ultimi.",
+    "Move up":
+        "Sposta su",
+    "Move down":
+        "Sposta giù",
+    "Always shown: it holds the settings button":
+        "Sempre visibile: contiene il pulsante delle impostazioni",
+    "Not available: its extension is off or not installed":
+        "Non disponibile: la sua estensione è spenta o non installata",
+    "{title} · not available":
+        "{title} · non disponibile",
     "Missed · {time}":
         "Persa · {time}",
     "Missed alarm · {name} · {date} · click to dismiss":

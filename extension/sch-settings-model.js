@@ -16,6 +16,8 @@
 //        apps (mutedEntries), each with a button to turn it back on
 //   {kind: 'calendars', title, description, emptyTitle, emptySubtitle}
 //        one switch per calendar (calendarRows, read asynchronously)
+//   {kind: 'widgets', title, description}  the widgets of the panel, each
+//        with a switch and arrows to move it (sch-widgets.js)
 //   {kind: 'appindicator', text}  a warning while the extension that makes
 //        the tray icons is off (env.appIndicator false) and the tray is used
 // a row:
@@ -582,6 +584,11 @@ function byHandGroups() {
 export function settingsSections() {
     return [
         {id: 'panel', title: _('Panel'), icon: 'view-dual-symbolic', groups: panelGroups()},
+        {id: 'widgets', title: _('Panel sections'), icon: 'view-list-symbolic', groups: [{
+            kind: 'widgets',
+            title: _('Sections'),
+            description: _('Switch the sections of the panel on or off and move them with the arrows. Those of other extensions start switched off. The buttons at the bottom always stay last.'),
+        }]},
         {id: 'tray', title: _('Tray'), icon: 'view-app-grid-symbolic', groups: trayGroups()},
         {id: 'calendars', title: _('Calendars'), icon: 'x-office-calendar-symbolic', groups: calendarGroups()},
         {id: 'notifications', title: _('Notifications'), icon: 'preferences-system-notifications-symbolic',

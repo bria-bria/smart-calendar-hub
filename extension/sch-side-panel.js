@@ -38,14 +38,16 @@ import {Tray} from './sch-tray.js';
 import {WeatherSection} from './sch-weather-section.js';
 import {WorldClocksCard} from './sch-world-clocks.js';
 import {logError} from './sch-log.js';
-import {placeWidgets, widgetOrder} from './sch-widgets.js';
+import {PanelWidgets} from './sch-panel-widgets.js';
 import {moveClock} from './sch-topbar-style.js';
 import {vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
 
 export class SidePanel {
-    // version: the version-name of our metadata.json
-    constructor(dateMenu, settings, version) {
+    // version: the version-name of our metadata.json; widgetRegistry: the
+    // widgets of other extensions (sch-widgets.js)
+    constructor(dateMenu, settings, version, widgetRegistry) {
         this.dateMenu = dateMenu;
+        this.widgetRegistry = widgetRegistry;
         this.settings = settings;
         this.version = version;
         // true once the panel is going: callbacks still queued do nothing
@@ -99,6 +101,9 @@ export class SidePanel {
     destroy() {
         this.disabling = true;
         unloadUserTranslations();
+        // the widgets switched off back in the sidebar, those of other
+        // extensions destroyed
+        this.widgets?.destroy();
         this.resize?.destroy();
         this._extIcons?.destroy();
         this.today?.destroy();
@@ -231,6 +236,7 @@ export class SidePanel {
         // destroyed queue a layout)
         this._sidebarDestroyId = this.sidebar.connect('destroy', () => {
             this.disabling = true;
+            this.widgets?.forget();
             this.pages.forget();
             this.tray.forget();
             this._forgetSidebar();
@@ -299,7 +305,8 @@ export class SidePanel {
 
         this.bottom = new BottomRow(this);
         this.sidebar.add_child(this.bottom.actor);
-        this._placeWidgets();
+        this.widgets = new PanelWidgets(this, this._widgets, this.widgetRegistry);
+        this.widgets.place();
 
         this._signals.connect(dm.menu, 'open-state-changed', (_m, isOpen) => {
             if (isOpen)
@@ -315,10 +322,6 @@ export class SidePanel {
         const before = new Set(this.sidebar.get_children());
         build();
         this._widgets.set(id, this.sidebar.get_children().filter(child => !before.has(child)));
-    }
-
-    _placeWidgets() {
-        placeWidgets(this.sidebar, this._widgets, widgetOrder(this.settings));
     }
 
     // Sky (sun, moon, moon phase) on the left, date on the right
@@ -481,8 +484,7 @@ export class SidePanel {
         switch (key) {
         case 'profiles':
         case 'active-profile':
-            if (this.sidebar)
-                this._placeWidgets();
+            this.widgets?.place();
             break;
         case 'sidebar-side':
             this.side.moveToSide();

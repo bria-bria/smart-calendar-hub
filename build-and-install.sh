@@ -43,6 +43,7 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-clocks-source.js" \
     --extra-source="sch-alarm-watch.js" \
     --extra-source="sch-widgets.js" \
+    --extra-source="sch-panel-widgets.js" \
     --extra-source="sch-calendar.js" \
     --extra-source="sch-eds.js" \
     --extra-source="sch-sky.js" \

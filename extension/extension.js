@@ -9,6 +9,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {AlarmWatch} from './sch-alarm-watch.js';
 import {SidePanel} from './sch-side-panel.js';
+import {WidgetRegistry} from './sch-widgets.js';
 import {TopBarStyle} from './sch-topbar-style.js';
 import {pageKit} from './sch-page-kit.js';
 import {stopTimerCountdowns} from './sch-world-clocks.js';
@@ -18,6 +19,7 @@ import {forgetInstalledVersion} from './sch-version-check.js';
 export default class SmartCalendarHubExtension extends Extension {
     enable() {
         this._topBarStyle = new TopBarStyle(this.getSettings());
+        this._widgetRegistry = new WidgetRegistry(this.getSettings());
         // also on the lock screen, where it shows nothing: alarms ring there too
         if (!Main.sessionMode.isGreeter)
             this._alarmWatch = new AlarmWatch(this.getSettings());
@@ -46,6 +48,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._modeId = 0;
         this._panel?.destroy();
         this._panel = null;
+        this._widgetRegistry?.destroy();
+        this._widgetRegistry = null;
         this._alarmWatch?.destroy();
         this._alarmWatch = null;
         stopTimerCountdowns();
@@ -65,7 +69,7 @@ export default class SmartCalendarHubExtension extends Extension {
             this._topBarStyle.setClockPlacement(false);
         if (session && !this._panel) {
             this._panel = new SidePanel(Main.panel.statusArea.dateMenu, this.getSettings(),
-                this.metadata['version-name']);
+                this.metadata['version-name'], this._widgetRegistry);
         } else if (!session && this._panel) {
             this._panel.destroy();
             this._panel = null;
@@ -94,6 +98,17 @@ export default class SmartCalendarHubExtension extends Extension {
         return this._panel?.pages.updateExternalPage(id, contents) ?? false;
     }
 
+    // A widget of another extension in the panel (README, "Add a widget to
+    // the panel"): kept while the hub is on, shown once the user switches it
+    // on. false when the description is not valid or the hub is off
+    addWidget(widget) {
+        return this._widgetRegistry?.add(widget) ?? false;
+    }
+
+    removeWidget(id) {
+        return this._widgetRegistry?.remove(id) ?? false;
+    }
+
     // The standard pieces for the pages of other extensions (sch-page-kit.js)
     get pageKit() {
         return pageKit;
@@ -102,6 +117,6 @@ export default class SmartCalendarHubExtension extends Extension {
     // What showExternalPage supports beyond the page itself (read only):
     // 'side' = buildSidePage, a card beside the panel
     get externalPageFeatures() {
-        return Object.freeze(['side', 'side-header', 'kit', 'message', 'side-count', 'update']);
+        return Object.freeze(['side', 'side-header', 'kit', 'message', 'side-count', 'update', 'widgets']);
     }
 }

@@ -481,6 +481,23 @@
 
 /* World clocks: a card of analogue clocks above the bottom row, with the
    look of the other rows */
+/* widgets of other extensions: the same card as the world clocks */
+.sch-widget {
+    margin: 2px 4px;
+}
+
+.sch-widget-card,
+.sch-widget-fill {
+    background-color: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 6px 10px;
+}
+
+.sch-widget-missing {
+    color: rgba(255, 255, 255, 0.55);
+}
+
 .sch-clocks-card {
     background-color: rgba(255, 255, 255, 0.09);
     border: 1px solid rgba(255, 255, 255, 0.06);

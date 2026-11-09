@@ -361,6 +361,64 @@ if (!shown)
 - `hub.stateObj.externalPageFeatures` (read only) lists what this version
   supports beyond the main page: `['side']` means `buildSidePage`.
 
+### Add a widget to the panel
+
+The panel is a column of widgets: the hub's own (tray, IP addresses,
+weather, date, calendar, "Today", notifications, world clocks) and those of
+other extensions. Users switch them on and off and move them in
+**Settings → Panel sections**; the buttons at the bottom always stay last.
+
+```js
+import {ExtensionState} from 'resource:///org/gnome/shell/misc/extensionUtils.js';
+
+const HUB = 'smart-calendar-hub@bria-bria.github.io';
+
+enable() {
+    // the hub may start after you, or be switched off and on again:
+    // add the widget every time it becomes active
+    this._hubId = Main.extensionManager.connect('extension-state-changed', (_m, ext) => {
+        if (ext.uuid === HUB && ext.state === ExtensionState.ACTIVE)
+            this._addToHub();
+    });
+    this._addToHub();
+}
+
+_addToHub() {
+    Main.extensionManager.lookup(HUB)?.stateObj?.addWidget?.({
+        id: 'my-extension',          // unique, stable: the user's choices are kept by it
+        title: 'My extension',       // its name in Panel sections
+        size: 'card',                // 'compact', 'card' or 'fill'
+        build: () => new St.Label({text: 'Hello'}),
+    });
+}
+
+disable() {
+    Main.extensionManager.disconnect(this._hubId);
+    Main.extensionManager.lookup(HUB)?.stateObj?.removeWidget?.('my-extension');
+}
+```
+
+- **Your widget starts switched off**: it shows up in Panel sections, and the
+  user decides whether and where it goes in the panel.
+- `build()` is called when the widget is shown (when the user switches it on,
+  when the panel is built again after the lock screen) and must return a new
+  actor without a parent. The hub destroys it when it is switched off, when
+  you call `removeWidget`, on the lock screen and when the hub is switched
+  off: free your timers and signals on its `destroy`.
+- The hub puts it inside a card with the margins and corners of the panel.
+  `'compact'`: a row without a card; `'card'`: a card as tall as its contents;
+  `'fill'`: a card that takes the free room. Only one widget fills: the
+  notifications when they are shown, otherwise the first `'fill'` widget.
+- If `build()` throws or returns an invalid actor, the widget is left out
+  (and the error is written in the log). While your extension is off or
+  uninstalled, a widget the user switched on leaves an empty card with its
+  name.
+- `addWidget` returns `false` when the description is not valid or the hub is
+  off; calling it again with the same `id` replaces the widget. The panel
+  only exists in the user session: added widgets are kept and shown again
+  after the lock screen, nothing to do on your side.
+- `externalPageFeatures` includes `'widgets'` from this version on.
+
 ### Page model
 
 Pages shown in the hub follow one model, so every extension looks like part
@@ -426,7 +484,8 @@ and scrolling):
   for the page and/or the side page, keeping where they were scrolled.
 
 `externalPageFeatures` lists what the installed hub offers: `'side'`,
-`'side-header'`, `'kit'`, `'message'`, `'side-count'`, `'update'`.
+`'side-header'`, `'kit'`, `'message'`, `'side-count'`, `'update'`,
+`'widgets'`.
 
 ## Bring your extension to the hub
 
