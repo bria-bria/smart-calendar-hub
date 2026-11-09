@@ -2,11 +2,12 @@
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
 // The date menu turned into a side panel, built in the user session and
-// taken down on screen lock. Vertical order: tray icons (and the settings
+// taken down on screen lock. Each part is a widget (sch-widgets.js), in the
+// order of the active profile, by default: tray icons (and the settings
 // button) → IP addresses → weather → sky and date → collapsible calendar →
-// "Today" → notifications → world clocks → bottom row. GNOME's own widgets
-// are moved in and given back where they were; each part of the panel is a
-// module of its own, which frees what it creates.
+// "Today" → notifications → world clocks; then always the bottom row. GNOME's
+// own widgets are moved in and given back where they were; each part of the
+// panel is a module of its own, which frees what it creates.
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
@@ -37,6 +38,7 @@ import {Tray} from './sch-tray.js';
 import {WeatherSection} from './sch-weather-section.js';
 import {WorldClocksCard} from './sch-world-clocks.js';
 import {logError} from './sch-log.js';
+import {placeWidgets, widgetOrder} from './sch-widgets.js';
 import {moveClock} from './sch-topbar-style.js';
 import {vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
 
@@ -53,6 +55,7 @@ export class SidePanel {
         this._idleId = 0;
         this._positioning = false;
         this._vesperalSettings = null;
+        this._widgets = new Map(); // id → the actors of that widget in the sidebar
 
         const container = dateMenu.container;
         const parent = container.get_parent();
@@ -246,46 +249,57 @@ export class SidePanel {
 
         // Tray icons, with the settings button on their right; the menu of a
         // tray icon shows inside the panel, in the card under them
-        this.tray = new Tray(this);
-        this.sidebar.add_child(this.tray.actor);
-        this.pages = new PanelPages(this);
-        this.sidebar.add_child(this.pages.actor);
+        this._widget('tray', () => {
+            this.tray = new Tray(this);
+            this.sidebar.add_child(this.tray.actor);
+            this.pages = new PanelPages(this);
+            this.sidebar.add_child(this.pages.actor);
+        });
 
         // IP addresses (sch-net.js PanelIpBox, added once IpView exists)
-        this._ipPanelBin = new St.Bin({x_expand: true});
-        this.sidebar.add_child(this._ipPanelBin);
+        this._widget('ip', () => {
+            this._ipPanelBin = new St.Bin({x_expand: true});
+            this.sidebar.add_child(this._ipPanelBin);
+        });
 
-        this.weather = new WeatherSection(this, () => this._skyView.refresh());
-
-        this._buildDateRow();
-        this._buildCalendar();
+        this._widget('weather', () => {
+            this.weather = new WeatherSection(this, () => this._skyView.refresh());
+        });
+        this._widget('date', () => this._buildDateRow());
+        this._widget('calendar', () => this._buildCalendar());
         this.side = new SideCard(this);
         this.swaps = new SettingsSwaps(this);
         this.updates = new SystemUpdates(this);
         this.versionCheck = new VersionCheck(this.settings, this.version);
 
         // GNOME's "Today" card, above the notifications
-        this.today = new TodayCard(this);
-        this.sidebar.add_child(this.today.actor);
+        this._widget('today', () => {
+            this.today = new TodayCard(this);
+            this.sidebar.add_child(this.today.actor);
+        });
 
-        // Notifications
-        if (dm._messageList) {
-            dm._messageList.x_expand = true;
-            dm._messageList.y_expand = true;
-            this.adopt(dm._messageList, this.sidebar);
-        }
+        this._widget('notifications', () => {
+            if (dm._messageList) {
+                dm._messageList.x_expand = true;
+                dm._messageList.y_expand = true;
+                this.adopt(dm._messageList, this.sidebar);
+            }
+        });
 
-        // World clocks: a card of analogue clocks, always the last one above
-        // the bottom row (the notifications above take the free room)
-        this.worldClocks = new WorldClocksCard(this.settings, () => dm.menu.close());
-        // free room above the clocks while an app's menu is shown with the
-        // calendar and the clocks under it (tray-menu-fill)
-        this.fillSpacer = new St.Widget({y_expand: true, visible: false});
-        this.sidebar.add_child(this.fillSpacer);
-        this.sidebar.add_child(this.worldClocks.actor);
+        // World clocks: a card of analogue clocks (the notifications take
+        // the free room)
+        this._widget('clocks', () => {
+            this.worldClocks = new WorldClocksCard(this.settings, () => dm.menu.close());
+            // free room above the clocks while an app's menu is shown with the
+            // calendar and the clocks under it (tray-menu-fill)
+            this.fillSpacer = new St.Widget({y_expand: true, visible: false});
+            this.sidebar.add_child(this.fillSpacer);
+            this.sidebar.add_child(this.worldClocks.actor);
+        });
 
         this.bottom = new BottomRow(this);
         this.sidebar.add_child(this.bottom.actor);
+        this._placeWidgets();
 
         this._signals.connect(dm.menu, 'open-state-changed', (_m, isOpen) => {
             if (isOpen)
@@ -294,6 +308,17 @@ export class SidePanel {
                 this._panelClosed();
         });
         this.geometry.update();
+    }
+
+    // A widget: the actors build() adds to the sidebar
+    _widget(id, build) {
+        const before = new Set(this.sidebar.get_children());
+        build();
+        this._widgets.set(id, this.sidebar.get_children().filter(child => !before.has(child)));
+    }
+
+    _placeWidgets() {
+        placeWidgets(this.sidebar, this._widgets, widgetOrder(this.settings));
     }
 
     // Sky (sun, moon, moon phase) on the left, date on the right
@@ -449,10 +474,16 @@ export class SidePanel {
         this._calendarArrow = null;
         this._skyButton = null;
         this._ipPanelBin = null;
+        this._widgets.clear();
     }
 
     _onSettingChanged(key) {
         switch (key) {
+        case 'profiles':
+        case 'active-profile':
+            if (this.sidebar)
+                this._placeWidgets();
+            break;
         case 'sidebar-side':
             this.side.moveToSide();
             break;

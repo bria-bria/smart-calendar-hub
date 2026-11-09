@@ -314,6 +314,16 @@
       <summary>One thermometer for Freon</summary>
       <description>With the Freon extension installed, its button shows a single thermometer icon instead of an icon and a temperature for each chosen sensor. Its temperatures stay in its menu.</description>
     </key>
+    <key name="profiles" type="aa{sv}">
+      <default>[{'id': &lt;'default'&gt;, 'widgets': &lt;['tray', 'ip', 'weather', 'date', 'calendar', 'today', 'notifications', 'clocks']&gt;}]</default>
+      <summary>Profiles of the panel</summary>
+      <description>Each profile has an id and the order of the widgets of the panel (tray, ip, weather, date, calendar, today, notifications, clocks). A widget a profile does not name keeps its default place after the others. The bottom row always comes last.</description>
+    </key>
+    <key name="active-profile" type="s">
+      <default>'default'</default>
+      <summary>Profile in use</summary>
+      <description>The id of the profile the panel follows; if it is not found, the first profile.</description>
+    </key>
     <key name="missed-alarms" type="a(xs)">
       <default>[]</default>
       <summary>Missed alarms</summary>
