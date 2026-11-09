@@ -203,6 +203,9 @@ function notificationGroups() {
                     subtitle: _('How much larger than the notification the area the mouse must leave is: 0 = only the notification itself'),
                     min: 0, max: 200, step: 5, page: 25,
                     enabledWhen: on('banners-away-from-mouse')},
+                {type: 'switch', key: 'banners-hide-near-mouse', title: _('Hide banners near the mouse'),
+                    subtitle: _('A banner on screen hides while the pointer is in that area and comes back when it leaves; it stays in the notification list'),
+                    enabledWhen: on('banners-away-from-mouse')},
             ],
         },
         {

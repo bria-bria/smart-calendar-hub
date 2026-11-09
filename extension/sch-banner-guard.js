@@ -19,6 +19,7 @@ import {Urgency} from 'resource:///org/gnome/shell/ui/messageTray.js';
 import {logWarning} from './sch-log.js';
 
 const CHECK_INTERVAL_MS = 200;
+const WATCH_INTERVAL_MS = 100;
 
 // Where an aligned box sits in the free space: 0 start, 0.5 centre, 1 end
 function alignShift(align) {
@@ -33,6 +34,7 @@ export class BannerGuard {
         const tray = Main.messageTray;
         const original = tray._showNotification;
         this._checkId = 0;
+        this._watchId = 0;
         this._size = null;
         // GNOME calls _showNotification() from _updateState() when the queue
         // has a notification to show. An own property on the tray: deleting it
@@ -43,9 +45,7 @@ export class BannerGuard {
                 return;
             }
             original.call(tray);
-            // critical banners open already expanded: not a usual size
-            if (!tray._banner.expanded)
-                this._size = [tray._banner.width, tray._banner.height];
+            this._watchBanner();
         };
     }
 
@@ -54,7 +54,12 @@ export class BannerGuard {
             GLib.source_remove(this._checkId);
             this._checkId = 0;
         }
+        if (this._watchId) {
+            GLib.source_remove(this._watchId);
+            this._watchId = 0;
+        }
         const tray = Main.messageTray;
+        tray._bannerBin.show();
         if (tray._showNotification === this._wrapper)
             delete tray._showNotification;
         else
@@ -80,6 +85,32 @@ export class BannerGuard {
             this._checkId = 0;
             tray._updateState();
             return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // While a banner is on screen: its real size, once GNOME has placed it,
+    // and, if asked (banners-hide-near-mouse), out of the way while the
+    // pointer is near it. Only hidden, not dismissed: GNOME's timer goes on,
+    // it comes back when the pointer leaves, and it stays in the panel's list.
+    _watchBanner() {
+        if (this._watchId)
+            return;
+        this._watchId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WATCH_INTERVAL_MS, () => {
+            const tray = Main.messageTray;
+            const banner = tray._banner;
+            if (!banner) {
+                tray._bannerBin.show();
+                this._watchId = 0;
+                return GLib.SOURCE_REMOVE;
+            }
+            // critical banners open already expanded: not a usual size
+            if (banner.mapped && !banner.expanded && banner.width > 0)
+                this._size = [banner.width, banner.height];
+            const hide = this._settings.get_boolean('banners-hide-near-mouse') &&
+                !banner.expanded && tray._notification?.urgency !== Urgency.CRITICAL &&
+                this._pointerInBannerArea();
+            tray._bannerBin.visible = !hide;
+            return GLib.SOURCE_CONTINUE;
         });
     }
 

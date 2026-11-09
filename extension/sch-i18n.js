@@ -41,6 +41,10 @@ const IT = {
         "{app} (icona del vassoio)",
     "Weather":
         "Meteo",
+    "Hide banners near the mouse":
+        "Nascondi gli avvisi vicino al mouse",
+    "A banner on screen hides while the pointer is in that area and comes back when it leaves; it stays in the notification list":
+        "Un avviso visibile si nasconde finché il mouse è in quell'area e torna quando esce; resta nell'elenco delle notifiche",
     "Sunrise and sunset":
         "Alba e tramonto",
     "Area around the banner (percent)":

@@ -131,6 +131,11 @@
       <summary>A notification banner waits while the pointer is where it would appear (critical ones do not wait)</summary>
     </key>
 
+    <key name="banners-hide-near-mouse" type="b">
+      <default>false</default>
+      <summary>A banner on screen hides while the pointer is near it</summary>
+    </key>
+
     <key name="banners-away-margin" type="i">
       <range min="0" max="200"/>
       <default>50</default>
