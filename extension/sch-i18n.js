@@ -36,6 +36,14 @@ const README_TEXT =
 
 // Italian: also the complete list of sentences (used for the users' files)
 const IT = {
+    "Update in Terminal":
+        "Aggiorna nel terminale",
+    "Update Flatpaks":
+        "Aggiorna Flatpak",
+    "Updating Flatpaks…":
+        "Aggiornamento Flatpak in corso…",
+    "Flatpak updates completed successfully.":
+        "Aggiornamenti Flatpak completati con successo.",
     // --- Side panel (sch-side-panel.js and its parts) ---
     "{app} (tray icon)":
         "{app} (icona del vassoio)",

@@ -303,8 +303,60 @@ export class SystemUpdates {
         panel.settings.connectObject('changed::updates-tray-icon', () => this._syncButton(), this._button);
     }
 
+        async updateFlatpaks(onStateChange = null) {
+        onStateChange?.(true);
+        this._updateCancel?.cancel();
+        const cancel = new Gio.Cancellable();
+        this._updateCancel = cancel;
+        try {
+            const {status} = await run(['flatpak', 'update', '-y'], cancel);
+            if (status === 0) {
+                if (hasProgram('notify-send')) {
+                    Gio.Subprocess.new([
+                        'notify-send',
+                        '-i', 'software-update-available-symbolic',
+                        _('System updates'),
+                        _('Flatpak updates completed successfully.')
+                    ], Gio.SubprocessFlags.NONE);
+                }
+            } else {
+                logWarning(`Flatpak update failed with status ${status}`);
+            }
+            this.check(0);
+        } catch (e) {
+            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                logWarning(`updateFlatpaks error: ${e.message}`);
+        } finally {
+            if (this._updateCancel === cancel)
+                this._updateCancel = null;
+            onStateChange?.(false);
+        }
+    }
+
+    launchTerminalUpdate() {
+        const term = hasProgram('ptyxis') ? 'ptyxis'
+            : (hasProgram('gnome-terminal') ? 'gnome-terminal'
+            : (hasProgram('kgx') ? 'kgx' : null));
+        if (!term) {
+            logWarning('No suitable terminal emulator found');
+            return;
+        }
+        const cmd = 'echo "=== System update (DNF & Flatpak) ==="; ' +
+                    'echo "Authentication required for system packages..."; ' +
+                    'sudo dnf upgrade && flatpak update -y; ' +
+                    'echo ""; echo "Update complete. Press Enter to close..."; read';
+        try {
+            Gio.Subprocess.new([term, '--', 'bash', '-c', cmd], Gio.SubprocessFlags.NONE);
+        } catch (e) {
+            logWarning(`launchTerminalUpdate error: ${e.message}`);
+        }
+        this._panel.dateMenu.menu.close();
+    }
+
     destroy() {
         this._destroyed = true;
+        this._updateCancel?.cancel();
+        this._updateCancel = null;
         this._listeners.clear();
         this._stop();
         this._button?.destroy();
@@ -323,8 +375,14 @@ export class SystemUpdates {
             y_align: Clutter.ActorAlign.CENTER,
             visible: false,
             child: box,
+            button_mask: ((St.ButtonMask.PRIMARY ?? St.ButtonMask.ONE) | (St.ButtonMask.SECONDARY ?? St.ButtonMask.THREE)),
         });
-        button.connect('clicked', () => this._panel.side.toggleHubPage(UPDATES_SECTION));
+        button.connect('clicked', (_btn, mouseButton) => {
+            if (mouseButton === 3 || mouseButton === St.ButtonMask.SECONDARY)
+                this.launchTerminalUpdate();
+            else
+                this._panel.side.toggleHubPage(UPDATES_SECTION);
+        });
         // gone with the panel (GNOME Shell destroys it at logout)
         button.connect('destroy', () => {
             this._button = null;
@@ -474,6 +532,29 @@ export class SystemUpdates {
                     Gio.Subprocess.new(['gnome-software', '--mode=updates'], Gio.SubprocessFlags.NONE)),
             })));
         }
+        const termBtn = kit.button({
+            label: _('Update in Terminal'),
+            onClick: () => this.launchTerminalUpdate(),
+        });
+        const hasFlatpaks = system.sources.some(s => s.id === 'flatpak');
+        const flatpakBtn = hasFlatpaks
+            ? kit.button({
+                label: _('Update Flatpaks'),
+                onClick: () => {
+                    flatpakBtn.setSensitive(false);
+                    flatpakBtn.label = _('Updating Flatpaks…');
+                    this.updateFlatpaks(() => {
+                        flatpakBtn.label = _('Update Flatpaks');
+                        flatpakBtn.setSensitive(true);
+                    });
+                },
+            })
+            : null;
+        if (flatpakBtn)
+            page.add_child(kit.buttons(termBtn, flatpakBtn));
+        else
+            page.add_child(kit.buttons(termBtn));
+
         const by = installer?.get_name() ?? (system.software ? 'GNOME Software' : '');
         if (by) {
             page.add_child(kit.notice({
