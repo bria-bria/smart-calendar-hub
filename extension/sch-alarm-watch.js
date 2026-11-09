@@ -1,25 +1,29 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
-// Notes the alarms of GNOME Clocks that could not ring. GNOME Clocks checks
-// its alarms from its window: with no window open, an alarm passes in
-// silence, and the next time it starts it only moves the alarm on. So, while
-// the session is on (also with the screen locked), at the time of each alarm
-// that is on: no window of GNOME Clocks means a missed alarm, saved in
-// GSettings until it is clicked away in the world clocks card. Nothing is
-// known of the time the computer was off, asleep or at the login screen, and
-// nothing is reported for it.
+// Keeps the alarms of GNOME Clocks ringing. GNOME Clocks checks its alarms
+// from its window: with no window open, an alarm passes in silence, and the
+// next time it starts it only moves the alarm on. So, while the session is on
+// (also with the screen locked), a few minutes before each alarm that is on
+// GNOME Clocks is started and its window minimized. If at the time of the alarm
+// it still has no window (it was closed, or did not start), that is a missed
+// alarm, saved in GSettings until it is clicked away in the world clocks card.
+// Nothing is known of the time the computer was off, asleep or at the login
+// screen, and nothing is reported for it.
 
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
-import {CLOCKS_DESKTOP, ClocksSource} from './sch-clocks-source.js';
+import {logError} from './sch-log.js';
+import {CLOCKS_DESKTOP, CLOCKS_ID, ClocksSource} from './sch-clocks-source.js';
 
 export const MISSED_KEY = 'missed-alarms';
 const MAX_MISSED = 10;
 const CHECK_MS = 60000; // at least once a minute: the wait stops during a suspend
 const MAX_GAP_US = 90 * 1e6; // longer between two checks: we were asleep
 const DEFAULT_RING_MINUTES = 5;
+const START_BEFORE_US = 3 * 60 * 1e6; // GNOME Clocks is started this long before a ring
+const MINIMIZE_WITHIN_S = 20; // the window of the start we asked for comes within this
 
 // The next ring of an alarm after a moment (GLib.DateTime), null if none.
 // GNOME Clocks saves the next ring only while its window is open, so the one
@@ -58,6 +62,9 @@ export class AlarmWatch {
         // missed but still able to ring, if GNOME Clocks is opened in time:
         // {when (s), name, until (s)}
         this._lateChance = [];
+        this._startedFor = 0; // the ring (s) GNOME Clocks was last started for: once only
+        this._minimizeUntil = 0; // (s)
+        global.display.connectObject('window-created', (_display, win) => this._onWindow(win), this);
         this._source = new ClocksSource(() => this._check());
         this._check();
     }
@@ -66,12 +73,41 @@ export class AlarmWatch {
         if (this._timeoutId)
             GLib.source_remove(this._timeoutId);
         this._timeoutId = 0;
+        this._minimizeUntil = 0;
+        global.display.disconnectObject(this);
         this._source.destroy();
         this._source = null;
     }
 
     _clocksHasWindow() {
         return (this._appSystem.lookup_app(CLOCKS_DESKTOP)?.get_windows().length ?? 0) > 0;
+    }
+
+    // Its class is known only once the window is shown
+    _onWindow(win) {
+        if (GLib.DateTime.new_now_local().to_unix() > this._minimizeUntil)
+            return;
+        win.connectObject('shown', () => {
+            win.disconnectObject(this);
+            if (win.get_wm_class() === CLOCKS_ID && this._minimizeUntil) {
+                this._minimizeUntil = 0;
+                win.minimize();
+            }
+        }, this);
+    }
+
+    // Once for each ring: closed again by hand, it stays closed
+    _startClocks(ring) {
+        const seconds = ring.to_unix();
+        if (seconds === this._startedFor)
+            return;
+        this._startedFor = seconds;
+        this._minimizeUntil = GLib.DateTime.new_now_local().to_unix() + MINIMIZE_WITHIN_S;
+        try {
+            this._appSystem.lookup_app(CLOCKS_DESKTOP)?.launch(0, -1, Shell.AppLaunchGpu.APP_PREF);
+        } catch (e) {
+            logError(`GNOME Clocks: ${e}`);
+        }
     }
 
     _check() {
@@ -98,7 +134,11 @@ export class AlarmWatch {
         }
 
         this._lastCheck = now;
-        this._schedule(alarms, now);
+        const rings = alarms.map(a => nextRing(a, now)).filter(Boolean)
+            .sort((a, b) => a.compare(b));
+        if (rings.length && !hasWindow && rings[0].difference(now) <= START_BEFORE_US)
+            this._startClocks(rings[0]);
+        this._schedule(rings, now);
     }
 
     _report(alarm, ring) {
@@ -117,15 +157,16 @@ export class AlarmWatch {
         }
     }
 
-    // Wakes up at the next ring, or within a minute
-    _schedule(alarms, now) {
+    // Wakes up when GNOME Clocks is to be started, at the next ring, or
+    // within a minute
+    _schedule(rings, now) {
         if (this._timeoutId)
             GLib.source_remove(this._timeoutId);
         this._timeoutId = 0;
-        const rings = alarms.map(a => nextRing(a, now)).filter(Boolean);
         if (!rings.length && !this._lateChance.length)
             return;
-        const waits = rings.map(r => Math.ceil(r.difference(now) / 1000));
+        const waits = rings.flatMap(r => [r.difference(now), r.difference(now) - START_BEFORE_US])
+            .filter(us => us > 0).map(us => Math.ceil(us / 1000));
         const ms = Math.max(1, Math.min(CHECK_MS, ...waits));
         this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
             this._timeoutId = 0;

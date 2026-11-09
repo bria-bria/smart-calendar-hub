@@ -12,7 +12,7 @@ import Shell from 'gi://Shell';
 
 import {logError} from './sch-log.js';
 
-const CLOCKS_ID = 'org.gnome.clocks';
+export const CLOCKS_ID = 'org.gnome.clocks';
 export const CLOCKS_DESKTOP = `${CLOCKS_ID}.desktop`;
 // the keyfile of GLib's settings inside the Flatpak sandbox, and its group
 // for the schema org.gnome.clocks (path /org/gnome/clocks/)
