@@ -42,13 +42,22 @@ export class SettingsSwaps {
         const items = (shown.menu._getMenuItems?.() ?? []).filter(item =>
             item instanceof PopupMenu.PopupBaseMenuItem);
         const swap = {pairs: []};
-        // their own texts, in their own translation
-        for (const text of config.texts.map(english => Gettext.dgettext(config.domain, english))) {
-            const theirs = items.findLast(item => textOf(item) === text);
+        // the items the extension names itself (smartCalendarHub.settingsItems),
+        // or else the ones found by their own text, in their own translation
+        const declared = Array.isArray(shown.hub?.settingsItems)
+            ? shown.hub.settingsItems.filter(item => item instanceof PopupMenu.PopupBaseMenuItem && item.get_parent())
+            : [];
+        const targets = declared.length
+            ? declared
+            : config.texts.map(english => {
+                const text = Gettext.dgettext(config.domain, english);
+                return items.findLast(item => textOf(item) === text);
+            });
+        for (const theirs of targets) {
             const parent = theirs?.get_parent();
             if (!parent)
                 continue;
-            const ours = new PopupMenu.PopupMenuItem(text);
+            const ours = new PopupMenu.PopupMenuItem(textOf(theirs) ?? '');
             // not added with addMenuItem(): the menu would close on activate,
             // and the card with it
             ours.connect('activate', () => this._toggle(shown, config));

@@ -313,9 +313,15 @@ this._button.smartCalendarHub = {
     buildPage: () => new St.Label({text: 'Hello'}),
     // optional: true = the hub leaves your backgrounds alone
     keepStyle: false,
+    // optional: the items of your menu that open your preferences, for an
+    // extension whose settings the hub shows in the card beside the panel
+    settingsItems: [preferencesItem],
 };
 ```
 
+- `settingsItems` lets the hub connect those items to its card however they
+  are worded, instead of recognising them by their text. Keep the list
+  current if you build your menu anew.
 - The normal menu is still needed, with at least one item: it is what users
   without the hub see, and what the hub shows when there is no page.
 - Inside the hub your menu box (or your page) carries the style class
