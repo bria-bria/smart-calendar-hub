@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
-// The alarms of GNOME Clocks, rung by the hub. GNOME Clocks checks its
-// alarms only from its window: while it has one, it rings them itself; with
-// no window, the hub rings them (sch-alarm-ringer.js), never both. GNOME
+// The alarms of GNOME Clocks, rung by the hub. GNOME Clocks rings its alarms
+// only while it runs with them loaded; otherwise the hub rings them
+// (sch-alarm-ringer.js finds out which, never both). GNOME
 // Clocks stays where the alarms are kept: Stop and Snooze write the next
 // ring back as it does. While the session is on (also with the screen
 // locked) the hub checks at the time of each alarm; an alarm that fell while
@@ -137,21 +137,20 @@ export class AlarmWatch {
         const now = GLib.DateTime.new_now_local();
         const awake = now.difference(this._lastCheck) <= MAX_GAP_US;
         const alarms = this._alarms();
-        // GNOME Clocks open: it rings its alarms itself (also the one the
-        // hub was ringing: it loads it still within its ring minutes)
-        if (this._clocksHasWindow()) {
+        // GNOME Clocks opened while the hub rings: it rings it itself (it
+        // loads it still within its ring minutes)
+        if (this._clocksHasWindow())
             this.ringer.handOver();
-        } else {
-            for (const alarm of alarms) {
-                const ring = nextRing(alarm, this._lastCheck);
-                if (!ring || ring.compare(now) > 0)
-                    continue;
-                const minutes = alarm.ring_minutes ?? DEFAULT_RING_MINUTES;
-                if (awake || now.difference(ring) < minutes * 60 * 1e6)
-                    this.ringer.ring(alarm, ring);
-                else
-                    this._report(alarm, ring);
-            }
+        // the ringer finds out whether GNOME Clocks rings it too
+        for (const alarm of alarms) {
+            const ring = nextRing(alarm, this._lastCheck);
+            if (!ring || ring.compare(now) > 0)
+                continue;
+            const minutes = alarm.ring_minutes ?? DEFAULT_RING_MINUTES;
+            if (awake || now.difference(ring) < minutes * 60 * 1e6)
+                this.ringer.ring(alarm, ring);
+            else
+                this._report(alarm, ring);
         }
         this._lastCheck = now;
         this._schedule(alarms.map(a => nextRing(a, now)).filter(Boolean), now);

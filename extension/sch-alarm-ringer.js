@@ -1,17 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
-// One alarm ringing (sch-alarm-watch.js decides when): the sound chosen for
-// it in GNOME Clocks, over and over, until Stop, Snooze, the end of its ring
-// minutes, or GNOME Clocks taking over. In the session the panel shows it
-// in the card beside it (sch-alarm-screen.js); only while the screen is
-// locked a notification of GNOME offers Snooze and Stop instead. As with the alarms of a phone, Do not disturb
-// does not silence it, and a muted or low sound goes up to the alarm volume
-// of our settings while it rings, then back exactly as it was.
+// One alarm ringing (sch-alarm-watch.js decides when), never by two at
+// once. GNOME Clocks rings an alarm itself while it runs with its alarms
+// loaded, also after its window was closed: so while it runs, the hub first
+// waits a few seconds for its "Alarm" notification. If it comes, GNOME Clocks
+// is ringing: the hub shows the alarm and its Stop and Snooze are the actions
+// of GNOME Clocks. Otherwise the hub rings it: the sound chosen for it in
+// GNOME Clocks, over and over, until Stop, Snooze, the end of its ring
+// minutes, or GNOME Clocks taking over. In the session the panel shows the
+// alarm in the card beside it (sch-alarm-screen.js); only while the screen
+// is locked a notification of ours offers Snooze and Stop. As with the alarms
+// of a phone, Do not disturb does not silence it, and a muted or low sound
+// goes up to the alarm volume of our settings while it rings, then back as
+// it was.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gst from 'gi://Gst';
+import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
@@ -32,15 +39,21 @@ export function formatTime(time) {
     return time.format(twelve ? '%l:%M %p' : '%H:%M').replace(/\s+/g, ' ').trim();
 }
 
+const CLOCKS_ID = 'org.gnome.clocks';
+const CLOCKS_WAIT_S = 6; // GNOME Clocks running: the wait for its notification
+
 export class AlarmRinger {
     // actions: {stop(alarm), snooze(alarm, ring), upcoming()} of the watch
     constructor(settings, actions) {
         this._settings = settings;
         this._actions = actions;
-        this.current = null; // {alarm, ring (GLib.DateTime)} while ringing
+        // while ringing: {alarm, ring (GLib.DateTime), by: 'waiting' |
+        // 'hub' | 'clocks'}
+        this.current = null;
         this._waiting = []; // alarms due while another rings: next, in order
         this.onChange = null; // the panel, while it is there
         this._endId = 0;
+        this._waitId = 0;
         this._themeId = 0;
     }
 
@@ -56,40 +69,58 @@ export class AlarmRinger {
                 this._waiting.push({alarm, ring});
             return;
         }
-        this.current = {alarm, ring};
-        this._raiseVolume();
-        this._play(alarm.sound_uri);
-        // locked or unlocked while it rings: the notification follows
-        Main.sessionMode.connectObject('updated', () => this._syncNotification(), this);
-        this._syncNotification();
+        const current = this.current = {alarm, ring, by: 'waiting'};
+        this._watchClocks();
         const minutes = alarm.ring_minutes ?? DEFAULT_RING_MINUTES;
+        // the end of its ring minutes: GNOME Clocks stops its own by itself
         this._endId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, minutes * 60, () => {
             this._endId = 0;
-            this.stop();
+            if (current.by === 'clocks')
+                this._end();
+            else
+                this.stop();
             return GLib.SOURCE_REMOVE;
         });
         this.onChange?.();
+        this._clocksRunning().then(running => {
+            if (this.current !== current || current.by !== 'waiting')
+                return;
+            if (!running) {
+                this._ringOwn();
+                return;
+            }
+            this._waitId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, CLOCKS_WAIT_S, () => {
+                this._waitId = 0;
+                if (this.current === current && current.by === 'waiting')
+                    this._ringOwn();
+                return GLib.SOURCE_REMOVE;
+            });
+        });
     }
 
     stop() {
-        const current = this.current;
-        if (!current)
-            return;
-        this._end();
-        this._actions.stop(current.alarm);
+        this._finish('stop-alarm', alarm => this._actions.stop(alarm));
     }
 
     snooze() {
-        const current = this.current;
-        if (!current)
-            return;
-        this._end();
-        this._actions.snooze(current.alarm, current.ring);
+        this._finish('snooze-alarm', (alarm, ring) => this._actions.snooze(alarm, ring));
     }
 
-    // GNOME Clocks opened: it rings the alarm itself from now on
+    // GNOME Clocks opened while the hub rings: it rings the alarm itself
+    // (it loads it still within its ring minutes); its notification follows
     handOver() {
-        this._end();
+        const current = this.current;
+        if (current?.by !== 'hub')
+            return;
+        this._silence();
+        current.by = 'waiting';
+        // no notification of GNOME Clocks after all: the hub rings again
+        this._waitId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, CLOCKS_WAIT_S, () => {
+            this._waitId = 0;
+            if (this.current === current && current.by === 'waiting')
+                this._ringOwn();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     get snoozeMinutes() {
@@ -100,6 +131,84 @@ export class AlarmRinger {
         return this._actions.upcoming();
     }
 
+    // Stop or Snooze: of GNOME Clocks when it rings (it writes the next ring
+    // itself), else ours
+    _finish(action, ours) {
+        const current = this.current;
+        if (!current)
+            return;
+        const clocksNote = this._clocksNote;
+        this._end();
+        if (current.by === 'clocks') {
+            Shell.AppSystem.get_default().lookup_app(`${CLOCKS_ID}.desktop`)
+                ?.activate_action(action, new GLib.Variant('s', current.alarm.id ?? ''), 0, -1, null)
+                .catch(e => logError(`GNOME Clocks ${action}: ${e}`));
+            clocksNote?.destroy();
+        } else {
+            ours(current.alarm, current.ring);
+        }
+    }
+
+    // The bus name of GNOME Clocks has an owner: it runs, maybe with its
+    // alarms loaded (asked without blocking GNOME Shell)
+    async _clocksRunning() {
+        try {
+            const reply = await Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus',
+                'org.freedesktop.DBus', 'NameHasOwner', new GLib.Variant('(s)', [CLOCKS_ID]),
+                new GLib.VariantType('(b)'), Gio.DBusCallFlags.NONE, -1, null);
+            return reply.deepUnpack()[0];
+        } catch (e) {
+            logError(`GNOME Clocks running: ${e}`);
+            return false;
+        }
+    }
+
+    // The notifications of GNOME Clocks (its alarm notification means it
+    // rings), also those of a source added later
+    _watchClocks() {
+        const watch = source => {
+            if (source.policy?.id === CLOCKS_ID)
+                source.connectObject('notification-added', (_s, notification) => this._onClocksNotification(notification), this);
+        };
+        Main.messageTray.getSources().forEach(watch);
+        Main.messageTray.connectObject('source-added', (_tray, source) => watch(source), this);
+    }
+
+    _onClocksNotification(notification) {
+        const current = this.current;
+        if (!current || current.by === 'clocks')
+            return;
+        this._silence();
+        current.by = 'clocks';
+        this._clocksNote = notification;
+        // stopped in GNOME Clocks, its notification or a phone: done (a new
+        // notification of the same alarm replaces it: not an end)
+        notification.connectObject('destroy', (_n, reason) => {
+            if (reason !== MessageTray.NotificationDestroyedReason.REPLACED && this.current === current)
+                this._end();
+        }, this);
+        this.onChange?.();
+    }
+
+    // The hub rings it: sound, volume, the notification on the lock screen
+    _ringOwn() {
+        this.current.by = 'hub';
+        this._raiseVolume();
+        this._play(this.current.alarm.sound_uri);
+        // locked or unlocked while it rings: the notification follows
+        Main.sessionMode.connectObject('updated', () => this._syncNotification(), this);
+        this._syncNotification();
+    }
+
+    // Our sound, volume and notification off
+    _silence() {
+        this._stopSound();
+        this._restoreVolume();
+        Main.sessionMode.disconnectObject(this);
+        this._notification?.destroy();
+        this._notification = null;
+    }
+
     _end() {
         if (!this.current)
             return;
@@ -107,11 +216,14 @@ export class AlarmRinger {
         if (this._endId)
             GLib.source_remove(this._endId);
         this._endId = 0;
-        this._stopSound();
-        this._restoreVolume();
-        Main.sessionMode.disconnectObject(this);
-        this._notification?.destroy();
-        this._notification = null;
+        if (this._waitId)
+            GLib.source_remove(this._waitId);
+        this._waitId = 0;
+        this._silence();
+        Main.messageTray.disconnectObject(this);
+        Main.messageTray.getSources().forEach(source => source.disconnectObject(this));
+        this._clocksNote?.disconnectObject(this);
+        this._clocksNote = null;
         this.onChange?.();
         // the next one due meanwhile, if still within its ring minutes
         const now = GLib.DateTime.new_now_local();
