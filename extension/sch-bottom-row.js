@@ -18,6 +18,10 @@ import {Connections} from './sch-signals.js';
 import {actionKind, actionLabel, readProfile} from './sch-profiles.js';
 import {UPDATES_SECTION} from './sch-updates.js';
 
+// The buttons shown as icons only: an icon that fills them (the "+" of
+// "New event" stays small, it has its text)
+const ICON_SIZE = 20;
+
 const ACTION_ICONS = {
     'hub-settings': 'emblem-system-symbolic',
     'hub-updates': 'software-update-available-symbolic',
@@ -150,7 +154,7 @@ export class BottomRow {
         const line = new St.BoxLayout({x_align: Clutter.ActorAlign.CENTER, style_class: 'sch-bottom-line'});
         line.add_child(new St.Icon({
             gicon: typeof icon === 'string' ? new Gio.ThemedIcon({name: icon}) : icon,
-            icon_size: 16,
+            icon_size: ICON_SIZE,
         }));
         const label = new St.Label({text, y_align: Clutter.ActorAlign.CENTER, visible: !this._compact});
         line.add_child(label);
@@ -261,7 +265,7 @@ export class BottomRow {
         if (clear) {
             if (compact && !this._clearLabel) {
                 this._clearLabel = clear.label;
-                clear.child = new St.Icon({icon_name: 'edit-clear-all-symbolic', icon_size: 16});
+                clear.child = new St.Icon({icon_name: 'edit-clear-all-symbolic', icon_size: ICON_SIZE});
             } else if (!compact && this._clearLabel) {
                 clear.label = this._clearLabel;
                 this._clearLabel = null;
@@ -273,7 +277,7 @@ export class BottomRow {
         if (clocks && !this._clocksGrid) {
             this._clocksGrid = clocks.child;
             this._clocksAccessible = clocks.accessible_name;
-            clocks.child = new St.Icon({icon_name: 'network-workgroup-symbolic', icon_size: 16});
+            clocks.child = new St.Icon({icon_name: 'network-workgroup-symbolic', icon_size: ICON_SIZE});
             clocks.accessible_name = _('World clocks');
         }
     }

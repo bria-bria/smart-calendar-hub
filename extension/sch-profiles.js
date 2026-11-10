@@ -6,7 +6,8 @@
 // bottom row shows and what each does, its name and the colour of the
 // settings button. They are kept in GSettings (key profiles, one a{sv} each:
 // id, name, color, widgets, off, buttons), with the one in use in
-// active-profile. "Default" always exists and cannot be deleted. The lock
+// active-profile. "Default" always exists and cannot be deleted (it can be
+// renamed). The lock
 // (profile-locked) keeps the profile chosen by hand: the automatic changes,
 // when they come, leave it alone.
 
@@ -62,9 +63,9 @@ function write(settings, list) {
     settings.set_value('profiles', V('aa{sv}', list));
 }
 
+// "Default" keeps its translated name until it is given one
 function nameOf(raw) {
-    const id = str(raw.id);
-    return id === DEFAULT_PROFILE ? _('Default') : str(raw.name) || _('Profile');
+    return str(raw.name) || (str(raw.id) === DEFAULT_PROFILE ? _('Default') : _('Profile'));
 }
 
 // [{id, name, color}], "Default" first

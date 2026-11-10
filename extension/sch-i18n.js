@@ -465,6 +465,10 @@ const IT = {
         "Pulsanti in fondo",
     "Three places; with the calendar open only \"New event\" is shown.":
         "Tre posti; con il calendario aperto si vede solo «Nuovo impegno».",
+    "Save profile":
+        "Salva profilo",
+    "Cancel":
+        "Annulla",
     "Delete profile":
         "Elimina profilo",
     "Click again to delete it":

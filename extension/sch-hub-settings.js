@@ -450,7 +450,10 @@ function profilesCard(group, ctx) {
     box.add_child(kit.buttons(kit.button({
         label: _('New profile'),
         primary: true,
-        onClick: () => ctx.openSection(`profile:${createProfile(settings, newProfileName(settings))}`, {focusName: true}),
+        onClick: () => {
+            const previous = activeProfileId(settings);
+            ctx.openSection(`profile:${createProfile(settings, newProfileName(settings))}`, {focusName: true, previous});
+        },
     })));
     let shape = null;
     syncs.push(() => {
@@ -497,39 +500,40 @@ function buttonLabel(action) {
 }
 
 // The page of one profile: name, use it, colour, sections of the panel,
-// buttons at the bottom, delete
-function profilePage(settings, profileId, ctx, {focusName = false} = {}) {
+// buttons at the bottom; at the end Delete, or Save and Cancel for a profile
+// just created (focusName; Cancel goes back to the profile in use before,
+// previous)
+function profilePage(settings, profileId, ctx, {focusName = false, previous = null} = {}) {
     const {syncs} = ctx;
     const pieces = [];
     const exists = () => profileList(settings).some(p => p.id === profileId);
     const isDefault = profileId === DEFAULT_PROFILE;
+    const isNew = focusName;
 
-    if (!isDefault) {
-        pieces.push(kit.section(_('Name')));
-        const entry = new St.Entry({
-            style_class: 'sch-ext-entry',
-            text: readProfile(settings, profileId).name,
-            can_focus: true,
-            x_expand: true,
+    pieces.push(kit.section(_('Name')));
+    const entry = new St.Entry({
+        style_class: 'sch-ext-entry',
+        text: readProfile(settings, profileId).name,
+        can_focus: true,
+        x_expand: true,
+    });
+    entry.clutter_text.single_line_mode = true;
+    const commit = () => {
+        const name = entry.text.trim();
+        if (name && exists() && name !== readProfile(settings, profileId).name)
+            updateProfile(settings, profileId, {name});
+    };
+    entry.clutter_text.connect('activate', commit);
+    entry.clutter_text.connect('key-focus-out', commit);
+    pieces.push(entry);
+    if (focusName) {
+        entry.connect('notify::mapped', () => {
+            if (entry.mapped && focusName) {
+                focusName = false;
+                entry.grab_key_focus();
+                entry.clutter_text.set_selection(0, -1);
+            }
         });
-        entry.clutter_text.single_line_mode = true;
-        const commit = () => {
-            const name = entry.text.trim();
-            if (name && exists() && name !== readProfile(settings, profileId).name)
-                updateProfile(settings, profileId, {name});
-        };
-        entry.clutter_text.connect('activate', commit);
-        entry.clutter_text.connect('key-focus-out', commit);
-        pieces.push(entry);
-        if (focusName) {
-            entry.connect('notify::mapped', () => {
-                if (entry.mapped && focusName) {
-                    focusName = false;
-                    entry.grab_key_focus();
-                    entry.clutter_text.set_selection(0, -1);
-                }
-            });
-        }
     }
 
     const use = kit.row({title: _('Use this profile'), onActivate: () => setActiveProfile(settings, profileId)});
@@ -571,7 +575,26 @@ function profilePage(settings, profileId, ctx, {focusName = false} = {}) {
         buttonRows(settings, profileId, slot, ctx).forEach(row => buttons.add_child(row));
     pieces.push(buttons);
 
-    if (!isDefault) {
+    if (isNew) {
+        pieces.push(kit.buttons(
+            kit.button({
+                label: _('Save profile'),
+                primary: true,
+                onClick: () => {
+                    commit();
+                    ctx.openSection('profiles');
+                },
+            }),
+            kit.button({
+                label: _('Cancel'),
+                onClick: () => {
+                    deleteProfile(settings, profileId);
+                    if (previous && profileList(settings).some(p => p.id === previous))
+                        setActiveProfile(settings, previous);
+                    ctx.openSection('profiles');
+                },
+            })));
+    } else if (!isDefault) {
         let armed = false;
         const remove = kit.button({
             label: _('Delete profile'),
