@@ -5,14 +5,18 @@
 // from its window: with no window open, an alarm passes in silence, and the
 // next time it starts it only moves the alarm on. So, while the session is on
 // (also with the screen locked), a few minutes before each alarm that is on
-// GNOME Clocks is started and its window minimized. If at the time of the alarm
-// it still has no window (it was closed, or did not start), that is a missed
+// GNOME Clocks is started and its window minimized; at the time of the alarm
+// its window comes to the front (GNOME Clocks shows Stop and Snooze there but
+// leaves a minimized window as it is). If at the time of the alarm it still
+// has no window (it was closed, or did not start), that is a missed
 // alarm, saved in GSettings until it is clicked away in the world clocks card.
 // Nothing is known of the time the computer was off, asleep or at the login
 // screen, and nothing is reported for it.
 
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {logError} from './sch-log.js';
 import {CLOCKS_DESKTOP, CLOCKS_ID, ClocksSource} from './sch-clocks-source.js';
@@ -83,6 +87,13 @@ export class AlarmWatch {
         return (this._appSystem.lookup_app(CLOCKS_DESKTOP)?.get_windows().length ?? 0) > 0;
     }
 
+    // The window of GNOME Clocks in front, where it shows the alarm ringing
+    _raiseClocks() {
+        const win = this._appSystem.lookup_app(CLOCKS_DESKTOP)?.get_windows()[0];
+        if (win)
+            Main.activateWindow(win);
+    }
+
     // Its class is known only once the window is shown
     _onWindow(win) {
         if (GLib.DateTime.new_now_local().to_unix() > this._minimizeUntil)
@@ -116,12 +127,12 @@ export class AlarmWatch {
         const alarms = this._source.read('alarms');
         const hasWindow = this._clocksHasWindow();
 
-        if (awake && !hasWindow) {
-            for (const alarm of alarms) {
-                const ring = nextRing(alarm, this._lastCheck);
-                if (ring && ring.compare(now) <= 0)
-                    this._report(alarm, ring);
-            }
+        if (awake) {
+            const ringing = alarms.filter(alarm => nextRing(alarm, this._lastCheck)?.compare(now) <= 0);
+            if (hasWindow && ringing.length)
+                this._raiseClocks();
+            else if (!hasWindow)
+                ringing.forEach(alarm => this._report(alarm, nextRing(alarm, this._lastCheck)));
         }
 
         // opened within the minutes an alarm rings for, GNOME Clocks still
