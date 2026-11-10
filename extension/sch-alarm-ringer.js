@@ -41,6 +41,9 @@ export function formatTime(time) {
 
 const CLOCKS_ID = 'org.gnome.clocks';
 const CLOCKS_WAIT_S = 6; // GNOME Clocks running: the wait for its notification
+const CLOCKS_RECENT_US = 90 * 1e6; // a notification of GNOME Clocks this new: its alarm
+const CLOCKS_CHECK_MS = 1500; // after Stop or Snooze sent to GNOME Clocks
+const CLOCKS_QUIT_MS = 2000; // asked to quit, the wait before ending it
 
 export class AlarmRinger {
     // actions: {stop(alarm), snooze(alarm, ring), upcoming()} of the watch
@@ -55,9 +58,13 @@ export class AlarmRinger {
         this._endId = 0;
         this._waitId = 0;
         this._themeId = 0;
+        this._afterId = 0; // after Stop or Snooze sent to GNOME Clocks
     }
 
     destroy() {
+        if (this._afterId)
+            GLib.source_remove(this._afterId);
+        this._afterId = 0;
         this._waiting = [];
         this._end();
         this.onChange = null;
@@ -71,6 +78,15 @@ export class AlarmRinger {
         }
         const current = this.current = {alarm, ring, by: 'waiting'};
         this._watchClocks();
+        // GNOME Clocks checks on the minute too: its notification may be
+        // there already
+        const now = GLib.DateTime.new_now_local();
+        const recent = Main.messageTray.getSources()
+            .filter(source => source.policy?.id === CLOCKS_ID)
+            .flatMap(source => source.notifications)
+            .find(n => n.datetime && now.difference(n.datetime) < CLOCKS_RECENT_US);
+        if (recent)
+            this._onClocksNotification(recent);
         const minutes = alarm.ring_minutes ?? DEFAULT_RING_MINUTES;
         // the end of its ring minutes: GNOME Clocks stops its own by itself
         this._endId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, minutes * 60, () => {
@@ -139,14 +155,51 @@ export class AlarmRinger {
             return;
         const clocksNote = this._clocksNote;
         this._end();
-        if (current.by === 'clocks') {
-            Shell.AppSystem.get_default().lookup_app(`${CLOCKS_ID}.desktop`)
-                ?.activate_action(action, new GLib.Variant('s', current.alarm.id ?? ''), 0, -1, null)
-                .catch(e => logError(`GNOME Clocks ${action}: ${e}`));
-            clocksNote?.destroy();
-        } else {
+        if (current.by !== 'clocks') {
             ours(current.alarm, current.ring);
+            return;
         }
+        const app = Shell.AppSystem.get_default().lookup_app(`${CLOCKS_ID}.desktop`);
+        app?.activate_action(action, new GLib.Variant('s', current.alarm.id ?? ''), 0, -1, null)
+            .catch(e => logError(`GNOME Clocks ${action}: ${e}`));
+        clocksNote?.destroy();
+        // GNOME Clocks may keep ringing (a copy of its alarms left from a
+        // closed window does not always answer): with its window open it
+        // comes to the front, where its own Stop is (its timers stay);
+        // without a window the hub writes the next ring and closes it
+        if (this._afterId)
+            GLib.source_remove(this._afterId);
+        this._afterId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CLOCKS_CHECK_MS, () => {
+            this._afterId = 0;
+            const win = app?.get_windows()[0];
+            if (win) {
+                Main.activateWindow(win);
+                return GLib.SOURCE_REMOVE;
+            }
+            ours(current.alarm, current.ring);
+            this._quitClocks(app);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // Asked to quit; still there after a moment: ended
+    _quitClocks(app) {
+        app?.activate_action('quit', null, 0, -1, null).catch(e => logError(`GNOME Clocks quit: ${e}`));
+        this._afterId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CLOCKS_QUIT_MS, () => {
+            this._afterId = 0;
+            this._killClocks().catch(e => logError(`GNOME Clocks: ${e}`));
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    async _killClocks() {
+        if (!await this._clocksRunning())
+            return;
+        const reply = await Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus',
+            'org.freedesktop.DBus', 'GetConnectionUnixProcessID', new GLib.Variant('(s)', [CLOCKS_ID]),
+            new GLib.VariantType('(u)'), Gio.DBusCallFlags.NONE, -1, null);
+        const [pid] = reply.deepUnpack();
+        Gio.Subprocess.new(['kill', String(pid)], Gio.SubprocessFlags.NONE);
     }
 
     // The bus name of GNOME Clocks has an owner: it runs, maybe with its
