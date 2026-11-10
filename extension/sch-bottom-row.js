@@ -13,14 +13,18 @@ import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+
 import {_} from './sch-i18n.js';
 import {Connections} from './sch-signals.js';
 import {actionKind, actionLabel, readProfile} from './sch-profiles.js';
 import {UPDATES_SECTION} from './sch-updates.js';
 
-// The buttons shown as icons only: an icon that fills them (the "+" of
-// "New event" stays small, it has its text)
-const ICON_SIZE = 20;
+// When the row is too narrow for the texts every button shows only its
+// icon, as big as the button allows, and its text appears above it on
+// hover; with room, "New event" has a small "+" before its text
+const ICON_SIZE = 24;
+const TEXT_ICON_SIZE = 16;
 
 const ACTION_ICONS = {
     'hub-settings': 'emblem-system-symbolic',
@@ -35,6 +39,9 @@ export class BottomRow {
         this._signals = new Connections();
         this._calendarOpen = false;
         this._compact = false;
+        // the text of a button shown as an icon only, above it on hover
+        this._tip = new St.Label({style_class: 'sch-alert-tip', visible: false, reactive: false});
+        Main.uiGroup.add_child(this._tip);
         this._slots = []; // the actors of the row, in the order of the profile
         this._own = []; // our buttons for the other actions
         const dm = this._dateMenu;
@@ -50,6 +57,7 @@ export class BottomRow {
             this.actor.add_child(this._clocksBox);
             panel.adopt(dm._clocksItem, this._clocksBox);
             this._signals.connect(dm._clocksItem, 'notify::visible', () => this.layout());
+            this._watchTip(dm._clocksItem, () => _('World clocks'));
         }
         // "New event" (GNOME Calendar), in the middle; alone when the
         // calendar is open. Hidden when GNOME Calendar is not installed.
@@ -60,7 +68,8 @@ export class BottomRow {
             visible: panel.calendarView.hasCalendarApp,
         });
         const newEventLine = new St.BoxLayout({x_align: Clutter.ActorAlign.CENTER});
-        newEventLine.add_child(new St.Icon({icon_name: 'list-add-symbolic', icon_size: 16}));
+        this._newEventIcon = new St.Icon({icon_name: 'list-add-symbolic', icon_size: TEXT_ICON_SIZE});
+        newEventLine.add_child(this._newEventIcon);
         this._newEventLabel = new St.Label({text: _('New event'), y_align: Clutter.ActorAlign.CENTER});
         newEventLine.add_child(this._newEventLabel);
         this._newEventButton.set_child(newEventLine);
@@ -68,6 +77,8 @@ export class BottomRow {
             dm.menu.close();
             panel.calendarView.openNewEvent();
         });
+        this._watchTip(this._newEventButton, () => _('New event'));
+        this._signals.connect(dm.menu, 'open-state-changed', () => this._tip?.hide());
         this.actor.add_child(this._newEventButton);
         const clear = dm._messageList?._clearButton;
         if (clear) {
@@ -85,6 +96,7 @@ export class BottomRow {
             panel.adopt(clear, this._clearBox);
             // GNOME shows "Clear" only with notifications: share the row again
             this._signals.connect(clear, 'notify::visible', () => this.layout());
+            this._watchTip(clear, () => _('Clear notifications'));
         }
         this._notifications = new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'});
         this._signals.connect(this._notifications, 'changed::show-banners', () => this._syncDnd());
@@ -167,9 +179,37 @@ export class BottomRow {
         });
         button.schLabel = label;
         button.connect('clicked', onClick);
+        // ours go with the button, rebuilt at each change of profile
+        button.connect('notify::hover', () => this._showTip(button, text));
         this.actor.add_child(button);
         this._own.push(button);
         return button;
+    }
+
+    // GNOME's buttons and "New event" (disconnected in destroy())
+    _watchTip(button, text) {
+        this._signals.connect(button, 'notify::hover', () => this._showTip(button, text()));
+    }
+
+    // The text of a button above it, while the pointer is on it and the row
+    // shows only icons
+    _showTip(button, text) {
+        if (!this._tip)
+            return;
+        if (!button.hover || !this._compact) {
+            this._tip.hide();
+            return;
+        }
+        this._tip.text = text;
+        Main.uiGroup.set_child_above_sibling(this._tip, null);
+        this._tip.show();
+        const [x, y] = button.get_transformed_position();
+        const [w] = button.get_transformed_size();
+        const [, tipWidth] = this._tip.get_preferred_width(-1);
+        const [, tipHeight] = this._tip.get_preferred_height(-1);
+        const monitor = Main.layoutManager.findMonitorForActor(button) ?? Main.layoutManager.primaryMonitor;
+        const left = Math.min(Math.max(x + (w - tipWidth) / 2, monitor.x + 4), monitor.x + monitor.width - tipWidth - 4);
+        this._tip.set_position(Math.floor(left), Math.floor(y - tipHeight - 6));
     }
 
     // Do not disturb: lit up while the banners are off
@@ -206,6 +246,8 @@ export class BottomRow {
             clocks.remove_style_class_name('sch-bottom-btn');
             Object.assign(clocks, this._clocksOrig);
         }
+        this._tip.destroy();
+        this._tip = null;
     }
 
     retranslate() {
@@ -261,6 +303,11 @@ export class BottomRow {
         this._compact = compact;
         for (const button of this._own)
             button.schLabel.visible = !compact;
+        this._newEventLabel.visible = !compact;
+        this._newEventIcon.icon_size = compact ? ICON_SIZE : TEXT_ICON_SIZE;
+        this._newEventButton.accessible_name = _('New event');
+        if (!compact)
+            this._tip?.hide();
         const clear = this._clearButton;
         if (clear) {
             if (compact && !this._clearLabel) {

@@ -596,7 +596,8 @@
 .sch-bottom-row .sch-bottom-btn {
     margin: 2px 0;
     padding: 10px 8px;
-    min-height: 22px;
+    /* room for a 24 px icon */
+    min-height: 24px;
     border-radius: 14px;
     background-color: rgba(255, 255, 255, 0.1);
     font-weight: 700;
