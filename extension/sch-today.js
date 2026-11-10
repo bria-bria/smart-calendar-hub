@@ -64,18 +64,16 @@ export class TodayCard {
             !this._panel.calendarExpanded;
     }
 
-    // "All Day" of the Today card moved up: next to "Today" ("Today · All
-    // Day") when every event of the day lasts the whole day, otherwise next
-    // to the name of those events; their own "All Day" line goes. With
-    // on = false everything goes back as GNOME wrote it.
+    // The time of the events moved up, to save the line under each one:
+    // with one event (or only whole-day ones) next to "Today" ("Today ·
+    // 11:00 – 12:00", "Today · The whole day"), otherwise next to the name
+    // of each event. With on = false everything goes back as GNOME wrote it.
     syncAllDay(on = true) {
         const item = this._dateMenu._eventsItem;
         const list = item?._eventsList;
         const title = item?._title;
         if (!list || !title || !this._allDayText)
             return;
-        // ours, longer than GNOME's short "All Day": there is room on this line
-        const suffix = ` · ${_('The whole day')}`;
         const rows = [];
         for (const box of list.get_children()) {
             // with no events the list holds GNOME's "No Events" label, whose
@@ -84,15 +82,26 @@ export class TodayCard {
             const time = labels.find(l => l.has_style_class_name?.('event-time'));
             const summary = labels.find(l => l.has_style_class_name?.('event-summary'));
             if (time && summary)
-                rows.push({time, summary, allDay: time.text === this._allDayText});
+                rows.push({time, summary});
         }
-        const every = on && rows.length > 0 && rows.every(r => r.allDay);
-        const base = title.text.endsWith(suffix) ? title.text.slice(0, -suffix.length) : title.text;
-        title.text = every ? base + suffix : base;
-        for (const {time, summary, allDay} of rows) {
-            const name = summary.text.endsWith(suffix) ? summary.text.slice(0, -suffix.length) : summary.text;
-            summary.text = on && allDay && !every ? name + suffix : name;
-            time.visible = !(on && allDay);
+        // GNOME's own texts: taken again whenever GNOME has written new ones
+        const original = label => {
+            if (label.text !== label._schShown)
+                label._schOriginal = label.text;
+            return label._schOriginal;
+        };
+        // ours, longer than GNOME's short "All Day": there is room on this line
+        const when = ({time}) => (time.text === this._allDayText ? _('The whole day') : time.text);
+        const up = on && rows.length > 0 &&
+            (rows.length === 1 || rows.every(row => row.time.text === this._allDayText));
+        const show = (label, text) => {
+            label.text = text;
+            label._schShown = text;
+        };
+        show(title, up ? `${original(title)} · ${when(rows[0])}` : original(title));
+        for (const row of rows) {
+            show(row.summary, on && !up ? `${original(row.summary)} · ${when(row)}` : original(row.summary));
+            row.time.visible = !on;
         }
     }
 }
