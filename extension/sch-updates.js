@@ -222,16 +222,43 @@ async function snapUpdates(cancellable) {
 
 // Flatpak, every installation (the user's and the system's)
 async function flatpakUpdates(cancellable) {
-    const {status, out} = await run(['flatpak', 'remote-ls', '--updates', '--columns=name,application'],
+    const {status, out} = await run(['flatpak', 'remote-ls', '--updates', '--columns=name,application,ref,commit'],
         cancellable);
     if (status !== 0)
         throw new Error(`flatpak exited with ${status}`);
+
+    const raw = lines(out);
+    const valid = [];
+    for (const line of raw) {
+        const parts = line.split('\t');
+        const name = parts[0]?.trim();
+        const app = parts[1]?.trim();
+        const ref = parts[2]?.trim();
+        const commit = parts[3]?.trim();
+        if (ref && commit) {
+            // OCI remotes (such as Fedora Flatpaks) can report false positives because
+            // remote-ls compares the remote OCI digest against the local OSTree commit hash.
+            // When Alt-id matches the remote commit, the local package is already up to date.
+            try {
+                const info = await run(['flatpak', 'info', ref], cancellable);
+                if (info.status === 0) {
+                    const match = info.out.match(/Alt-id:\s*([a-f0-9]+)/i);
+                    if (match) {
+                        const altId = match[1].trim();
+                        if (altId.startsWith(commit) || commit.startsWith(altId))
+                            continue;
+                    }
+                }
+            } catch (_e) {
+                // Ignore inspection failure and keep the item
+            }
+        }
+        valid.push(name || app || line);
+    }
+
     return {
         state: 'done',
-        names: lines(out).map(line => {
-            const [name, application] = line.split('\t');
-            return name?.trim() || application?.trim() || line;
-        }),
+        names: valid,
     };
 }
 
