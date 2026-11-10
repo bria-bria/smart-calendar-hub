@@ -608,6 +608,16 @@
     background-color: rgba(255, 255, 255, 0.18);
 }
 
+/* a button of ours lit up while on (Do not disturb) */
+.sch-bottom-row .sch-bottom-btn-on {
+    background-color: -st-accent-color;
+    color: -st-accent-fg-color;
+}
+
+.sch-bottom-line {
+    spacing: 6px;
+}
+
 /* "New event" in the accent colour */
 .sch-bottom-row .sch-new-event {
     background-color: -st-accent-color;
@@ -1152,4 +1162,9 @@
     background-color: transparent;
     border-color: transparent;
     padding: 2px 2px 6px 2px;
+}
+
+/* "Delete profile" */
+.sch-kit-button.sch-kit-button-destructive {
+    color: #ff7b7b;
 }

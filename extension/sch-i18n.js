@@ -401,6 +401,78 @@ const IT = {
         "Un anello che si svuota con la carica, nel colore della barra; giallo sotto il 20%, rosso sotto il 10%. Il fulmine solo quando sta davvero caricando",
     "Percentage inside the circle":
         "Percentuale dentro il cerchio",
+    "Blue":
+        "Blu",
+    "Green":
+        "Verde",
+    "Yellow":
+        "Giallo",
+    "Orange":
+        "Arancione",
+    "Red":
+        "Rosso",
+    "Purple":
+        "Viola",
+    "No colour":
+        "Nessun colore",
+    "Default":
+        "Predefinito",
+    "Profile":
+        "Profilo",
+    "Profile {n}":
+        "Profilo {n}",
+    "Clear notifications":
+        "Pulisci notifiche",
+    "Open an app":
+        "Apri un'app",
+    "Settings of the hub":
+        "Impostazioni dell'hub",
+    "Change profile":
+        "Cambia profilo",
+    "Do not disturb":
+        "Non disturbare",
+    "None":
+        "Nessuno",
+    "Settings · profile {name} (locked)":
+        "Impostazioni · profilo {name} (bloccato)",
+    "Settings · profile {name}":
+        "Impostazioni · profilo {name}",
+    "Lock on this profile":
+        "Blocca su questo profilo",
+    "Profiles":
+        "Profili",
+    "A profile chooses the sections of the panel and the buttons at the bottom. Click a profile to use it, its arrow to change it. A right click on the settings button changes it quickly.":
+        "Un profilo sceglie le sezioni del pannello e i pulsanti in fondo. Fai clic su un profilo per usarlo, sulla sua freccia per modificarlo. Il clic destro sul pulsante delle impostazioni lo cambia al volo.",
+    "The profile in use stays, also after a restart, until you unlock it.":
+        "Il profilo in uso resta, anche dopo un riavvio, finché non lo sblocchi.",
+    "New profile":
+        "Nuovo profilo",
+    "In use":
+        "In uso",
+    "Change this profile":
+        "Modifica questo profilo",
+    "An app that is no longer installed":
+        "Un'app non più installata",
+    "Name":
+        "Nome",
+    "Use this profile":
+        "Usa questo profilo",
+    "Colour of the settings button":
+        "Colore del pulsante delle impostazioni",
+    "Switch the sections on or off and move them with the arrows. Those of other extensions start switched off.":
+        "Accendi o spegni le sezioni e spostale con le frecce. Quelle delle altre estensioni partono spente.",
+    "Buttons at the bottom":
+        "Pulsanti in fondo",
+    "Three places; with the calendar open only \"New event\" is shown.":
+        "Tre posti; con il calendario aperto si vede solo «Nuovo impegno».",
+    "Delete profile":
+        "Elimina profilo",
+    "Click again to delete it":
+        "Fai di nuovo clic per eliminarlo",
+    "Button {n}":
+        "Pulsante {n}",
+    "Choose an app":
+        "Scegli un'app",
     "Tray icons":
         "Icone del vassoio",
     "Date, sun and moon":
@@ -409,10 +481,6 @@ const IT = {
         "Orologi del mondo e sveglie",
     "Panel sections":
         "Sezioni del pannello",
-    "Sections":
-        "Sezioni",
-    "Switch the sections of the panel on or off and move them with the arrows. Those of other extensions start switched off. The buttons at the bottom always stay last.":
-        "Accendi o spegni le sezioni del pannello e spostale con le frecce. Quelle delle altre estensioni partono spente. I pulsanti in fondo restano sempre ultimi.",
     "Move up":
         "Sposta su",
     "Move down":

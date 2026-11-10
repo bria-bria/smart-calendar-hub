@@ -16,8 +16,9 @@
 //        apps (mutedEntries), each with a button to turn it back on
 //   {kind: 'calendars', title, description, emptyTitle, emptySubtitle}
 //        one switch per calendar (calendarRows, read asynchronously)
-//   {kind: 'widgets', title, description}  the widgets of the panel, each
-//        with a switch and arrows to move it (sch-widgets.js)
+//   {kind: 'profiles', title, description}  the profiles (sch-profiles.js),
+//        each opening its own page: name, colour, the widgets of the panel
+//        with a switch and arrows, the buttons at the bottom
 //   {kind: 'appindicator', text}  a warning while the extension that makes
 //        the tray icons is off (env.appIndicator false) and the tray is used
 // a row:
@@ -584,10 +585,13 @@ function byHandGroups() {
 export function settingsSections() {
     return [
         {id: 'panel', title: _('Panel'), icon: 'view-dual-symbolic', groups: panelGroups()},
-        {id: 'widgets', title: _('Panel sections'), icon: 'view-list-symbolic', groups: [{
-            kind: 'widgets',
-            title: _('Sections'),
-            description: _('Switch the sections of the panel on or off and move them with the arrows. Those of other extensions start switched off. The buttons at the bottom always stay last.'),
+        {id: 'profiles', title: _('Profiles'), icon: 'system-users-symbolic', groups: [{
+            kind: 'profiles',
+            title: _('Profiles'),
+            description: _('A profile chooses the sections of the panel and the buttons at the bottom. Click a profile to use it, its arrow to change it. A right click on the settings button changes it quickly.'),
+        }, {
+            rows: [{type: 'switch', key: 'profile-locked', title: _('Lock on this profile'),
+                subtitle: _('The profile in use stays, also after a restart, until you unlock it.')}],
         }]},
         {id: 'tray', title: _('Tray'), icon: 'view-app-grid-symbolic', groups: trayGroups()},
         {id: 'calendars', title: _('Calendars'), icon: 'x-office-calendar-symbolic', groups: calendarGroups()},

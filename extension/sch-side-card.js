@@ -10,13 +10,13 @@
 // get the look of a menu (popup-menu-content).
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import {_} from './sch-i18n.js';
-import {buildSectionList, buildSectionPage, openPage} from './sch-hub-settings.js';
+import {buildSectionList, buildSectionPage, hubSectionParent, hubSectionTitle, openPage} from './sch-hub-settings.js';
 import {logError, logWarning} from './sch-log.js';
-import {settingsSections} from './sch-settings-model.js';
 import {UPDATES_SECTION} from './sch-updates.js';
 
 // The calendar beside the panel: kept until the next login (module-level, it
@@ -52,6 +52,9 @@ export class SideCard {
 
     // One card again (the menu's content box back as it was)
     destroy() {
+        if (this._openId)
+            GLib.source_remove(this._openId);
+        this._openId = 0;
         this.closeHubSettings();
         this._unsetCalendarSide();
         this.card.destroy();
@@ -289,7 +292,7 @@ export class SideCard {
     }
 
     // The list of the sections (id null) or the settings of section `id`
-    _hubSettingsPage(id) {
+    _hubSettingsPage(id, options = {}) {
         if (id === null) {
             // the version of the hub at the bottom, and a new one when there is
             const version = this._panel.versionCheck.buildNotice(url => openPage(() => this._panel.dateMenu.menu.close(), url));
@@ -306,6 +309,9 @@ export class SideCard {
             closePanel: () => this._panel.dateMenu.menu.close(),
             reloadCalendars: () => this._panel.calendarView.reloadCalendars(),
             widgetRegistry: this._panel.widgetRegistry,
+            // later: the page being replaced is still being built
+            openSection: (section, sectionOptions) => this._openSectionLater(section, sectionOptions),
+            options,
         });
     }
 
@@ -316,21 +322,35 @@ export class SideCard {
         return updates ? [updates] : [];
     }
 
+    // From inside a page (it is still handling its click): once it is done
+    _openSectionLater(id, options) {
+        if (this._openId)
+            GLib.source_remove(this._openId);
+        this._openId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._openId = 0;
+            if (this._hubSettings)
+                this._showHubSection(id, options);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     // Another page of our settings in the same card: the page and the header
     // change, the card stays (id null: back to the list)
-    _showHubSection(id) {
+    _showHubSection(id, options = {}) {
         const side = this._hubSettings?.side;
         const inner = side?.page?.get_parent();
         if (!inner)
             return;
-        const page = this._hubSettingsPage(id);
+        const page = this._hubSettingsPage(id, options);
+        if (!page) // a profile deleted meanwhile: back to the list
+            return;
         const title = id === null
             ? 'Smart Calendar Hub'
             : id === UPDATES_SECTION
                 ? _('System updates')
-                : settingsSections().find(section => section.id === id)?.title ?? '';
+                : hubSectionTitle(this._panel.settings, id);
         const header = this.sideHeader(title, null, this._hubSettingsActions(),
-            id === null ? null : () => this._showHubSection(null));
+            id === null ? null : () => this._showHubSection(hubSectionParent(id)));
         inner.insert_child_above(page, side.page);
         page.add_style_class_name('sch-hub-page');
         side.page.destroy();

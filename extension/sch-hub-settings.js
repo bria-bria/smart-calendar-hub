@@ -9,6 +9,7 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -23,6 +24,11 @@ import {
     setAppOn, setCalendarShown, settingsSections, unmuteApp,
 } from './sch-settings-model.js';
 import {FIXED_WIDGETS, HUB_WIDGETS, moveWidget, setWidgetOn, widgetOrder} from './sch-widgets.js';
+import {
+    BUTTON_ACTIONS, DEFAULT_PROFILE, PROFILE_COLORS, actionKind, actionLabel, activeProfileId, colorLabel,
+    colorValue, createProfile, deleteProfile, newProfileName, profileList, readProfile, setActiveProfile,
+    updateProfile,
+} from './sch-profiles.js';
 
 // 'active', 'off' (installed, can be switched on) or 'missing' (not
 // installed, or broken: to be taken again from extensions.gnome.org)
@@ -393,12 +399,12 @@ function appIndicatorNotice(group, ctx) {
 // The widgets of the panel in their order: a switch each and two arrows.
 // Rebuilt when the list changes (an arrow moves a row: the keyboard focus
 // goes back to its arrow)
-function widgetsCard(group, ctx) {
+function widgetsCard(ctx, profileId) {
     const {settings, syncs, widgetRegistry: registry} = ctx;
     const card = kit.card();
     let shape = null;
     syncs.push(() => {
-        const order = widgetOrder(settings, registry.ids);
+        const order = widgetOrder(settings, registry.ids, profileId);
         const now = JSON.stringify(order);
         if (now === shape)
             return;
@@ -407,7 +413,7 @@ function widgetsCard(group, ctx) {
         card.destroy_all_children();
         order.forEach(({id, on}, i) => {
             const arrow = (icon, label, delta, enabled) => {
-                const button = roundButton(icon, label, () => moveWidget(settings, registry.ids, id, delta));
+                const button = roundButton(icon, label, () => moveWidget(settings, registry.ids, id, delta, profileId));
                 button.schWidgetArrow = `${id}:${delta}`;
                 kit.setSensitive(button, enabled);
                 return button;
@@ -415,7 +421,7 @@ function widgetsCard(group, ctx) {
             const up = arrow('go-up-symbolic', _('Move up'), -1, i > 0);
             const down = arrow('go-down-symbolic', _('Move down'), 1, i < order.length - 1);
             const fixed = FIXED_WIDGETS.includes(id);
-            const sw = kit.toggle({active: on, onToggle: state => setWidgetOn(settings, registry.ids, id, state)});
+            const sw = kit.toggle({active: on, onToggle: state => setWidgetOn(settings, registry.ids, id, state, profileId)});
             kit.setSensitive(sw, !fixed);
             const trailing = new St.BoxLayout({style_class: 'sch-ext-stepper', y_align: Clutter.ActorAlign.CENTER});
             [up, down, sw].forEach(piece => trailing.add_child(piece));
@@ -434,21 +440,277 @@ function widgetsCard(group, ctx) {
     return card;
 }
 
-const GROUP_CARDS = {apps: appsCard, muted: mutedCard, calendars: calendarsCard, widgets: widgetsCard};
+// The profiles: a click uses one, its arrow opens its page; then "New
+// profile", a copy of the one in use
+function profilesCard(group, ctx) {
+    const {settings, syncs} = ctx;
+    const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+    const card = kit.card();
+    box.add_child(card);
+    box.add_child(kit.buttons(kit.button({
+        label: _('New profile'),
+        primary: true,
+        onClick: () => ctx.openSection(`profile:${createProfile(settings, newProfileName(settings))}`, {focusName: true}),
+    })));
+    let shape = null;
+    syncs.push(() => {
+        const active = activeProfileId(settings);
+        const list = profileList(settings);
+        const now = JSON.stringify([active, list]);
+        if (now === shape)
+            return;
+        shape = now;
+        card.destroy_all_children();
+        for (const {id, name, color} of list) {
+            const row = kit.row({
+                title: name,
+                subtitle: id === active ? _('In use') : '',
+                trailing: roundButton('go-next-symbolic', _('Change this profile'), () => ctx.openSection(`profile:${id}`)),
+                onActivate: () => setActiveProfile(settings, id),
+            });
+            row.get_child().insert_child_at_index(colorDot(color), 0);
+            card.add_child(row);
+        }
+    });
+    return box;
+}
+
+// The dot in the colour of a profile (an empty ring without colour)
+function colorDot(color) {
+    const value = colorValue(color);
+    return new St.Widget({
+        style: value
+            ? `background-color: ${value}; border-radius: 6px;`
+            : 'border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 6px;',
+        width: 12,
+        height: 12,
+        y_align: Clutter.ActorAlign.CENTER,
+    });
+}
+
+// The label of a button of the bottom row: the app's name for an app
+function buttonLabel(action) {
+    if (actionKind(action) !== 'app')
+        return actionLabel(action);
+    const app = Shell.AppSystem.get_default().lookup_app(action.slice('app:'.length));
+    return app ? app.get_name() : _('An app that is no longer installed');
+}
+
+// The page of one profile: name, use it, colour, sections of the panel,
+// buttons at the bottom, delete
+function profilePage(settings, profileId, ctx, {focusName = false} = {}) {
+    const {syncs} = ctx;
+    const pieces = [];
+    const exists = () => profileList(settings).some(p => p.id === profileId);
+    const isDefault = profileId === DEFAULT_PROFILE;
+
+    if (!isDefault) {
+        pieces.push(kit.section(_('Name')));
+        const entry = new St.Entry({
+            style_class: 'sch-ext-entry',
+            text: readProfile(settings, profileId).name,
+            can_focus: true,
+            x_expand: true,
+        });
+        entry.clutter_text.single_line_mode = true;
+        const commit = () => {
+            const name = entry.text.trim();
+            if (name && exists() && name !== readProfile(settings, profileId).name)
+                updateProfile(settings, profileId, {name});
+        };
+        entry.clutter_text.connect('activate', commit);
+        entry.clutter_text.connect('key-focus-out', commit);
+        pieces.push(entry);
+        if (focusName) {
+            entry.connect('notify::mapped', () => {
+                if (entry.mapped && focusName) {
+                    focusName = false;
+                    entry.grab_key_focus();
+                    entry.clutter_text.set_selection(0, -1);
+                }
+            });
+        }
+    }
+
+    const use = kit.row({title: _('Use this profile'), onActivate: () => setActiveProfile(settings, profileId)});
+    pieces.push(kit.card(use));
+    syncs.push(() => {
+        const inUse = activeProfileId(settings) === profileId;
+        use.setTrailing(inUse ? checkIcon() : null);
+        use.subtitleLabel.text = inUse ? _('In use') : '';
+    });
+
+    pieces.push(kit.section(_('Colour of the settings button')));
+    const colors = kit.card();
+    for (const color of ['', ...PROFILE_COLORS.map(([name]) => name)]) {
+        const row = kit.row({
+            title: colorLabel(color),
+            onActivate: () => updateProfile(settings, profileId, {color}),
+        });
+        row.get_child().insert_child_at_index(colorDot(color), 0);
+        colors.add_child(row);
+        let checked = null;
+        syncs.push(() => {
+            const now = exists() && readProfile(settings, profileId).color === color;
+            if (now !== checked) {
+                checked = now;
+                row.setTrailing(now ? checkIcon() : null);
+            }
+        });
+    }
+    pieces.push(colors);
+
+    pieces.push(kit.section(_('Panel sections')));
+    pieces.push(descriptionLabel(_('Switch the sections on or off and move them with the arrows. Those of other extensions start switched off.')));
+    pieces.push(widgetsCard(ctx, profileId));
+
+    pieces.push(kit.section(_('Buttons at the bottom')));
+    pieces.push(descriptionLabel(_('Three places; with the calendar open only "New event" is shown.')));
+    const buttons = kit.card();
+    for (let slot = 0; slot < 3; slot++)
+        buttonRows(settings, profileId, slot, ctx).forEach(row => buttons.add_child(row));
+    pieces.push(buttons);
+
+    if (!isDefault) {
+        let armed = false;
+        const remove = kit.button({
+            label: _('Delete profile'),
+            onClick: () => {
+                if (!armed) {
+                    armed = true;
+                    remove.label = _('Click again to delete it');
+                    return;
+                }
+                deleteProfile(settings, profileId);
+                ctx.openSection('profiles');
+            },
+        });
+        remove.add_style_class_name('sch-kit-button-destructive');
+        pieces.push(kit.buttons(remove));
+    }
+    return pieces;
+}
+
+// One button of the bottom row: its action under the title; a click shows
+// the actions, with a check on the chosen one ("Open an app" opens the list
+// of the apps)
+const ONCE_ONLY = ['clocks', 'new-event', 'clear'];
+
+function buttonRows(settings, profileId, slot, ctx) {
+    const action = () => readProfile(settings, profileId).buttons[slot];
+    let open = false;
+    const options = [];
+    const header = kit.row({
+        title: _('Button {n}', {n: slot + 1}),
+        subtitle: buttonLabel(action()),
+        trailing: arrowIcon(false),
+        wrap: true,
+        onActivate: () => {
+            open = !open;
+            header.setTrailing(arrowIcon(open));
+            options.forEach(option => {
+                option.visible = open;
+            });
+        },
+    });
+    // World clocks, New event and Clear exist once: taken from another place
+    const choose = value => {
+        const buttons = readProfile(settings, profileId).buttons
+            .map((b, i) => (i !== slot && ONCE_ONLY.includes(value) && actionKind(b) === value ? 'none' : b));
+        buttons[slot] = value;
+        updateProfile(settings, profileId, {buttons});
+    };
+    for (const kind of BUTTON_ACTIONS) {
+        const option = kit.row({
+            title: actionLabel(kind),
+            wrap: true,
+            onActivate: () => (kind === 'app'
+                ? ctx.openSection(`profile:${profileId}:app:${slot}`)
+                : choose(kind)),
+        });
+        option.add_style_class_name('sch-set-child');
+        option.visible = false;
+        options.push(option);
+        ctx.syncs.push(() => option.setTrailing(actionKind(action()) === kind ? checkIcon() : null));
+    }
+    ctx.syncs.push(() => {
+        header.subtitleLabel.text = buttonLabel(action());
+    });
+    return [header, ...options];
+}
+
+// The installed apps, for a button of the bottom row
+function appPage(settings, profileId, slot, ctx) {
+    const apps = Shell.AppSystem.get_default().get_installed()
+        .filter(info => info.should_show())
+        .sort((a, b) => a.get_display_name().localeCompare(b.get_display_name()));
+    const card = kit.card(...apps.map(info => kit.row({
+        icon: info.get_icon(),
+        title: info.get_display_name(),
+        onActivate: () => {
+            const buttons = readProfile(settings, profileId).buttons;
+            buttons[slot] = `app:${info.get_id()}`;
+            updateProfile(settings, profileId, {buttons});
+            ctx.openSection(`profile:${profileId}`);
+        },
+    })));
+    return [card];
+}
+
+function descriptionLabel(text) {
+    const label = new St.Label({style_class: 'sch-set-description', x_expand: true, text});
+    label.clutter_text.line_wrap = true;
+    label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+    return label;
+}
+
+// The pages under a section: 'profile:<id>' (parent 'profiles') and
+// 'profile:<id>:app:<slot>' (parent 'profile:<id>')
+function parseSubpage(id) {
+    const match = /^profile:([^:]+)(?::app:(\d))?$/.exec(id ?? '');
+    return match ? {profileId: match[1], slot: match[2] === undefined ? null : Number(match[2])} : null;
+}
+
+// The page the back arrow of `id` goes to (null: the list of the sections)
+export function hubSectionParent(id) {
+    const sub = parseSubpage(id);
+    if (!sub)
+        return null;
+    return sub.slot === null ? 'profiles' : `profile:${sub.profileId}`;
+}
+
+// The title of a page of our settings
+export function hubSectionTitle(settings, id) {
+    const sub = parseSubpage(id);
+    if (sub?.slot !== null && sub)
+        return _('Choose an app');
+    if (sub)
+        return profileList(settings).find(p => p.id === sub.profileId)?.name ?? '';
+    return settingsSections().find(section => section.id === id)?.title ?? '';
+}
+
+const GROUP_CARDS = {apps: appsCard, muted: mutedCard, calendars: calendarsCard, profiles: profilesCard};
 
 // The settings of section `id`, or null when there is no such section.
 // closePanel: closes the panel (before a browser opens); reloadCalendars:
 // the calendar of the panel reads its calendars again; widgetRegistry: the
-// widgets of other extensions
-export function buildSectionPage(settings, id, {closePanel, reloadCalendars, widgetRegistry}) {
+// widgets of other extensions; openSection(id, options): shows another
+// page of our settings; options: for a new profile {focusName: true}
+export function buildSectionPage(settings, id, {closePanel, reloadCalendars, widgetRegistry, openSection, options}) {
     const section = settingsSections().find(s => s.id === id);
-    if (!section)
+    const sub = parseSubpage(id);
+    if (!section && !sub)
         return null;
     const env = {bii: biiState(), appIndicator: appIndicatorOn()};
     const syncs = [];
-    const ctx = {settings, env, syncs, closePanel, reloadCalendars, widgetRegistry};
+    const ctx = {settings, env, syncs, closePanel, reloadCalendars, widgetRegistry, openSection};
     const pieces = [];
-    for (const group of section.groups) {
+    if (sub) {
+        pieces.push(...(sub.slot === null
+            ? profilePage(settings, sub.profileId, ctx, options)
+            : appPage(settings, sub.profileId, sub.slot, ctx)));
+    }
+    for (const group of section?.groups ?? []) {
         if (group.kind === 'appindicator') {
             pieces.push(appIndicatorNotice(group, ctx));
             continue;

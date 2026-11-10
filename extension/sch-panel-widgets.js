@@ -24,7 +24,9 @@ export class PanelWidgets {
         this._panel = panel;
         this._hub = hub;
         this._registry = registry;
-        this._parked = new Set(); // hub actors taken out of the panel
+        // hub actors taken out of the panel → whether they were visible
+        // (Clutter shows an actor again when it gets a parent)
+        this._parked = new Map();
         this._external = new Map(); // id → {spec, actor} built (actor null: failed)
         registry.onChanged = () => this.place();
     }
@@ -36,7 +38,7 @@ export class PanelWidgets {
             actor?.destroy();
         this._external.clear();
         const sidebar = this._panel.sidebar;
-        for (const actor of this._parked)
+        for (const actor of this._parked.keys())
             sidebar?.add_child(actor);
         this._parked.clear();
     }
@@ -45,7 +47,7 @@ export class PanelWidgets {
     // out of it goes the same way
     forget() {
         this._registry.onChanged = null;
-        for (const actor of this._parked)
+        for (const actor of this._parked.keys())
             actor.destroy();
         this._parked.clear();
         this._external.clear();
@@ -68,8 +70,12 @@ export class PanelWidgets {
                     actor.y_expand = !fillTaken;
                     fillTaken = true;
                 }
-                if (actor.get_parent() !== sidebar)
+                if (actor.get_parent() !== sidebar) {
                     sidebar.add_child(actor);
+                    if (this._parked.has(actor))
+                        actor.visible = this._parked.get(actor);
+                }
+                this._parked.delete(actor);
                 sidebar.set_child_at_index(actor, index++);
             }
         }
@@ -85,13 +91,13 @@ export class PanelWidgets {
     // The actors of a hub widget to show (none when switched off: taken out)
     _hubActors(id, on) {
         const actors = this._hub.get(id) ?? [];
-        if (on) {
-            actors.forEach(actor => this._parked.delete(actor));
+        if (on)
             return actors;
-        }
         for (const actor of actors) {
-            actor.get_parent()?.remove_child(actor);
-            this._parked.add(actor);
+            if (!actor.get_parent())
+                continue;
+            this._parked.set(actor, actor.visible);
+            actor.get_parent().remove_child(actor);
         }
         return [];
     }

@@ -39,6 +39,7 @@ import {WeatherSection} from './sch-weather-section.js';
 import {WorldClocksCard} from './sch-world-clocks.js';
 import {logError} from './sch-log.js';
 import {PanelWidgets} from './sch-panel-widgets.js';
+import {ProfileSwitch} from './sch-profile-switch.js';
 import {moveClock} from './sch-topbar-style.js';
 import {vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
 
@@ -104,6 +105,7 @@ export class SidePanel {
         // the widgets switched off back in the sidebar, those of other
         // extensions destroyed
         this.widgets?.destroy();
+        this.profileSwitch?.destroy();
         this.resize?.destroy();
         this._extIcons?.destroy();
         this.today?.destroy();
@@ -237,6 +239,7 @@ export class SidePanel {
         this._sidebarDestroyId = this.sidebar.connect('destroy', () => {
             this.disabling = true;
             this.widgets?.forget();
+            this.profileSwitch?.forget();
             this.pages.forget();
             this.tray.forget();
             this._forgetSidebar();
@@ -261,6 +264,7 @@ export class SidePanel {
             this.pages = new PanelPages(this);
             this.sidebar.add_child(this.pages.actor);
         });
+        this.profileSwitch = new ProfileSwitch(this, this.tray.gear, this.tray.menuManager);
 
         // IP addresses (sch-net.js PanelIpBox, added once IpView exists)
         this._widget('ip', () => {
@@ -461,7 +465,7 @@ export class SidePanel {
     _retranslate() {
         this.calendarLabel.text = _('Calendar and events');
         this.bottom.retranslate();
-        this.tray.retranslate();
+        this.profileSwitch.sync();
         this.weather.retranslate();
         this.alerts.retranslate();
     }

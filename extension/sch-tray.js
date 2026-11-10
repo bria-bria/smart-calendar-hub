@@ -144,7 +144,11 @@ export class Tray {
             child: new St.Icon({icon_name: 'emblem-system-symbolic', icon_size: 14}),
         });
         // our settings in the card beside the panel (sch-hub-settings.js)
-        gear.connect('clicked', () => this._panel.side.toggleHubSettings());
+        // (a right click: the profiles, sch-profile-switch.js)
+        gear.connect('clicked', (_gear, button) => {
+            if (button !== Clutter.BUTTON_SECONDARY)
+                this._panel.side.toggleHubSettings();
+        });
         this.actor.add_child(gear);
         this._settings.connectObject(
             'changed::tray-menus-inside', () => this.syncMenuModes(),
@@ -193,8 +197,8 @@ export class Tray {
         this.actor.insert_child_below(button, this._gear);
     }
 
-    retranslate() {
-        this._gear.accessible_name = _('Settings');
+    get gear() {
+        return this._gear;
     }
 
     // Stable identifier of an icon, kept across sessions: the app id for

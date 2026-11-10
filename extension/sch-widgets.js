@@ -8,14 +8,15 @@
 // in GSettings says in which order they stand and which are switched off.
 // The bottom row is not a widget: it always closes the panel.
 //
-// A profile: {id, widgets: [ids in order], off: [ids switched off]}. A hub
-// widget the profile does not name keeps its default place after the others
-// and is on; a widget of another extension is on only once the user switched
-// it on (it is then in `widgets` and not in `off`).
+// A profile (sch-profiles.js) keeps the widgets in order and those switched
+// off. A hub widget the profile does not name keeps its default place after
+// the others and is on; a widget of another extension is on only once the
+// user switched it on (it is then in `widgets` and not in `off`).
 
 import GLib from 'gi://GLib';
 
 import {_} from './sch-i18n.js';
+import {activeProfileId, readProfile, updateProfile} from './sch-profiles.js';
 
 // The widgets of the hub, in their default order
 export const HUB_WIDGETS = ['tray', 'ip', 'weather', 'date', 'calendar', 'today', 'notifications', 'clocks'];
@@ -38,26 +39,11 @@ export function hubWidgetTitle(id) {
     }
 }
 
-const isList = value => value instanceof GLib.Variant && value.get_type_string() === 'as';
-
-// The profiles as GSettings gives them (each a {key: GLib.Variant}), the
-// index of the active one (the first if it is not found) and its lists
-function readProfiles(settings) {
-    const profiles = settings.get_value('profiles').deepUnpack();
-    const active = settings.get_string('active-profile');
-    let index = profiles.findIndex(p => p.id?.get_type_string() === 's' && p.id.unpack() === active);
-    if (index < 0 && profiles.length)
-        index = 0;
-    const profile = profiles[index] ?? {};
-    const widgets = isList(profile.widgets) ? profile.widgets.deepUnpack() : [];
-    const off = isList(profile.off) ? profile.off.deepUnpack() : [];
-    return {profiles, index, widgets, off};
-}
-
-// Every widget of the active profile, in order: [{id, on}]. external: the
-// ids other extensions added (theirs not yet in the profile come last, off)
-export function widgetOrder(settings, external = []) {
-    const {widgets, off} = readProfiles(settings);
+// Every widget of a profile (the one in use by default), in order:
+// [{id, on}]. external: the ids other extensions added (theirs not yet in
+// the profile come last, off)
+export function widgetOrder(settings, external = [], profileId = null) {
+    const {widgets, off} = readProfile(settings, profileId);
     const ids = [...new Set([...widgets, ...HUB_WIDGETS, ...external])];
     const offSet = new Set(off);
     return ids.map(id => ({
@@ -67,35 +53,29 @@ export function widgetOrder(settings, external = []) {
     }));
 }
 
-// Writes the order and the switched-off widgets into the active profile,
-// keeping whatever else the profile holds
-function writeProfile(settings, order) {
-    const {profiles, index} = readProfiles(settings);
-    const profile = {
-        ...profiles[index] ?? {id: new GLib.Variant('s', 'default')},
-        widgets: new GLib.Variant('as', order.map(w => w.id)),
-        off: new GLib.Variant('as', order.filter(w => !w.on).map(w => w.id)),
-    };
-    const list = [...profiles];
-    list[Math.max(index, 0)] = profile;
-    settings.set_value('profiles', new GLib.Variant('aa{sv}', list));
+function writeOrder(settings, profileId, order) {
+    updateProfile(settings, profileId ?? activeProfileId(settings), {
+        widgets: order.map(w => w.id),
+        off: order.filter(w => !w.on).map(w => w.id),
+    });
 }
 
-export function setWidgetOn(settings, external, id, on) {
+export function setWidgetOn(settings, external, id, on, profileId = null) {
     if (FIXED_WIDGETS.includes(id))
         return;
-    writeProfile(settings, widgetOrder(settings, external).map(w => (w.id === id ? {id, on} : w)));
+    writeOrder(settings, profileId,
+        widgetOrder(settings, external, profileId).map(w => (w.id === id ? {id, on} : w)));
 }
 
 // One place up (delta -1) or down (+1)
-export function moveWidget(settings, external, id, delta) {
-    const order = widgetOrder(settings, external);
+export function moveWidget(settings, external, id, delta, profileId = null) {
+    const order = widgetOrder(settings, external, profileId);
     const from = order.findIndex(w => w.id === id);
     const to = from + delta;
     if (from < 0 || to < 0 || to >= order.length)
         return;
     [order[from], order[to]] = [order[to], order[from]];
-    writeProfile(settings, order);
+    writeOrder(settings, profileId, order);
 }
 
 // The widgets other extensions add (addWidget), kept while the hub is on,
