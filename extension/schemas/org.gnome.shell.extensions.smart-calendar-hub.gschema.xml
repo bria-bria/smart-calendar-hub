@@ -317,7 +317,7 @@
     <key name="profiles" type="aa{sv}">
       <default>[{'id': &lt;'default'&gt;, 'widgets': &lt;['tray', 'ip', 'weather', 'date', 'calendar', 'today', 'notifications', 'clocks']&gt;}]</default>
       <summary>Profiles of the panel</summary>
-      <description>Each profile has an id, a name and a colour for the settings button (color: blue, green, yellow, orange, red, purple or empty), the buttons of the bottom row (buttons: three actions), the order of the widgets of the panel (widgets: tray, ip, weather, date, calendar, today, notifications, clocks, and the ids of widgets of other extensions) and the widgets switched off (off). A widget of the hub the profile does not name keeps its default place after the others and is on; one of another extension is on only once switched on. The bottom row always comes last.</description>
+      <description>Each profile has an id, a name and a colour for the settings button (color: blue, green, yellow, orange, red, purple or empty), the buttons of the bottom row (buttons: three actions), the rules of the automatic change (wifi: names of Wi-Fi networks; schedule 'on' with days 1-7, start and end as HH:MM), the order of the widgets of the panel (widgets: tray, ip, weather, date, calendar, today, notifications, clocks, and the ids of widgets of other extensions) and the widgets switched off (off). A widget of the hub the profile does not name keeps its default place after the others and is on; one of another extension is on only once switched on. The bottom row always comes last.</description>
     </key>
     <key name="profile-locked" type="b">
       <default>false</default>

@@ -309,6 +309,7 @@ export class SideCard {
             closePanel: () => this._panel.dateMenu.menu.close(),
             reloadCalendars: () => this._panel.calendarView.reloadCalendars(),
             widgetRegistry: this._panel.widgetRegistry,
+            profileAuto: this._panel.profileAuto,
             // later: the page being replaced is still being built
             openSection: (section, sectionOptions) => this._openSectionLater(section, sectionOptions),
             options,

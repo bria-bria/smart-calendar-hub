@@ -7,6 +7,7 @@
 // Every change is written at once and the panel follows it.
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
@@ -26,8 +27,8 @@ import {
 import {FIXED_WIDGETS, HUB_WIDGETS, moveWidget, setWidgetOn, widgetOrder} from './sch-widgets.js';
 import {
     BUTTON_ACTIONS, DEFAULT_PROFILE, PROFILE_COLORS, actionKind, actionLabel, activeProfileId, colorLabel,
-    colorValue, createProfile, deleteProfile, newProfileName, profileList, readProfile, setActiveProfile,
-    updateProfile,
+    colorValue, createProfile, deleteProfile, formatMinutes, newProfileName, profileList, readProfile,
+    setActiveProfile, updateProfile,
 } from './sch-profiles.js';
 
 // 'active', 'off' (installed, can be switched on) or 'missing' (not
@@ -568,6 +569,9 @@ function profilePage(settings, profileId, ctx, {focusName = false, previous = nu
     pieces.push(descriptionLabel(_('Switch the sections on or off and move them with the arrows. Those of other extensions start switched off.')));
     pieces.push(widgetsCard(ctx, profileId));
 
+    if (!isDefault)
+        pieces.push(...automaticPieces(settings, profileId, ctx));
+
     pieces.push(kit.section(_('Buttons at the bottom')));
     pieces.push(descriptionLabel(_('Three places; with the calendar open only "New event" is shown.')));
     const buttons = kit.card();
@@ -611,6 +615,117 @@ function profilePage(settings, profileId, ctx, {focusName = false, previous = nu
         remove.add_style_class_name('sch-kit-button-destructive');
         pieces.push(kit.buttons(remove));
     }
+    return pieces;
+}
+
+// "Switch to it by itself": its Wi-Fi networks (only their names are
+// saved) and its hours
+function automaticPieces(settings, profileId, ctx) {
+    const {syncs} = ctx;
+    const profile = () => readProfile(settings, profileId);
+    const exists = () => profileList(settings).some(p => p.id === profileId);
+    const pieces = [
+        kit.section(_('Switch to it by itself')),
+        descriptionLabel(_('With one of its Wi-Fi networks connected this profile is used, otherwise during its hours; the Wi-Fi wins over the hours, and with no rule holding "Default" is used. A profile chosen by hand stays until the network or the hours change, or always with the lock.')),
+    ];
+
+    const networks = kit.card();
+    let shape = null;
+    syncs.push(() => {
+        if (!exists())
+            return;
+        const wifi = profile().wifi;
+        const current = ctx.profileAuto?.ssids ?? [];
+        const now = JSON.stringify([wifi, current]);
+        if (now === shape)
+            return;
+        shape = now;
+        networks.destroy_all_children();
+        for (const name of wifi) {
+            networks.add_child(kit.row({
+                icon: 'network-wireless-symbolic',
+                title: name,
+                trailing: roundButton('list-remove-symbolic', _('Remove'),
+                    () => updateProfile(settings, profileId, {wifi: profile().wifi.filter(n => n !== name)})),
+            }));
+        }
+        const toAdd = current.filter(name => !wifi.includes(name));
+        const add = pillButton(_('Add'), () => updateProfile(settings, profileId, {wifi: [...profile().wifi, ...toAdd]}));
+        kit.setSensitive(add, toAdd.length > 0);
+        networks.add_child(kit.row({
+            title: _('The Wi-Fi network I am on'),
+            subtitle: current.length ? current.join(', ') : _('Not connected to a Wi-Fi network'),
+            trailing: add,
+            wrap: true,
+        }));
+    });
+    pieces.push(networks);
+
+    const hours = kit.card();
+    const scheduleSwitch = kit.toggle({
+        onToggle: on => updateProfile(settings, profileId, {schedule: on ? 'on' : ''}),
+    });
+    hours.add_child(kit.row({title: _('During these hours'), trailing: scheduleSwitch}));
+    // the days, Monday first, with the names of the system's language
+    const days = new St.BoxLayout({style_class: 'sch-day-buttons', x_expand: true});
+    const dayButtons = [];
+    for (let day = 1; day <= 7; day++) {
+        // 1 January 2024 was a Monday
+        const name = GLib.DateTime.new_local(2024, 1, day, 0, 0, 0).format('%a');
+        const button = new St.Button({
+            style_class: 'sch-day-button',
+            label: name,
+            can_focus: true,
+            toggle_mode: true,
+            x_expand: true,
+            accessible_name: GLib.DateTime.new_local(2024, 1, day, 0, 0, 0).format('%A'),
+        });
+        button.connect('clicked', () => {
+            const chosen = new Set(profile().days);
+            if (button.checked)
+                chosen.add(day);
+            else
+                chosen.delete(day);
+            updateProfile(settings, profileId, {days: [...chosen].sort().map(String)});
+        });
+        days.add_child(button);
+        dayButtons.push(button);
+    }
+    hours.add_child(days);
+    // the pieces greyed out while the hours are off
+    const timed = [...dayButtons];
+    const timeRow = (title, key) => {
+        const shown = kit.value('');
+        const step = sign => {
+            const minutes = (profile()[key] + sign * 15 + 24 * 60) % (24 * 60);
+            updateProfile(settings, profileId, {[key]: formatMinutes(minutes)});
+        };
+        const earlier = roundButton('list-remove-symbolic', _('Earlier'), () => step(-1));
+        const later = roundButton('list-add-symbolic', _('Later'), () => step(1));
+        const box = new St.BoxLayout({style_class: 'sch-ext-stepper', y_align: Clutter.ActorAlign.CENTER});
+        [earlier, shown, later].forEach(piece => box.add_child(piece));
+        const row = kit.row({title, trailing: box});
+        hours.add_child(row);
+        timed.push(earlier, later, row);
+        return shown;
+    };
+    const start = timeRow(_('From'), 'start');
+    const end = timeRow(_('To'), 'end');
+    syncs.push(() => {
+        if (!exists())
+            return;
+        const p = profile();
+        if (scheduleSwitch.state !== p.schedule)
+            scheduleSwitch.state = p.schedule;
+        dayButtons.forEach((button, i) => {
+            button.checked = p.days.includes(i + 1);
+        });
+        start.text = formatMinutes(p.start);
+        end.text = formatMinutes(p.end);
+        for (const actor of timed)
+            kit.setSensitive(actor, p.schedule);
+    });
+    pieces.push(hours);
     return pieces;
 }
 
@@ -717,16 +832,19 @@ const GROUP_CARDS = {apps: appsCard, muted: mutedCard, calendars: calendarsCard,
 // The settings of section `id`, or null when there is no such section.
 // closePanel: closes the panel (before a browser opens); reloadCalendars:
 // the calendar of the panel reads its calendars again; widgetRegistry: the
-// widgets of other extensions; openSection(id, options): shows another
-// page of our settings; options: for a new profile {focusName: true}
-export function buildSectionPage(settings, id, {closePanel, reloadCalendars, widgetRegistry, openSection, options}) {
+// widgets of other extensions; profileAuto: the automatic change of
+// profile (the Wi-Fi networks connected); openSection(id, options): shows
+// another page of our settings; options: for a new profile {focusName: true}
+export function buildSectionPage(settings, id, {
+    closePanel, reloadCalendars, widgetRegistry, profileAuto, openSection, options,
+}) {
     const section = settingsSections().find(s => s.id === id);
     const sub = parseSubpage(id);
     if (!section && !sub)
         return null;
     const env = {bii: biiState(), appIndicator: appIndicatorOn()};
     const syncs = [];
-    const ctx = {settings, env, syncs, closePanel, reloadCalendars, widgetRegistry, openSection};
+    const ctx = {settings, env, syncs, closePanel, reloadCalendars, widgetRegistry, profileAuto, openSection};
     const pieces = [];
     if (sub) {
         pieces.push(...(sub.slot === null

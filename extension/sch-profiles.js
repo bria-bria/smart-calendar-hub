@@ -5,7 +5,8 @@
 // which widgets are on and in which order (sch-widgets.js), which buttons the
 // bottom row shows and what each does, its name and the colour of the
 // settings button. They are kept in GSettings (key profiles, one a{sv} each:
-// id, name, color, widgets, off, buttons), with the one in use in
+// id, name, color, widgets, off, buttons, and the rules of the automatic
+// change: wifi, schedule, days, start, end), with the one in use in
 // active-profile. "Default" always exists and cannot be deleted (it can be
 // renamed). The lock
 // (profile-locked) keeps the profile chosen by hand: the automatic changes,
@@ -94,7 +95,59 @@ export function readProfile(settings, id = null) {
         widgets: strv(raw.widgets) ?? [],
         off: strv(raw.off) ?? [],
         buttons: Array.from({length: BUTTON_SLOTS}, (_v, i) => buttons[i] ?? 'none'),
+        // the networks (only their names) and the hours that switch to it
+        wifi: strv(raw.wifi) ?? [],
+        schedule: str(raw.schedule) === 'on',
+        days: (strv(raw.days) ?? DEFAULT_DAYS).map(Number).filter(d => d >= 1 && d <= 7),
+        start: minutesOf(str(raw.start)) ?? DEFAULT_START,
+        end: minutesOf(str(raw.end)) ?? DEFAULT_END,
     };
+}
+
+// The days of the week as GLib numbers them, 1 = Monday; the hours as
+// minutes from midnight, saved as "08:30"
+export const DEFAULT_DAYS = ['1', '2', '3', '4', '5'];
+const DEFAULT_START = 8 * 60 + 30;
+const DEFAULT_END = 17 * 60 + 30;
+
+function minutesOf(text) {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(text ?? '');
+    return match && Number(match[1]) < 24 && Number(match[2]) < 60 ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+export function formatMinutes(minutes) {
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
+// Whether the hours of a profile hold at a moment (GLib.DateTime); hours
+// past midnight (end before start) go on into the next day
+export function scheduleHolds(profile, now) {
+    if (!profile.schedule || profile.start === profile.end)
+        return false;
+    const minute = now.get_hour() * 60 + now.get_minute();
+    const today = now.get_day_of_week();
+    const yesterday = today === 1 ? 7 : today - 1;
+    if (profile.start < profile.end)
+        return profile.days.includes(today) && minute >= profile.start && minute < profile.end;
+    return (profile.days.includes(today) && minute >= profile.start) ||
+        (profile.days.includes(yesterday) && minute < profile.end);
+}
+
+// The profile the rules want now: a Wi-Fi network connected (it wins), else
+// the hours, else "Default". ssids: the names of the Wi-Fi networks connected
+export function automaticProfile(settings, ssids, now) {
+    const profiles = profileList(settings).map(p => readProfile(settings, p.id));
+    return profiles.find(p => p.wifi.some(name => ssids.includes(name)))?.id ??
+        profiles.find(p => scheduleHolds(p, now))?.id ??
+        DEFAULT_PROFILE;
+}
+
+// Whether any profile has a rule: without rules nothing changes by itself
+export function hasRules(settings) {
+    return profileList(settings).some(p => {
+        const profile = readProfile(settings, p.id);
+        return profile.wifi.length > 0 || profile.schedule;
+    });
 }
 
 // Changes some fields of a profile (strings or lists of strings), keeping

@@ -46,9 +46,11 @@ import {vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
 export class SidePanel {
     // version: the version-name of our metadata.json; widgetRegistry: the
     // widgets of other extensions (sch-widgets.js)
-    constructor(dateMenu, settings, version, widgetRegistry) {
+    // profileAuto: the automatic change of profile (sch-profile-auto.js)
+    constructor(dateMenu, settings, version, widgetRegistry, profileAuto) {
         this.dateMenu = dateMenu;
         this.widgetRegistry = widgetRegistry;
+        this.profileAuto = profileAuto;
         this.settings = settings;
         this.version = version;
         // true once the panel is going: callbacks still queued do nothing

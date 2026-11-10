@@ -8,6 +8,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {AlarmWatch} from './sch-alarm-watch.js';
+import {ProfileAuto} from './sch-profile-auto.js';
 import {SidePanel} from './sch-side-panel.js';
 import {WidgetRegistry} from './sch-widgets.js';
 import {TopBarStyle} from './sch-topbar-style.js';
@@ -21,8 +22,12 @@ export default class SmartCalendarHubExtension extends Extension {
         this._topBarStyle = new TopBarStyle(this.getSettings());
         this._widgetRegistry = new WidgetRegistry(this.getSettings());
         // also on the lock screen, where it shows nothing: alarms ring there too
-        if (!Main.sessionMode.isGreeter)
+        if (!Main.sessionMode.isGreeter) {
             this._alarmWatch = new AlarmWatch(this.getSettings());
+            // the profile follows the network and the hours, also while
+            // locked: the panel is right on unlock
+            this._profileAuto = new ProfileAuto(this.getSettings());
+        }
         this._modeId = Main.sessionMode.connect('updated', () => this._syncSessionMode());
         // A failure while building the panel is reported to GNOME (the
         // Extensions app shows the error): the top bar style is undone too,
@@ -52,6 +57,8 @@ export default class SmartCalendarHubExtension extends Extension {
         this._widgetRegistry = null;
         this._alarmWatch?.destroy();
         this._alarmWatch = null;
+        this._profileAuto?.destroy();
+        this._profileAuto = null;
         stopTimerCountdowns();
         forgetUpdatesCheck();
         forgetInstalledVersion();
@@ -69,7 +76,7 @@ export default class SmartCalendarHubExtension extends Extension {
             this._topBarStyle.setClockPlacement(false);
         if (session && !this._panel) {
             this._panel = new SidePanel(Main.panel.statusArea.dateMenu, this.getSettings(),
-                this.metadata['version-name'], this._widgetRegistry);
+                this.metadata['version-name'], this._widgetRegistry, this._profileAuto);
         } else if (!session && this._panel) {
             this._panel.destroy();
             this._panel = null;

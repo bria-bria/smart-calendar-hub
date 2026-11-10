@@ -469,6 +469,28 @@ const IT = {
         "Salva profilo",
     "Cancel":
         "Annulla",
+    "Switch to it by itself":
+        "Attiva da solo",
+    "With one of its Wi-Fi networks connected this profile is used, otherwise during its hours; the Wi-Fi wins over the hours, and with no rule holding \"Default\" is used. A profile chosen by hand stays until the network or the hours change, or always with the lock.":
+        "Con una delle sue reti Wi-Fi collegata si usa questo profilo, altrimenti nei suoi orari; la Wi-Fi vince sull'orario e, se nessuna regola vale, si usa «Predefinito». Un profilo scelto a mano resta finché non cambiano la rete o l'orario, oppure sempre con il blocco.",
+    "Remove":
+        "Togli",
+    "Add":
+        "Aggiungi",
+    "The Wi-Fi network I am on":
+        "La rete Wi-Fi a cui sono collegato",
+    "Not connected to a Wi-Fi network":
+        "Non collegato a una rete Wi-Fi",
+    "During these hours":
+        "In questi orari",
+    "Earlier":
+        "Prima",
+    "Later":
+        "Dopo",
+    "From":
+        "Dalle",
+    "To":
+        "Alle",
     "Delete profile":
         "Elimina profilo",
     "Click again to delete it":

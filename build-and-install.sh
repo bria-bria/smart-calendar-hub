@@ -46,6 +46,7 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-panel-widgets.js" \
     --extra-source="sch-profiles.js" \
     --extra-source="sch-profile-switch.js" \
+    --extra-source="sch-profile-auto.js" \
     --extra-source="sch-calendar.js" \
     --extra-source="sch-eds.js" \
     --extra-source="sch-sky.js" \
