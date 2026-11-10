@@ -24,6 +24,7 @@ export default class SmartCalendarHubExtension extends Extension {
         // also on the lock screen, where it shows nothing: alarms ring there too
         if (!Main.sessionMode.isGreeter) {
             this._alarmWatch = new AlarmWatch(this.getSettings());
+            this._alarmWatch.ringer.onChange = () => this._panel?.alarmChanged();
             // the profile follows the network and the hours, also while
             // locked: the panel is right on unlock
             this._profileAuto = new ProfileAuto(this.getSettings());
@@ -76,7 +77,10 @@ export default class SmartCalendarHubExtension extends Extension {
             this._topBarStyle.setClockPlacement(false);
         if (session && !this._panel) {
             this._panel = new SidePanel(Main.panel.statusArea.dateMenu, this.getSettings(),
-                this.metadata['version-name'], this._widgetRegistry, this._profileAuto);
+                this.metadata['version-name'], this._widgetRegistry, this._profileAuto,
+                this._alarmWatch?.ringer ?? null);
+            // an alarm ringing since the lock screen: shown on unlock
+            this._panel.alarmChanged();
         } else if (!session && this._panel) {
             this._panel.destroy();
             this._panel = null;

@@ -42,6 +42,8 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-i18n.js" \
     --extra-source="sch-clocks-source.js" \
     --extra-source="sch-alarm-watch.js" \
+    --extra-source="sch-alarm-ringer.js" \
+    --extra-source="sch-alarm-screen.js" \
     --extra-source="sch-widgets.js" \
     --extra-source="sch-panel-widgets.js" \
     --extra-source="sch-profiles.js" \

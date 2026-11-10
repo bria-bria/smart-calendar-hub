@@ -582,9 +582,18 @@ function byHandGroups() {
 }
 
 // Built when asked, so the texts are in the language loaded by then
+// The alarms of GNOME Clocks the hub rings while GNOME Clocks is closed
+function alarmsGroup() {
+    return {
+        title: _('Alarms'),
+        description: _('While GNOME Clocks is closed the hub rings its alarms, with the sound chosen there, also with Do not disturb. A muted or lower sound goes up to this volume while an alarm rings, then back as it was.'),
+        rows: [{type: 'number', key: 'alarm-volume', title: _('Alarm volume (%)'), min: 10, max: 100, step: 10}],
+    };
+}
+
 export function settingsSections() {
     return [
-        {id: 'panel', title: _('Panel'), icon: 'view-dual-symbolic', groups: panelGroups()},
+        {id: 'panel', title: _('Panel'), icon: 'view-dual-symbolic', groups: [...panelGroups(), alarmsGroup()]},
         {id: 'profiles', title: _('Profiles'), icon: 'system-users-symbolic', groups: [{
             kind: 'profiles',
             title: _('Profiles'),

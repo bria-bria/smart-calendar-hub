@@ -68,6 +68,32 @@ export class ClocksSource {
         return this._values[key] ?? [];
     }
 
+    // The next ring of one alarm (by its id) written back, as GNOME Clocks
+    // does when it stops or snoozes one (iso null: no next ring, the alarm
+    // is off). Only for a GNOME Clocks of the system: the keyfile of the
+    // Flatpak one belongs to its sandbox. false when nothing was written
+    writeRingTime(id, iso) {
+        if (this.kind !== 'host' || !id)
+            return false;
+        const value = this._settings.get_value('alarms');
+        let found = false;
+        const alarms = [];
+        for (let i = 0; i < value.n_children(); i++) {
+            const alarm = value.get_child_value(i).deepUnpack();
+            if (alarm.id?.unpack?.() === id) {
+                found = true;
+                if (iso)
+                    alarm.ring_time = new GLib.Variant('s', iso);
+                else
+                    delete alarm.ring_time;
+            }
+            alarms.push(alarm);
+        }
+        if (found)
+            this._settings.set_value('alarms', new GLib.Variant('aa{sv}', alarms));
+        return found;
+    }
+
     // Which GNOME Clocks is installed: the one GNOME starts (its .desktop
     // file; a Flatpak one has X-Flatpak), else the schema of a system one
     _sync(notify = true) {

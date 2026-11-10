@@ -1192,3 +1192,104 @@
     background-color: -st-accent-color;
     color: -st-accent-fg-color;
 }
+
+/* An alarm ringing, in the card beside the panel (privato/mockup/sveglia.html) */
+.sch-alarm {
+    padding: 4px 2px;
+}
+
+.sch-alarm-timeline {
+    spacing: 40px;
+    margin-top: 4px;
+}
+
+.sch-alarm-icon {
+    color: #ffffff;
+}
+
+.sch-alarm-time {
+    font-size: 56px;
+    font-weight: 800;
+}
+
+.sch-alarm-name {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 16px;
+}
+
+.sch-alarm-actions {
+    spacing: 10px;
+}
+
+.sch-alarm-button {
+    padding: 16px 8px;
+    border-radius: 16px;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.sch-alarm-button:hover,
+.sch-alarm-button:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.sch-alarm-stop {
+    background-color: -st-accent-color;
+    color: -st-accent-fg-color;
+}
+
+.sch-alarm-stop:hover,
+.sch-alarm-stop:focus {
+    background-color: -st-accent-color;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.sch-alarm-word {
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.sch-alarm-minutes {
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    margin-top: 2px;
+}
+
+.sch-alarm-section {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 18px 0 6px 4px;
+}
+
+.sch-alarm-next {
+    background-color: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 9px 12px;
+    margin-bottom: 6px;
+}
+
+.sch-alarm-next-when {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.sch-alarm-open {
+    margin-top: 12px;
+    padding: 11px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.sch-alarm-open:hover,
+.sch-alarm-open:focus {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.sch-alarm-open-line {
+    spacing: 8px;
+}

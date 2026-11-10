@@ -334,6 +334,12 @@
       <summary>Profile in use</summary>
       <description>The id of the profile the panel follows; if it is not found, the first profile.</description>
     </key>
+    <key name="alarm-volume" type="i">
+      <range min="10" max="100"/>
+      <default>70</default>
+      <summary>Alarm volume</summary>
+      <description>In percent. While an alarm of GNOME Clocks rung by the hub rings, a muted or lower sound goes up to this volume, then back as it was.</description>
+    </key>
     <key name="missed-alarms" type="a(xs)">
       <default>[]</default>
       <summary>Missed alarms</summary>

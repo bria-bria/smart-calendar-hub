@@ -11,6 +11,7 @@
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -39,6 +40,7 @@ import {WeatherSection} from './sch-weather-section.js';
 import {WorldClocksCard} from './sch-world-clocks.js';
 import {logError} from './sch-log.js';
 import {PanelWidgets} from './sch-panel-widgets.js';
+import {buildAlarmPage} from './sch-alarm-screen.js';
 import {ProfileSwitch} from './sch-profile-switch.js';
 import {moveClock} from './sch-topbar-style.js';
 import {vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
@@ -46,9 +48,13 @@ import {vesperalCoords, vesperalSettings} from './sch-ext-settings.js';
 export class SidePanel {
     // version: the version-name of our metadata.json; widgetRegistry: the
     // widgets of other extensions (sch-widgets.js)
-    // profileAuto: the automatic change of profile (sch-profile-auto.js)
-    constructor(dateMenu, settings, version, widgetRegistry, profileAuto) {
+    // profileAuto: the automatic change of profile (sch-profile-auto.js);
+    // ringer: the alarm ringing (sch-alarm-ringer.js), shown beside the panel
+    constructor(dateMenu, settings, version, widgetRegistry, profileAuto, ringer) {
         this.dateMenu = dateMenu;
+        this.ringer = ringer;
+        this._alarmShown = {externalId: 'smart-calendar-hub-alarm'};
+        this._alarmIdleId = 0;
         this.widgetRegistry = widgetRegistry;
         this.profileAuto = profileAuto;
         this.settings = settings;
@@ -104,6 +110,10 @@ export class SidePanel {
     destroy() {
         this.disabling = true;
         unloadUserTranslations();
+        if (this._alarmIdleId)
+            GLib.source_remove(this._alarmIdleId);
+        this._alarmIdleId = 0;
+        this.side?.hideSidePage(this._alarmShown);
         // the widgets switched off back in the sidebar, those of other
         // extensions destroyed
         this.widgets?.destroy();
@@ -448,6 +458,52 @@ export class SidePanel {
         // clickable only while Vesperal is there
         this._skyButton.reactive = !!Main.panel.statusArea[VESPERAL_ROLE]?.menu;
         this.worldClocks.start();
+        this._queueAlarm();
+    }
+
+    // An alarm rings or stopped (the ringer calls it): the panel opens with
+    // the alarm beside it, or the alarm goes
+    alarmChanged() {
+        if (this.disabling || !this.sidebar)
+            return;
+        if (!this.ringer?.current)
+            this.side.hideSidePage(this._alarmShown);
+        else if (this.dateMenu.menu.isOpen)
+            this._queueAlarm();
+        else
+            this.dateMenu.menu.open(); // _panelOpened shows it
+    }
+
+    // Once the panel has its size (the card beside it takes its height)
+    _queueAlarm() {
+        if (!this.ringer?.current || this._alarmIdleId)
+            return;
+        this._alarmIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._alarmIdleId = 0;
+            if (!this.disabling && this.ringer.current && this.dateMenu.menu.isOpen)
+                this._showAlarm();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _showAlarm() {
+        this.side.hideSidePage(this._alarmShown);
+        this.side.closeHubSettings();
+        this.pages.close();
+        let page = null;
+        this.side.showSidePage(this._alarmShown, () => {
+            page = buildAlarmPage(this.ringer, () => {
+                this.dateMenu.menu.close();
+                Shell.AppSystem.get_default().lookup_app('org.gnome.clocks.desktop')?.activate();
+            });
+            return page;
+        }, {
+            sideTitle: _('Alarm'),
+            sideActions: [{icon: 'window-close-symbolic', label: _('Stop'), onClick: () => this.ringer.stop()}],
+        });
+        // as tall as the alarm, not as the panel (the look of the mockup)
+        this.side.card.height = -1;
+        page?.stopButton.grab_key_focus();
     }
 
     _panelClosed() {
@@ -456,6 +512,7 @@ export class SidePanel {
             this.tray.layout();
         }
         this.tray.menuManager.activeMenu?.close();
+        this.side.hideSidePage(this._alarmShown);
         this.side.closeHubSettings();
         this.pages.close();
         this._skyView.stop();

@@ -517,6 +517,30 @@ const IT = {
         "Non disponibile: la sua estensione è spenta o non installata",
     "{title} · not available":
         "{title} · non disponibile",
+    "Snooze":
+        "Posticipa",
+    "Stop":
+        "Ferma",
+    "Snooze {minutes} min":
+        "Posticipa {minutes} min",
+    "Next alarms":
+        "Prossime sveglie",
+    "Open GNOME Clocks":
+        "Apri GNOME Orologi",
+    "today {time}":
+        "oggi {time}",
+    "tomorrow {time}":
+        "domani {time}",
+    "{day} {time}":
+        "{day} {time}",
+    "Alarm":
+        "Sveglia",
+    "Alarms":
+        "Sveglie",
+    "While GNOME Clocks is closed the hub rings its alarms, with the sound chosen there, also with Do not disturb. A muted or lower sound goes up to this volume while an alarm rings, then back as it was.":
+        "Quando GNOME Orologi è chiuso le sue sveglie le fa suonare l'hub, con la suoneria scelta lì, anche con «Non disturbare». Mentre una sveglia suona, l'audio muto o più basso sale a questo volume e poi torna com'era.",
+    "Alarm volume (%)":
+        "Volume della sveglia (%)",
     "Missed · {time}":
         "Persa · {time}",
     "Missed alarm · {name} · {date} · click to dismiss":
