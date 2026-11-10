@@ -239,19 +239,12 @@ async function flatpakUpdates(cancellable) {
             // OCI remotes (such as Fedora Flatpaks) can report false positives because
             // remote-ls compares the remote OCI digest against the local OSTree commit hash.
             // When Alt-id matches the remote commit, the local package is already up to date.
-            try {
-                const info = await run(['flatpak', 'info', ref], cancellable);
-                if (info.status === 0) {
-                    const match = info.out.match(/Alt-id:\s*([a-f0-9]+)/i);
-                    if (match) {
-                        const altId = match[1].trim();
-                        if (altId.startsWith(commit) || commit.startsWith(altId))
-                            continue;
-                    }
-                }
-            } catch (_e) {
-                // Ignore inspection failure and keep the item
-            }
+            // In English (LC_ALL=C): the label is translated in some languages. A failed
+            // inspection keeps the item; cancelling stops the whole check.
+            const info = await run(['env', 'LC_ALL=C', 'flatpak', 'info', ref], cancellable);
+            const altId = info.status === 0 ? info.out.match(/Alt-id:\s*([a-f0-9]+)/i)?.[1] : null;
+            if (altId && (altId.startsWith(commit) || commit.startsWith(altId)))
+                continue;
         }
         valid.push(name || app || line);
     }
