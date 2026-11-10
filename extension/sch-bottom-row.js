@@ -32,6 +32,12 @@ function iconSizeFor(width) {
     return ICON_STEPS.find(([min]) => width >= min)[1];
 }
 
+// The room above and below an icon, in proportion to it: the bigger the
+// icon, the taller the button
+function buttonStyle(size) {
+    return `padding-top: ${Math.round(size * 0.6)}px; padding-bottom: ${Math.round(size * 0.6)}px; min-height: ${size}px;`;
+}
+
 const ACTION_ICONS = {
     'hub-settings': 'emblem-system-symbolic',
     'hub-updates': 'software-update-available-symbolic',
@@ -244,6 +250,7 @@ export class BottomRow {
             this._clearButton.remove_style_class_name('sch-clear-button');
             this._clearButton.remove_style_class_name('sch-bottom-btn');
             Object.assign(this._clearButton, this._clearOrig);
+            this._clearButton.set_style(null);
         }
         if (this._clocksOrig) {
             const clocks = this._dateMenu._clocksItem;
@@ -254,6 +261,7 @@ export class BottomRow {
             }
             clocks.remove_style_class_name('sch-bottom-btn');
             Object.assign(clocks, this._clocksOrig);
+            clocks.set_style(null);
         }
         this._tip.destroy();
         this._tip = null;
@@ -302,11 +310,16 @@ export class BottomRow {
         // panel padding (4) + row margins (8), 6 px between buttons
         const inner = this._panel.geometry.sidebarWidth() - 12;
         const width = Math.floor((inner - 6 * (items.length - 1)) / items.length);
-        for (const item of items)
-            item.width = width;
         // icons only, side by side or too narrow for the text (the text stays
-        // as accessible name and on hover)
-        this._setCompact(items.length > 1 || width < TEXT_FROM, iconSizeFor(width));
+        // as accessible name and on hover); a button alone with its text is as
+        // tall as one with a 24 px icon
+        const compact = items.length > 1 || width < TEXT_FROM;
+        const size = iconSizeFor(width);
+        for (const item of items) {
+            item.width = width;
+            item.set_style(buttonStyle(compact ? size : 24));
+        }
+        this._setCompact(compact, size);
     }
 
     // size: of an icon alone in a button
