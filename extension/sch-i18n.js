@@ -553,8 +553,8 @@ const IT = {
         "Sveglia · {name} · {time}",
     "Alarm · {time}":
         "Sveglia · {time}",
-    "No alarms today":
-        "Nessuna sveglia oggi",
+    "No alarms":
+        "Nessuna sveglia",
     "Install GNOME Clocks for world clocks and alarms":
         "Installa Orologi di GNOME per gli orologi del mondo e le sveglie",
     "Timer · {name} · {duration}":

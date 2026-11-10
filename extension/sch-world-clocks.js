@@ -346,7 +346,7 @@ export class WorldClocksCard {
         this._right.visible = false;
         const installed = this._source.kind !== 'none';
         this._emptyLabel.text = installed
-            ? _('No alarms today')
+            ? _('No alarms')
             : _('Install GNOME Clocks for world clocks and alarms');
         this._empty.reactive = installed;
         this._empty.can_focus = installed;
