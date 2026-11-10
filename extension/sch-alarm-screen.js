@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
-// The page of an alarm ringing, in the card beside the panel (the look
-// approved by Michele, privato/mockup/sveglia.html): the alarm icon and the
+// The page of an alarm ringing, in the card beside the panel: the alarm
+// icon and the
 // time on one line, the name, Snooze (its minutes under the word) and Stop,
 // the next alarms, a button that opens GNOME Clocks. Esc stops it too.
 
