@@ -3,9 +3,9 @@
 //
 // One alarm ringing (sch-alarm-watch.js decides when): the sound chosen for
 // it in GNOME Clocks, over and over, until Stop, Snooze, the end of its ring
-// minutes, or GNOME Clocks taking over; a notification of GNOME with Snooze
-// and Stop (also on the lock screen); the panel shows it in the card beside
-// it (sch-alarm-screen.js). As with the alarms of a phone, Do not disturb
+// minutes, or GNOME Clocks taking over. In the session the panel shows it
+// in the card beside it (sch-alarm-screen.js); only while the screen is
+// locked a notification of GNOME offers Snooze and Stop instead. As with the alarms of a phone, Do not disturb
 // does not silence it, and a muted or low sound goes up to the alarm volume
 // of our settings while it rings, then back exactly as it was.
 
@@ -13,6 +13,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gst from 'gi://Gst';
 
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import {getMixerControl} from 'resource:///org/gnome/shell/ui/status/volume.js';
 
@@ -58,7 +59,9 @@ export class AlarmRinger {
         this.current = {alarm, ring};
         this._raiseVolume();
         this._play(alarm.sound_uri);
-        this._notify();
+        // locked or unlocked while it rings: the notification follows
+        Main.sessionMode.connectObject('updated', () => this._syncNotification(), this);
+        this._syncNotification();
         const minutes = alarm.ring_minutes ?? DEFAULT_RING_MINUTES;
         this._endId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, minutes * 60, () => {
             this._endId = 0;
@@ -106,6 +109,7 @@ export class AlarmRinger {
         this._endId = 0;
         this._stopSound();
         this._restoreVolume();
+        Main.sessionMode.disconnectObject(this);
         this._notification?.destroy();
         this._notification = null;
         this.onChange?.();
@@ -200,7 +204,17 @@ export class AlarmRinger {
             saved.sink.change_is_muted(true);
     }
 
-    // Critical: shown also with Do not disturb and on the lock screen
+    // The notification only on the lock screen; in the session, the card
+    _syncNotification() {
+        if (Main.sessionMode.isLocked && !this._notification) {
+            this._notify();
+        } else if (!Main.sessionMode.isLocked) {
+            this._notification?.destroy();
+            this._notification = null;
+        }
+    }
+
+    // Critical: shown also with Do not disturb; it plays no sound of its own
     _notify() {
         const {alarm, ring} = this.current;
         const source = MessageTray.getSystemSource();
