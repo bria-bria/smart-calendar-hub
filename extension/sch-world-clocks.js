@@ -8,12 +8,12 @@
 // With more clocks than room, an arrow on each side moves the view (like the
 // tray). Before the clocks, the alarms and timers of GNOME Clocks: the
 // alarms that still ring today (one switched off in GNOME Clocks that would
-// ring today with the pause sign), and each timer with its duration. GNOME Clocks keeps the countdown
-// of its running timers to itself and never reads changes made by others, so
-// a click on a timer starts OUR countdown of that duration: click again to
-// pause (pause sign) and to resume, right click to reset; at the end a
-// notification with the alarm sound. Alarms are switched on and off in
-// GNOME Clocks (a click opens it). With nothing to show, one short line that
+// ring today with the pause sign), and each timer with its duration; a click
+// opens GNOME Clocks (on its timers for a timer). The hub keeps no countdown
+// of its own: GNOME Clocks offers no way to start or pause its timers from
+// outside. TODO: once gnome-clocks merge request 429 (actions for the
+// timers, https://gitlab.gnome.org/GNOME/gnome-clocks/-/merge_requests/429)
+// is in, a click starts, pauses and resets the timer through those actions. With nothing to show, one short line that
 // opens GNOME Clocks (the card never disappears without a word).
 //
 // The alarms and timers come from sch-clocks-source.js, the alarms that could
@@ -30,7 +30,6 @@ import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {_} from './sch-i18n.js';
 import {logError} from './sch-log.js';
@@ -39,84 +38,8 @@ import {CLOCKS_DESKTOP, ClocksSource} from './sch-clocks-source.js';
 
 const DIAL = 34; // px, before the screen scale
 const TICK_SECONDS = 30;
-const FINISH_CHECK_MS = 60000; // at least once a minute: late after a suspend
 const IDLE_ICON = 'appointment-soon-symbolic';
 const PAUSE_ICON = 'media-playback-pause-symbolic';
-
-// Our countdowns of the timers of GNOME Clocks, by timer:
-// {name, duration, end (µs, wall clock) while running | left (s) while
-// paused, done}. At module level, with the wait for their end: they go on
-// and ring while the screen is locked (the card is taken away then)
-const runs = new Map();
-let finishId = 0;
-let onFinish = null; // the card on screen: its chips follow
-
-// Ended countdowns: notification and sound; then the next end is waited for
-// (at least once a minute: the wait runs late after a suspend)
-function finishRuns() {
-    const now = GLib.get_real_time();
-    for (const run of runs.values()) {
-        if (run.end && !run.done && run.end <= now + 300000) {
-            run.done = true;
-            notifyFinished(run);
-        }
-    }
-    if (finishId)
-        GLib.source_remove(finishId);
-    finishId = 0;
-    const ends = [...runs.values()].filter(r => r.end && !r.done).map(r => r.end);
-    if (ends.length) {
-        const ms = Math.max(0, Math.ceil((Math.min(...ends) - now) / 1000));
-        finishId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.min(ms, FINISH_CHECK_MS), () => {
-            finishId = 0;
-            finishRuns();
-            onFinish?.();
-            return GLib.SOURCE_REMOVE;
-        });
-    }
-    return ends.length > 0;
-}
-
-function notifyFinished(run) {
-    const duration = formatDuration(run.duration);
-    try {
-        const source = MessageTray.getSystemSource();
-        source.addNotification(new MessageTray.Notification({
-            source,
-            title: _('Timer finished'),
-            body: run.name ? `${run.name} · ${duration}` : duration,
-            gicon: new Gio.ThemedIcon({name: 'alarm-symbolic'}),
-            urgency: MessageTray.Urgency.HIGH,
-        }));
-        global.display.get_sound_player().play_from_theme('alarm-clock-elapsed', _('Timer finished'), null);
-    } catch (e) {
-        logError(`timer: ${e}`);
-    }
-}
-
-// The extension switched off: no countdown left behind
-export function stopTimerCountdowns() {
-    if (finishId)
-        GLib.source_remove(finishId);
-    finishId = 0;
-    onFinish = null;
-    runs.clear();
-}
-
-// "4:05", "1:02:09"
-function formatCountdown(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = String(seconds % 60).padStart(2, '0');
-    return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
-}
-
-function remaining(run, now = GLib.get_real_time()) {
-    if (run.done)
-        return 0;
-    const left = run.end ? (run.end - now) / 1e6 : run.left;
-    return Math.max(0, Math.ceil(left));
-}
 
 // "1 h", "5 min", "1 h 30", "45 s"
 function formatDuration(seconds) {
@@ -139,9 +62,7 @@ export class WorldClocksCard {
         this._clocks = []; // {name, tz, area}
         this._timerId = 0;
         this._arrowsId = 0;
-        this._tickId = 0; // countdowns on screen, while the panel is open
         this._open = false;
-        this._timerChips = [];
 
         this.actor = new St.BoxLayout({style_class: 'sch-clocks-card', x_expand: true, visible: false});
         const arrow = (icon, delta, name) => {
@@ -216,9 +137,6 @@ export class WorldClocksCard {
         this._source = new ClocksSource(() => this._loadChips());
         this.actor.connect('destroy', () => this._cleanup());
         this._load();
-        this._onFinish = () => this._checkFinished();
-        onFinish = this._onFinish;
-        this._checkFinished(); // a timer may have ended while locked
     }
 
     destroy() {
@@ -227,9 +145,6 @@ export class WorldClocksCard {
 
     _cleanup() {
         this.stop();
-        if (onFinish === this._onFinish)
-            onFinish = null;
-        this._timerChips = [];
         if (this._arrowsId)
             GLib.source_remove(this._arrowsId);
         this._arrowsId = 0;
@@ -258,7 +173,6 @@ export class WorldClocksCard {
         this.stop();
         this._open = true;
         this._loadChips(); // alarms that already rang go away
-        this._checkFinished(); // also starts the countdowns on screen
         this._repaintAll();
         if (!this._clocks.length)
             return;
@@ -273,9 +187,6 @@ export class WorldClocksCard {
         if (this._timerId)
             GLib.source_remove(this._timerId);
         this._timerId = 0;
-        if (this._tickId)
-            GLib.source_remove(this._tickId);
-        this._tickId = 0;
         this._tip?.hide();
     }
 
@@ -332,10 +243,8 @@ export class WorldClocksCard {
         for (const chip of this._chips)
             chip.destroy();
         this._chips = [];
-        this._timerChips = [];
         const first = this._clocks[0]?.button ?? this._endSpacer;
-        // tip: a function, the text of a timer changes while it runs
-        // onClick(button): given for timers (also the right click)
+        // onClick: what a click does (by default it opens GNOME Clocks)
         const add = (icon, text, tip, onClick = null) => {
             const line = new St.BoxLayout({style_class: 'sch-clock-chip-line'});
             const image = new St.Icon({icon_name: icon, icon_size: 14, y_align: Clutter.ActorAlign.CENTER});
@@ -351,13 +260,12 @@ export class WorldClocksCard {
                 y_align: Clutter.ActorAlign.CENTER,
                 child: line,
                 accessible_name: tip(),
-                button_mask: onClick ? St.ButtonMask.ONE | St.ButtonMask.THREE : St.ButtonMask.ONE,
             });
             const item = {name: ''};
             chip.connect('notify::hover', () => this._showTip(chip, item, chip.hover, tip()));
             chip.connect('key-focus-in', () => this._showTip(chip, item, true, tip()));
             chip.connect('key-focus-out', () => this._showTip(chip, item, false, tip()));
-            chip.connect('clicked', (_chip, button) => (onClick ?? (() => this._openClocks()))(button));
+            chip.connect('clicked', () => (onClick ?? (() => this._openClocks()))());
             this._box.insert_child_below(chip, first);
             this._chips.push(chip);
             return {chip, image, label};
@@ -410,30 +318,13 @@ export class WorldClocksCard {
                     : _('Alarm · {time}', {time})}\n${_('Off · click to switch it on in GNOME Clocks')}`;
                 add(PAUSE_ICON, time, () => tip).chip.add_style_class_name('sch-clock-chip-off');
             }
-            const timers = this._source.read('timers');
-            // by duration and name (the n-th timer equal to it), not by
-            // position: adding or deleting another timer keeps the countdown
-            const keys = new Set();
-            timers.forEach(timer => {
-                const seconds = timer.duration ?? 0;
-                const name = timer.name ?? '';
-                let n = 0;
-                while (keys.has(`${seconds}|${name}|${n}`))
-                    n++;
-                const key = `${seconds}|${name}|${n}`;
-                keys.add(key);
-                const tc = {key, seconds, name};
-                Object.assign(tc, add(IDLE_ICON, '', () => this._timerTip(tc),
-                    button => this._toggleTimer(tc, button)));
-                this._timerChips.push(tc);
-            });
-            // timers deleted in GNOME Clocks: their countdown goes too (not
-            // before the keyfile of a Flatpak GNOME Clocks has been read)
-            for (const key of [...runs.keys()]) {
-                if (this._source.loaded && !keys.has(key))
-                    runs.delete(key);
+            for (const timer of this._source.read('timers')) {
+                const duration = formatDuration(timer.duration ?? 0);
+                const tip = `${timer.name
+                    ? _('Timer · {name} · {duration}', {name: timer.name, duration})
+                    : _('Timer · {duration}', {duration})}\n${_('Click: the timers of GNOME Clocks')}`;
+                add(IDLE_ICON, duration, () => tip, () => this._openClocks('timer'));
             }
-            this._syncTimers();
         } catch (e) {
             logError(`alarms and timers: ${e}`);
         }
@@ -480,87 +371,17 @@ export class WorldClocksCard {
             area.queue_repaint();
     }
 
-    // click: start, pause, resume (a finished one: back to the start);
-    // right click: reset
-    _toggleTimer(tc, button) {
-        const run = runs.get(tc.key);
-        const now = GLib.get_real_time();
-        if (button === Clutter.BUTTON_SECONDARY || run?.done)
-            runs.delete(tc.key);
-        else if (!run)
-            runs.set(tc.key, {name: tc.name, duration: tc.seconds, end: now + tc.seconds * 1e6});
-        else if (run.end)
-            runs.set(tc.key, {...run, end: 0, left: remaining(run, now)});
-        else
-            runs.set(tc.key, {...run, end: now + run.left * 1e6, left: 0});
-        this._checkFinished();
-        if (this._tip?.visible)
-            this._showTip(tc.chip, {name: ''}, true, this._timerTip(tc));
-    }
-
-    _timerTip(tc) {
-        const duration = formatDuration(tc.seconds);
-        const base = tc.name
-            ? _('Timer · {name} · {duration}', {name: tc.name, duration})
-            : _('Timer · {duration}', {duration});
-        const run = runs.get(tc.key);
-        let hint;
-        if (!run)
-            hint = _('Click: start');
-        else if (run.done)
-            hint = _('Finished · click: reset');
-        else if (run.end)
-            hint = _('{left} left · click: pause · right click: reset', {left: formatCountdown(remaining(run))});
-        else
-            hint = _('Paused · {left} left · click: resume · right click: reset', {left: formatCountdown(remaining(run))});
-        return `${base}\n${hint}`;
-    }
-
-    // the chips of the timers as their countdowns: running (accent colour,
-    // time left), paused (pause sign), finished, or the duration
-    _syncTimers() {
-        const now = GLib.get_real_time();
-        for (const tc of this._timerChips) {
-            const run = runs.get(tc.key);
-            tc.label.text = run ? formatCountdown(remaining(run, now)) : formatDuration(tc.seconds);
-            tc.image.icon_name = run && !run.done && !run.end ? PAUSE_ICON : IDLE_ICON;
-            const state = !run ? '' : run.done ? 'done' : run.end ? 'running' : 'paused';
-            for (const name of ['running', 'paused', 'done']) {
-                if (name === state)
-                    tc.chip.add_style_class_name(`sch-clock-chip-${name}`);
-                else
-                    tc.chip.remove_style_class_name(`sch-clock-chip-${name}`);
-            }
-        }
-    }
-
-    // Ended countdowns rung, the chips as the countdowns, and the seconds
-    // ticking on screen while the panel is open and a timer runs
-    _checkFinished() {
-        const running = finishRuns();
-        this._syncTimers();
-        const tick = this._open && running;
-        if (tick && !this._tickId) {
-            this._tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-                this._syncTimers();
-                if (this._tip?.visible) {
-                    const tc = this._timerChips.find(t => t.chip.hover || t.chip.has_key_focus());
-                    if (tc)
-                        this._tip.text = this._timerTip(tc);
-                }
-                return GLib.SOURCE_CONTINUE;
-            });
-        } else if (!tick && this._tickId) {
-            GLib.source_remove(this._tickId);
-            this._tickId = 0;
-        }
-    }
-
-    // GNOME Clocks, if installed (else a click does nothing)
-    _openClocks() {
+    // GNOME Clocks, if installed (else a click does nothing); page: the one
+    // it opens on ('timer'), set where GNOME Clocks keeps the page it shows
+    // when it opens (of a system GNOME Clocks; an open window stays on its)
+    _openClocks(page = null) {
         const app = Shell.AppSystem.get_default().lookup_app(CLOCKS_DESKTOP);
         if (!app)
             return;
+        const schema = page && this._source.kind === 'host'
+            ? Gio.SettingsSchemaSource.get_default()?.lookup('org.gnome.clocks.state.window', true) : null;
+        if (schema)
+            new Gio.Settings({settings_schema: schema}).set_string('panel-id', page);
         this._onOpen?.();
         Main.overview.hide();
         app.activate();

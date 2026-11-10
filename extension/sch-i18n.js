@@ -541,6 +541,8 @@ const IT = {
         "Quando GNOME Orologi è chiuso le sue sveglie le fa suonare l'hub, con la suoneria scelta lì, anche con «Non disturbare». Mentre una sveglia suona, l'audio muto o più basso sale a questo volume e poi torna com'era.",
     "Alarm volume (%)":
         "Volume della sveglia (%)",
+    "Click: the timers of GNOME Clocks":
+        "Clic: i timer di GNOME Orologi",
     "Missed · {time}":
         "Persa · {time}",
     "Missed alarm · {name} · {date} · click to dismiss":
@@ -637,16 +639,6 @@ const IT = {
         "In un terminale, nella cartella dello script",
     "Off · click to switch it on in GNOME Clocks":
         "Spenta · clic per accenderla in GNOME Orologi",
-    "Click: start":
-        "Clic: avvia",
-    "Finished · click: reset":
-        "Finito · clic: azzera",
-    "{left} left · click: pause · right click: reset":
-        "Mancano {left} · clic: pausa · clic destro: azzera",
-    "Paused · {left} left · click: resume · right click: reset":
-        "In pausa · mancano {left} · clic: riprendi · clic destro: azzera",
-    "Timer finished":
-        "Timer finito",
     "Back":
         "Indietro",
     "Menu blended into the panel":

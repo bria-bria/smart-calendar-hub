@@ -13,7 +13,6 @@ import {SidePanel} from './sch-side-panel.js';
 import {WidgetRegistry} from './sch-widgets.js';
 import {TopBarStyle} from './sch-topbar-style.js';
 import {pageKit} from './sch-page-kit.js';
-import {stopTimerCountdowns} from './sch-world-clocks.js';
 import {forgetUpdatesCheck} from './sch-updates.js';
 import {forgetInstalledVersion} from './sch-version-check.js';
 
@@ -60,7 +59,6 @@ export default class SmartCalendarHubExtension extends Extension {
         this._alarmWatch = null;
         this._profileAuto?.destroy();
         this._profileAuto = null;
-        stopTimerCountdowns();
         forgetUpdatesCheck();
         forgetInstalledVersion();
         this._topBarStyle?.destroy();
