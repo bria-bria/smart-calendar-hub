@@ -4,7 +4,7 @@
 // Keeps the alarms of GNOME Clocks ringing. GNOME Clocks checks its alarms
 // from its window: with no window open, an alarm passes in silence, and the
 // next time it starts it only moves the alarm on. So, while the session is on
-// (also with the screen locked), a few minutes before each alarm that is on
+// (also with the screen locked), a minute before each alarm that is on
 // GNOME Clocks is started and its window minimized; at the time of the alarm
 // its window comes to the front (GNOME Clocks shows Stop and Snooze there but
 // leaves a minimized window as it is). If at the time of the alarm it still
@@ -26,7 +26,7 @@ const MAX_MISSED = 10;
 const CHECK_MS = 60000; // at least once a minute: the wait stops during a suspend
 const MAX_GAP_US = 90 * 1e6; // longer between two checks: we were asleep
 const DEFAULT_RING_MINUTES = 5;
-const START_BEFORE_US = 3 * 60 * 1e6; // GNOME Clocks is started this long before a ring
+const START_BEFORE_US = 60 * 1e6; // GNOME Clocks is started this long before a ring
 const MINIMIZE_WITHIN_S = 20; // the window of the start we asked for comes within this
 
 // The next ring of an alarm after a moment (GLib.DateTime), null if none.
