@@ -75,6 +75,8 @@ export class AlarmWatch {
                 this._setNext(alarm, later.compare(now) > 0 ? later : now.add_minutes(minutes));
             },
             upcoming: () => this.upcoming(),
+            // the next ring GNOME Clocks saved for an alarm
+            savedRing: id => this._source.read('alarms').find(alarm => alarm.id === id)?.ring_time ?? null,
         });
         this._source = new ClocksSource(() => this._check());
         // GNOME Clocks opened or closed: it rings, or the hub does
