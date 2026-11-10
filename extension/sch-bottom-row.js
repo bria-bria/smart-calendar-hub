@@ -20,11 +20,17 @@ import {Connections} from './sch-signals.js';
 import {actionKind, actionLabel, readProfile} from './sch-profiles.js';
 import {UPDATES_SECTION} from './sch-updates.js';
 
-// When the row is too narrow for the texts every button shows only its
-// icon, as big as the button allows, and its text appears above it on
-// hover; with room, "New event" has a small "+" before its text
-const ICON_SIZE = 24;
+// Buttons side by side show only their icon, and their text appears above
+// it on hover; the icon follows the width of its button (the panel can be
+// made wider), in steps that keep it sharp. A button alone in the row (the
+// calendar open) shows a small icon and its text.
+const ICON_STEPS = [[150, 32], [120, 28], [95, 24], [0, 20]];
 const TEXT_ICON_SIZE = 16;
+const TEXT_FROM = 200; // px of a button alone: narrower, its icon only
+
+function iconSizeFor(width) {
+    return ICON_STEPS.find(([min]) => width >= min)[1];
+}
 
 const ACTION_ICONS = {
     'hub-settings': 'emblem-system-symbolic',
@@ -39,6 +45,7 @@ export class BottomRow {
         this._signals = new Connections();
         this._calendarOpen = false;
         this._compact = false;
+        this._iconSize = iconSizeFor(0);
         // the text of a button shown as an icon only, above it on hover
         this._tip = new St.Label({style_class: 'sch-alert-tip', visible: false, reactive: false});
         Main.uiGroup.add_child(this._tip);
@@ -164,10 +171,11 @@ export class BottomRow {
     // A button of ours: icon and text (only the icon when the row is narrow)
     _ownButton(text, icon, onClick) {
         const line = new St.BoxLayout({x_align: Clutter.ActorAlign.CENTER, style_class: 'sch-bottom-line'});
-        line.add_child(new St.Icon({
+        const image = new St.Icon({
             gicon: typeof icon === 'string' ? new Gio.ThemedIcon({name: icon}) : icon,
-            icon_size: ICON_SIZE,
-        }));
+            icon_size: this._compact ? this._iconSize : TEXT_ICON_SIZE,
+        });
+        line.add_child(image);
         const label = new St.Label({text, y_align: Clutter.ActorAlign.CENTER, visible: !this._compact});
         line.add_child(label);
         const button = new St.Button({
@@ -178,6 +186,7 @@ export class BottomRow {
             child: line,
         });
         button.schLabel = label;
+        button.schIcon = image;
         button.connect('clicked', onClick);
         // ours go with the button, rebuilt at each change of profile
         button.connect('notify::hover', () => this._showTip(button, text));
@@ -295,16 +304,22 @@ export class BottomRow {
         const width = Math.floor((inner - 6 * (items.length - 1)) / items.length);
         for (const item of items)
             item.width = width;
-        // Too narrow for the text: icons instead (the text stays as accessible name)
-        this._setCompact(width < 130);
+        // icons only, side by side or too narrow for the text (the text stays
+        // as accessible name and on hover)
+        this._setCompact(items.length > 1 || width < TEXT_FROM, iconSizeFor(width));
     }
 
-    _setCompact(compact) {
+    // size: of an icon alone in a button
+    _setCompact(compact, size = this._iconSize) {
         this._compact = compact;
-        for (const button of this._own)
+        this._iconSize = size;
+        const withText = compact ? size : TEXT_ICON_SIZE;
+        for (const button of this._own) {
             button.schLabel.visible = !compact;
+            button.schIcon.icon_size = withText;
+        }
         this._newEventLabel.visible = !compact;
-        this._newEventIcon.icon_size = compact ? ICON_SIZE : TEXT_ICON_SIZE;
+        this._newEventIcon.icon_size = withText;
         this._newEventButton.accessible_name = _('New event');
         if (!compact)
             this._tip?.hide();
@@ -312,7 +327,9 @@ export class BottomRow {
         if (clear) {
             if (compact && !this._clearLabel) {
                 this._clearLabel = clear.label;
-                clear.child = new St.Icon({icon_name: 'edit-clear-all-symbolic', icon_size: ICON_SIZE});
+                clear.child = new St.Icon({icon_name: 'edit-clear-all-symbolic', icon_size: size});
+            } else if (compact) {
+                clear.child.icon_size = size;
             } else if (!compact && this._clearLabel) {
                 clear.label = this._clearLabel;
                 this._clearLabel = null;
@@ -324,8 +341,10 @@ export class BottomRow {
         if (clocks && !this._clocksGrid) {
             this._clocksGrid = clocks.child;
             this._clocksAccessible = clocks.accessible_name;
-            clocks.child = new St.Icon({icon_name: 'network-workgroup-symbolic', icon_size: ICON_SIZE});
+            clocks.child = new St.Icon({icon_name: 'network-workgroup-symbolic', icon_size: size});
             clocks.accessible_name = _('World clocks');
+        } else if (clocks) {
+            clocks.child.icon_size = size;
         }
     }
 }
