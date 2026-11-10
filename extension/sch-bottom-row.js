@@ -24,7 +24,8 @@ import {UPDATES_SECTION} from './sch-updates.js';
 // it on hover; the icon follows the width of its button (the panel can be
 // made wider), in steps that keep it sharp. A button alone in the row (the
 // calendar open) shows a small icon and its text.
-const ICON_STEPS = [[150, 32], [120, 28], [95, 24], [0, 20]];
+// Sizes the themes draw (also the coloured icons of apps stay sharp)
+const ICON_STEPS = [[150, 48], [125, 40], [100, 32], [0, 24]];
 const TEXT_ICON_SIZE = 16;
 const TEXT_FROM = 200; // px of a button alone: narrower, its icon only
 
@@ -32,10 +33,11 @@ function iconSizeFor(width) {
     return ICON_STEPS.find(([min]) => width >= min)[1];
 }
 
-// The room above and below an icon, in proportion to it: the bigger the
-// icon, the taller the button
+// A thin room above and below the icon, in proportion to it: the icon fills
+// about 70% of the height of its button
 function buttonStyle(size) {
-    return `padding-top: ${Math.round(size * 0.6)}px; padding-bottom: ${Math.round(size * 0.6)}px; min-height: ${size}px;`;
+    const room = Math.round(size * 0.2);
+    return `padding-top: ${room}px; padding-bottom: ${room}px; min-height: ${size}px;`;
 }
 
 const ACTION_ICONS = {
@@ -312,12 +314,12 @@ export class BottomRow {
         const width = Math.floor((inner - 6 * (items.length - 1)) / items.length);
         // icons only, side by side or too narrow for the text (the text stays
         // as accessible name and on hover); a button alone with its text is as
-        // tall as one with a 24 px icon
+        // tall as one with a 32 px icon
         const compact = items.length > 1 || width < TEXT_FROM;
         const size = iconSizeFor(width);
         for (const item of items) {
             item.width = width;
-            item.set_style(buttonStyle(compact ? size : 24));
+            item.set_style(buttonStyle(compact ? size : 32));
         }
         this._setCompact(compact, size);
     }
