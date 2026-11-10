@@ -3,8 +3,11 @@
 //
 // "System updates" in the card beside the panel: how many updates there are
 // and where they come from, read only, and buttons that open the program of
-// the system that installs them. Nothing is ever installed from here, and no
-// package manager runs inside GNOME Shell as root:
+// the system that installs them, or a terminal (an idea of Simone Zubbi,
+// @simonezubbi) that shows the update commands of this system and runs them
+// only after the user presses Enter, sudo asking for the password there.
+// Nothing is ever installed by the hub itself, and no package manager runs
+// inside GNOME Shell as root:
 // - Arch and its family (CachyOS…): checkupdates (pacman-contrib), which
 //   works on a copy of the package database; Octopi, or Cachy-Update,
 //   installs them. Not PackageKit, which Arch advises against.
@@ -42,6 +45,7 @@ import {logWarning} from './sch-log.js';
 import {pageKit as kit} from './sch-page-kit.js';
 
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
+Gio._promisify(Gio.File.prototype, 'query_info_async');
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 Gio._promisify(Gio.DBusConnection.prototype, 'call');
 
@@ -73,6 +77,31 @@ const PACKAGEKIT_TRANSACTION = 'org.freedesktop.PackageKit.Transaction';
 // the "none" filter of PackageKit: every update
 const PACKAGEKIT_FILTER_NONE = 1 << 1;
 const FWUPD = 'org.freedesktop.fwupd';
+
+// The terminals that can run a command, best first, with the arguments
+// that come before it (xdg-terminal-exec opens the user's chosen one)
+const TERMINALS = [
+    ['xdg-terminal-exec'],
+    ['ptyxis', '--'],
+    ['kgx', '--'],
+    ['gnome-terminal', '--'],
+];
+
+// What runs in the terminal, with sh: $1 a title, $2 the commands, $3 how to
+// start, $4 and $5 how it ended. The commands start only after Enter, and
+// the window stays open until Enter is pressed again.
+// A terminal that ends this soon has not opened (e.g. xdg-terminal-exec
+// with no terminal it can use)
+const TERMINAL_FAILED_MS = 5000;
+
+const TERMINAL_SCRIPT = [
+    'printf "\\n%s\\n\\n    %s\\n\\n%s " "$1" "$2" "$3"',
+    'read -r _ || exit 0',
+    'echo',
+    'if sh -c "$2"; then end=$4; else end=$5; fi',
+    'printf "\\n%s " "$end"',
+    'read -r _',
+].join('\n');
 
 // The last check that ended: {time, results: Map(source → result)}, plain
 // data only. Kept while the panel is taken down on screen lock (so the
@@ -110,11 +139,56 @@ async function readOsRelease() {
     return {};
 }
 
+// Commands that need root, as the user types them: with sudo, or with su
+// where there is no sudo (Debian installed with a root password)
+function asRoot(...commands) {
+    if (hasProgram('sudo'))
+        return commands.map(command => `sudo ${command}`).join(' && ');
+    return `su -c '${commands.join(' && ')}'`;
+}
+
+// The command that updates the system packages of this system, typed by the
+// user in a terminal: null when not known
+async function systemUpdateCommand(ids) {
+    // Fedora Silverblue and the other image-based systems (polkit asks)
+    if (await exists('/run/ostree-booted'))
+        return hasProgram('rpm-ostree') ? 'rpm-ostree upgrade' : null;
+    if (ids.includes('arch') && hasProgram('pacman'))
+        return asRoot('pacman -Syu');
+    if (ids.includes('fedora') && hasProgram('dnf'))
+        return asRoot('dnf upgrade');
+    if ((ids.includes('debian') || ids.includes('ubuntu')) && hasProgram('apt'))
+        return asRoot('apt update', 'apt upgrade');
+    if (ids.some(id => id === 'suse' || id.startsWith('opensuse'))) {
+        // MicroOS, Aeon, Kalpa: read-only system, updated in a snapshot
+        if (hasProgram('transactional-update'))
+            return asRoot('transactional-update dup');
+        if (!hasProgram('zypper'))
+            return null;
+        // the rolling releases are updated with dist-upgrade
+        return ids.some(id => id === 'opensuse-tumbleweed' || id === 'opensuse-slowroll')
+            ? asRoot('zypper dist-upgrade') : asRoot('zypper update');
+    }
+    return null;
+}
+
+async function exists(path) {
+    try {
+        await Gio.File.new_for_path(path).query_info_async('standard::type', Gio.FileQueryInfoFlags.NONE,
+            GLib.PRIORITY_DEFAULT, null);
+        return true;
+    } catch (_e) {
+        return false;
+    }
+}
+
 async function findSystem() {
     const os = await readOsRelease();
     const ids = [os.ID ?? '', ...(os.ID_LIKE ?? '').split(/\s+/)].map(id => id.toLowerCase());
     const arch = ids.includes('arch');
     const ubuntu = ids.includes('ubuntu');
+    const flatpak = hasProgram('flatpak');
+    const snap = hasProgram('snap');
     // looked up once: GLib.find_program_in_path reads the folders of PATH
     const checkupdates = arch && hasProgram('checkupdates');
     const sources = [{
@@ -122,9 +196,9 @@ async function findSystem() {
         icon: 'package-x-generic-symbolic',
         run: arch ? cancellable => checkUpdates(checkupdates, cancellable) : packageKitUpdates,
     }];
-    if (hasProgram('snap'))
+    if (snap)
         sources.push({id: 'snap', icon: 'package-x-generic-symbolic', run: snapUpdates});
-    if (hasProgram('flatpak'))
+    if (flatpak)
         sources.push({id: 'flatpak', icon: 'application-x-addon-symbolic', run: flatpakUpdates});
     sources.push({id: 'firmware', icon: 'computer-symbolic', run: firmwareUpdates});
 
@@ -143,6 +217,13 @@ async function findSystem() {
         installer,
         // GNOME Software on its updates page
         software: hasProgram('gnome-software') && desktopApp('org.gnome.Software.desktop') !== null,
+        // the terminal and what it runs (both null when there is nothing to run)
+        terminal: TERMINALS.find(([program]) => hasProgram(program)) ?? null,
+        updateCommand: [
+            await systemUpdateCommand(ids),
+            snap ? asRoot('snap refresh') : null,
+            flatpak ? 'flatpak update' : null,
+        ].filter(command => command).join('; ') || null,
     };
 }
 
@@ -459,18 +540,31 @@ export class SystemUpdates {
             })
             : null;
         page.add_child(kit.buttons(check, install));
-        if (system.software) {
-            page.add_child(kit.buttons(kit.button({
+        const software = system.software
+            ? kit.button({
                 label: _('Open GNOME Software'),
                 primary: !install,
                 onClick: () => this._launch(() =>
                     Gio.Subprocess.new(['gnome-software', '--mode=updates'], Gio.SubprocessFlags.NONE)),
-            })));
-        }
-        const by = installer?.get_name() ?? (system.software ? 'GNOME Software' : '');
+            })
+            : null;
+        const terminal = system.terminal && system.updateCommand
+            ? kit.button({
+                label: _('Update in terminal'),
+                primary: !install && !software,
+                onClick: () => this._launch(() => this._updateInTerminal()),
+            })
+            : null;
+        if (software || terminal)
+            page.add_child(kit.buttons(software, terminal));
+        const by = installer?.get_name() ?? (software ? 'GNOME Software' : '');
         if (by) {
             page.add_child(kit.notice({
                 text: _('Read only: the hub counts the updates, {app} installs them.', {app: by}),
+            }));
+        } else if (terminal) {
+            page.add_child(kit.notice({
+                text: _('Read only: the hub counts the updates. The terminal shows the commands and runs them only when you press Enter.'),
             }));
         }
 
@@ -513,9 +607,38 @@ export class SystemUpdates {
             start();
         } catch (e) {
             logWarning(`system updates: ${e}`);
+            Main.notify(_('System updates'), _('Could not open the program: {error}', {error: e.message}));
             return;
         }
         this._panel.dateMenu.menu.close();
+    }
+
+    // The terminal with the update commands of this system: they run only
+    // after the user reads them and presses Enter, never by themselves
+    _updateInTerminal() {
+        const {terminal, updateCommand} = this._system;
+        const proc = Gio.Subprocess.new([...terminal, 'sh', '-c', TERMINAL_SCRIPT, 'sh',
+            _('Smart Calendar Hub: these commands update the system'),
+            updateCommand,
+            _('Press Enter to run them, or close this window to cancel.'),
+            _('Finished. Press Enter to close this window.'),
+            _('Something went wrong: read the messages above. Press Enter to close this window.'),
+        ], Gio.SubprocessFlags.NONE);
+        // a launcher that gives up at once is told, not left silent
+        const started = Date.now();
+        proc.wait_check_async(null, (_proc, result) => {
+            try {
+                proc.wait_check_finish(result);
+            } catch (e) {
+                if (Date.now() - started < TERMINAL_FAILED_MS) {
+                    logWarning(`system updates: ${terminal[0]}: ${e.message}`);
+                    Main.notify(_('System updates'), _('Could not open the terminal ({program}).', {program: terminal[0]}));
+                }
+            }
+        });
+        // the counts are old once the user updates: the next opening checks again
+        lastCheck = null;
+        this._syncButton();
     }
 
     // A check, unless one is running or the last one is younger than maxAge

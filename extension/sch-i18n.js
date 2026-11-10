@@ -860,6 +860,22 @@ const IT = {
         "Apri GNOME Software",
     "Read only: the hub counts the updates, {app} installs them.":
         "Sola lettura: l'hub conta gli aggiornamenti, li installa {app}.",
+    "Update in terminal":
+        "Aggiorna nel terminale",
+    "Read only: the hub counts the updates. The terminal shows the commands and runs them only when you press Enter.":
+        "Sola lettura: l'hub conta gli aggiornamenti. Il terminale mostra i comandi e li esegue solo quando premi Invio.",
+    "Could not open the terminal ({program}).":
+        "Impossibile aprire il terminale ({program}).",
+    "Could not open the program: {error}":
+        "Impossibile aprire il programma: {error}",
+    "Smart Calendar Hub: these commands update the system":
+        "Smart Calendar Hub: questi comandi aggiornano il sistema",
+    "Press Enter to run them, or close this window to cancel.":
+        "Premi Invio per eseguirli, oppure chiudi questa finestra per annullare.",
+    "Finished. Press Enter to close this window.":
+        "Finito. Premi Invio per chiudere questa finestra.",
+    "Something went wrong: read the messages above. Press Enter to close this window.":
+        "Qualcosa non è andato: leggi i messaggi qui sopra. Premi Invio per chiudere questa finestra.",
     "Last checked at {time}":
         "Ultimo controllo alle {time}",
     "The check took too long":

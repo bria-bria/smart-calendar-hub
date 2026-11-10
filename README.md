@@ -85,7 +85,13 @@ the number of updates, only while there are some, and opens the same page;
 it checks when the panel opens, at most once an hour (Settings → Tray →
 System updates). It only counts: **Update with Octopi** (or Cachy-Update, or
 Ubuntu's Software Updater) and **Open GNOME Software** open the program that
-installs them. The counts come from `checkupdates` (pacman-contrib) on Arch,
+installs them. **Update in terminal** (an idea of
+[@simonezubbi](https://github.com/simonezubbi)) opens your terminal with the
+update commands of your system (`sudo pacman -Syu`, `sudo dnf upgrade`,
+`sudo apt update && sudo apt upgrade`, `sudo zypper update` (`dist-upgrade`
+on Tumbleweed) or `rpm-ostree upgrade` on Silverblue, then `snap refresh`
+and `flatpak update` if you have them; `su -c` where there is no `sudo`): they run only after you read them and press Enter, and
+the window stays open until you press Enter again. The counts come from `checkupdates` (pacman-contrib) on Arch,
 PackageKit elsewhere, `snap`, `flatpak` and fwupd; nothing runs as root and
 no package manager runs inside GNOME Shell.
 
