@@ -21,23 +21,29 @@ import {actionKind, actionLabel, readProfile} from './sch-profiles.js';
 import {UPDATES_SECTION} from './sch-updates.js';
 
 // Buttons side by side show only their icon, and their text appears above
-// it on hover; the icon follows the width of its button (the panel can be
-// made wider), in steps that keep it sharp. A button alone in the row (the
-// calendar open) shows a small icon and its text.
-// Sizes the themes draw (also the coloured icons of apps stay sharp)
-const ICON_STEPS = [[150, 48], [125, 40], [100, 32], [0, 24]];
+// it on hover. A button is never wider than when the row holds three: with
+// fewer they keep that width and the row is centred. Its height follows its
+// width (the panel can be made wider), and the icon fills it, in sizes the
+// themes draw (also the coloured icons of apps stay sharp), with a thin
+// room around. With the calendar open "New event" alone takes the row, with
+// a small icon and its text.
+const ICON_SIZES = [24, 32, 40, 48, 56, 64];
 const TEXT_ICON_SIZE = 16;
 const TEXT_FROM = 200; // px of a button alone: narrower, its icon only
+const MAX_PER_ROW = 3; // the widest a button gets: as one of three
 
-function iconSizeFor(width) {
-    return ICON_STEPS.find(([min]) => width >= min)[1];
+// The height of a button of that width, and the icon in it
+function buttonSizes(width) {
+    const height = Math.max(40, Math.min(80, Math.round(width * 0.45)));
+    const fits = Math.round(height * 0.78);
+    const icon = [...ICON_SIZES].reverse().find(size => size <= fits) ?? ICON_SIZES[0];
+    return {height, icon};
 }
 
-// A thin room above and below the icon, in proportion to it: the icon fills
-// about 70% of the height of its button
-function buttonStyle(size) {
-    const room = Math.round(size * 0.2);
-    return `padding-top: ${room}px; padding-bottom: ${room}px; min-height: ${size}px;`;
+// The room above and below the icon, so the button has that height
+function buttonStyle(height, icon) {
+    const room = Math.floor((height - icon) / 2);
+    return `padding-top: ${room}px; padding-bottom: ${room}px; min-height: ${icon}px;`;
 }
 
 const ACTION_ICONS = {
@@ -53,22 +59,23 @@ export class BottomRow {
         this._signals = new Connections();
         this._calendarOpen = false;
         this._compact = false;
-        this._iconSize = iconSizeFor(0);
+        this._iconSize = ICON_SIZES[0];
         // the text of a button shown as an icon only, above it on hover
         this._tip = new St.Label({style_class: 'sch-alert-tip', visible: false, reactive: false});
         Main.uiGroup.add_child(this._tip);
         this._slots = []; // the actors of the row, in the order of the profile
         this._own = []; // our buttons for the other actions
         const dm = this._dateMenu;
-        this.actor = new St.BoxLayout({style_class: 'sch-bottom-row', x_expand: true});
+        // centred: with fewer than three buttons they keep their width
+        this.actor = new St.BoxLayout({style_class: 'sch-bottom-row', x_expand: true, x_align: Clutter.ActorAlign.CENTER});
         if (dm._clocksItem) {
             this._clocksOrig = {x_expand: dm._clocksItem.x_expand, visible: dm._clocksItem.visible, width: -1};
-            dm._clocksItem.x_expand = true;
+            dm._clocksItem.x_expand = false;
             dm._clocksItem.add_style_class_name('sch-bottom-btn');
             // in a box of ours: GNOME drives the button's own visibility
             // (only with world clocks), we hide the box when the profile
             // does not show it or the calendar is open
-            this._clocksBox = new St.Bin({x_expand: true});
+            this._clocksBox = new St.Bin();
             this.actor.add_child(this._clocksBox);
             panel.adopt(dm._clocksItem, this._clocksBox);
             this._signals.connect(dm._clocksItem, 'notify::visible', () => this.layout());
@@ -78,7 +85,6 @@ export class BottomRow {
         // calendar is open. Hidden when GNOME Calendar is not installed.
         this._newEventButton = new St.Button({
             style_class: 'sch-new-event sch-bottom-btn',
-            x_expand: true,
             can_focus: true,
             visible: panel.calendarView.hasCalendarApp,
         });
@@ -188,7 +194,6 @@ export class BottomRow {
         line.add_child(label);
         const button = new St.Button({
             style_class: 'sch-bottom-btn',
-            x_expand: true,
             can_focus: true,
             accessible_name: text,
             child: line,
@@ -311,17 +316,20 @@ export class BottomRow {
             return;
         // panel padding (4) + row margins (8), 6 px between buttons
         const inner = this._panel.geometry.sidebarWidth() - 12;
-        const width = Math.floor((inner - 6 * (items.length - 1)) / items.length);
-        // icons only, side by side or too narrow for the text (the text stays
-        // as accessible name and on hover); a button alone with its text is as
-        // tall as one with a 32 px icon
-        const compact = items.length > 1 || width < TEXT_FROM;
-        const size = iconSizeFor(width);
+        const widthOf = count => Math.floor((inner - 6 * (count - 1)) / count);
+        const asThree = widthOf(MAX_PER_ROW);
+        // "New event" alone with the calendar open takes the row
+        const alone = items.length === 1 && this._calendarOpen && items[0] === this._newEventButton;
+        const width = alone ? inner : Math.min(widthOf(items.length), asThree);
+        // icons only, unless that one is wide enough for its text (the text
+        // stays as accessible name and on hover)
+        const compact = !alone || width < TEXT_FROM;
+        const {height, icon} = buttonSizes(Math.min(width, asThree));
         for (const item of items) {
             item.width = width;
-            item.set_style(buttonStyle(compact ? size : 32));
+            item.set_style(buttonStyle(height, compact ? icon : TEXT_ICON_SIZE));
         }
-        this._setCompact(compact, size);
+        this._setCompact(compact, icon);
     }
 
     // size: of an icon alone in a button
