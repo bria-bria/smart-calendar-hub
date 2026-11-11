@@ -112,10 +112,18 @@ export class BottomRow {
             clear.add_style_class_name('sch-bottom-btn');
             // In a box of ours: GNOME drives the button's own visibility (only
             // with notifications), we hide the box while the calendar is open.
-            this._clearBox = new St.Bin({style_class: 'sch-clear-box'});
+            // With nothing to clear GNOME hides it: a greyed "Clear" of ours,
+            // not clickable, takes its place, so the row keeps its shape
+            this._clearBox = new St.Widget({style_class: 'sch-clear-box', layout_manager: new Clutter.BinLayout()});
             this.actor.add_child(this._clearBox);
             panel.adopt(clear, this._clearBox);
-            // GNOME shows "Clear" only with notifications: share the row again
+            this._clearIdle = new St.Button({
+                style_class: 'sch-bottom-btn sch-clear-button sch-clear-idle',
+                reactive: false,
+                accessible_name: _('Clear notifications'),
+                child: new St.Icon({icon_name: 'edit-clear-all-symbolic', icon_size: this._iconSize}),
+            });
+            this._clearBox.add_child(this._clearIdle);
             this._signals.connect(clear, 'notify::visible', () => this.layout());
             this._watchTip(clear, () => _('Clear notifications'));
         }
@@ -303,8 +311,8 @@ export class BottomRow {
             if (!child.visible)
                 continue;
             if (child === this._clearBox) {
-                if (this._clearButton?.visible)
-                    items.push(this._clearButton);
+                this._clearIdle.visible = !this._clearButton.visible;
+                items.push(this._clearButton.visible ? this._clearButton : this._clearIdle);
             } else if (child === this._clocksBox) {
                 if (this._dateMenu._clocksItem.visible)
                     items.push(this._dateMenu._clocksItem);
@@ -353,10 +361,11 @@ export class BottomRow {
                 clear.child = new St.Icon({icon_name: 'edit-clear-all-symbolic', icon_size: size});
             } else if (compact) {
                 clear.child.icon_size = size;
-            } else if (!compact && this._clearLabel) {
+            } else if (this._clearLabel) {
                 clear.label = this._clearLabel;
                 this._clearLabel = null;
             }
+            this._clearIdle.child.icon_size = size;
         }
         // GNOME's world clocks button: always an icon (the clocks themselves
         // are in their own card above); a click opens GNOME Clocks
