@@ -78,8 +78,10 @@ export class SmartBanners {
         this._size = null;
         const tray = Main.messageTray;
         const bin = tray._bannerBin;
-        this._oldAlign = bin.x_align;
+        // at the top right even if another extension had moved the banners
+        this._oldAlign = [bin.x_align, bin.y_align];
         bin.x_align = Clutter.ActorAlign.END;
+        bin.y_align = Clutter.ActorAlign.START;
         bin.add_style_class_name('sch-smart-banners');
 
         // GNOME calls _showNotification() from _updateState() when the queue
@@ -133,7 +135,7 @@ export class SmartBanners {
             bin.remove_style_class_name(cls);
             this._list?.remove_style_class_name(cls);
         }
-        bin.x_align = this._oldAlign;
+        [bin.x_align, bin.y_align] = this._oldAlign;
         bin.translation_x = 0;
         // a notification that was waiting shows up now
         tray._updateState();
