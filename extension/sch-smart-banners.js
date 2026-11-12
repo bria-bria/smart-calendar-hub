@@ -155,7 +155,8 @@ class SmartBanner {
             y_align: Clutter.ActorAlign.START,
             visible: false,
         });
-        this._close.connect('clicked', () => notification.destroy(NotificationDestroyedReason.DISMISSED));
+        this._close.connectObject('clicked',
+            () => notification.destroy(NotificationDestroyedReason.DISMISSED), this);
         overlay.add_child(this._close);
 
         if (!this.critical) {
@@ -173,13 +174,13 @@ class SmartBanner {
         this._sync();
         // a click runs the notification's main action; closed, clicked or
         // withdrawn by its app: out of the stack
-        card.connect('clicked', () => notification.activate());
+        card.connectObject('clicked', () => notification.activate(), this);
         notification.connectObject(
             'notify::title', () => this._sync(),
             'notify::body', () => this._sync(),
             'activated', () => stack.remove(this),
             'destroy', () => stack.remove(this), this);
-        card.connect('notify::hover', () => this._open(card.hover || this.critical));
+        card.connectObject('notify::hover', () => this._open(card.hover || this.critical), this);
         this._open(this.critical);
     }
 
@@ -229,8 +230,20 @@ class SmartBanner {
     destroy() {
         this.hold();
         this.notification.disconnectObject(this);
+        this._close.disconnectObject(this);
+        this.actor.disconnectObject(this);
+        this._actions.destroy();
+        this._actions = null;
+        this._bar?.destroy();
         this._bar = null;
+        this._close.destroy();
+        this._close = null;
+        this._title.destroy();
+        this._title = null;
+        this._body.destroy();
+        this._body = null;
         this.actor.destroy();
+        this.actor = null;
     }
 }
 
