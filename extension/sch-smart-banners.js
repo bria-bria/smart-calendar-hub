@@ -261,8 +261,9 @@ export class SmartBanners {
         });
         this._box.hide();
         Main.layoutManager.addTopChrome(this._box);
-        this._box.connectObject('notify::width', () => this._place(), this);
-        global.display.connectObject('workareas-changed', () => this._place(), this);
+        // tied to the box: at logout GNOME can take the box down before us
+        this._box.connectObject('notify::width', () => this._place(), this._box);
+        global.display.connectObject('workareas-changed', () => this._place(), this._box);
         this._place();
 
         // GNOME calls _showNotification() from _updateState() when it has a
@@ -279,7 +280,7 @@ export class SmartBanners {
 
     destroy() {
         this._settings.disconnectObject(this);
-        global.display.disconnectObject(this);
+        global.display.disconnectObject(this._box);
         if (this._checkId) {
             GLib.source_remove(this._checkId);
             this._checkId = 0;
