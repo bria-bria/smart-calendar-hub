@@ -97,6 +97,7 @@ class SmartBanner {
         this._timeoutId = 0;
         this._opened = false;
         this._lines = [];
+        this.notificationGone = false;
         this.critical = notification.urgency === Urgency.CRITICAL;
         const source = notification.source;
 
@@ -183,7 +184,10 @@ class SmartBanner {
             'notify::title', () => this._sync(),
             'notify::body', () => this._sync(),
             'activated', () => stack.remove(this),
-            'destroy', () => stack.remove(this), this);
+            'destroy', () => {
+                this.notificationGone = true;
+                stack.remove(this);
+            }, this);
         card.connectObject('notify::hover', () => this._open(card.hover || this.critical), this);
         this._open(this.critical);
     }
@@ -217,6 +221,10 @@ class SmartBanner {
         this._body.clutter_text.ellipsize = open ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END;
         this._actions.visible = open && this._actions.get_n_children() > 0;
         this._close.visible = open;
+    }
+
+    get opened() {
+        return this._opened;
     }
 
     get running() {
@@ -315,6 +323,9 @@ export class SmartBanners {
         for (const banner of this._banners)
             banner.destroy();
         this._banners = [];
+        // banners on their way out: their end runs now, while the box is there
+        for (const child of this._box.get_children())
+            child.remove_all_transitions();
         for (const [, cls] of STYLE_OPTIONS)
             this._list?.remove_style_class_name(cls);
         Main.layoutManager.removeChrome(this._box);
@@ -371,7 +382,7 @@ export class SmartBanners {
         this._banners.unshift(banner);
         this._box.insert_child_at_index(banner.actor, 0);
         this._box.show();
-        this._measure(banner.actor);
+        this._measure(banner);
 
         const actor = banner.actor;
         const height = this._bannerSize()[1];
@@ -393,9 +404,9 @@ export class SmartBanners {
             duration: MOVE_TIME_MS,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
         });
-        // the others make room by sliding down
-        for (const other of this._banners.slice(1))
-            this._slide(other.actor, -(height + GAP));
+        // the others make room by sliding down, also one on its way out
+        for (const other of this._box.get_children().slice(1))
+            this._slide(other, -(height + GAP));
 
         if (!this._pointerInZone())
             banner.run();
@@ -409,7 +420,6 @@ export class SmartBanners {
             return;
         this._banners.splice(index, 1);
         banner.hold();
-        banner.notification.disconnectObject(banner);
         const actor = banner.actor;
         actor.reactive = false;
         // out through the screen edge, fading: going up it would cross the
@@ -430,7 +440,7 @@ export class SmartBanners {
                 if (this._box)
                     this._box.visible = this._box.get_n_children() > 0;
                 const notification = banner.notification;
-                if (notification.isTransient && !notification._destroyed)
+                if (notification.isTransient && !banner.notificationGone)
                     notification.destroy(NotificationDestroyedReason.EXPIRED);
             },
         });
@@ -491,15 +501,23 @@ export class SmartBanners {
         const rtl = this._box.get_text_direction() === Clutter.TextDirection.RTL;
         const x = rtl ? area.x : area.x + area.width - width;
         const [px, py] = global.get_pointer();
-        return px >= x && px < x + width && py >= area.y && py < area.y + height;
+        if (px >= x && px < x + width && py >= area.y && py < area.y + height)
+            return true;
+        // the stack can be taller than the zone (three banners with their
+        // gaps, an opened one): the pointer on it counts too
+        if (!this._box.visible)
+            return false;
+        const [bx, by] = this._box.get_transformed_position();
+        return px >= bx && px < bx + this._box.width && py >= by && py < by + this._box.height;
     }
 
     // The size of a closed banner, taken from a real one as soon as it is
     // laid out (and again if its text changes)
-    _measure(message) {
-        message.connectObject('notify::height', () => {
-            if (message.mapped && !message.expanded && message.height > 0)
-                this._size = [message.width, message.height];
+    _measure(banner) {
+        const actor = banner.actor;
+        actor.connectObject('notify::height', () => {
+            if (actor.mapped && !banner.opened && actor.height > 0)
+                this._size = [actor.width, actor.height];
         }, this);
     }
 
