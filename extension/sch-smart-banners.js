@@ -45,8 +45,6 @@ const GAP = 8;
 const AGAIN_FIRST_MS = 3000;
 const AGAIN_STEP_MS = 1500;
 const CHECK_INTERVAL_MS = 200;
-// GNOME's limit for "the user is using the computer"
-const IDLE_TIME_MS = 1000;
 const ZONE_BANNERS_WIDE = 2;
 const ZONE_BANNERS_HIGH = 3;
 // a closed banner is about four times as wide as it is high
@@ -255,7 +253,6 @@ export class SmartBanners {
         this._list = list;
         this._banners = [];
         this._checkId = 0;
-        this._activeWatch = 0;
         this._size = null;
 
         this._box = new St.BoxLayout({
@@ -287,7 +284,6 @@ export class SmartBanners {
             GLib.source_remove(this._checkId);
             this._checkId = 0;
         }
-        this._stopActiveWatch();
         const tray = Main.messageTray;
         if (tray._showNotification === this._showWrapper)
             delete tray._showNotification;
@@ -363,20 +359,24 @@ export class SmartBanners {
             actor.translation_x = this._sideDistance();
         else
             actor.translation_y = -height;
+        // the bounce only on the movement: on the opacity it would go past
+        // full and flicker
         actor.ease({
-            opacity: 255,
             translation_x: 0,
             translation_y: 0,
             duration: IN_TIME_MS,
             mode: Clutter.AnimationMode.EASE_OUT_BACK,
         });
+        actor.ease({
+            opacity: 255,
+            duration: MOVE_TIME_MS,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
         // the others make room by sliding down
         for (const other of this._banners.slice(1))
             this._slide(other.actor, -(height + GAP));
 
-        if (this._userIdle())
-            this._startActiveWatch();
-        else if (!this._pointerInZone())
+        if (!this._pointerInZone())
             banner.run();
     }
 
@@ -434,13 +434,12 @@ export class SmartBanners {
         this._checkId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CHECK_INTERVAL_MS, () => {
             const tray = Main.messageTray;
             const inZone = this._pointerInZone();
-            const active = !this._activeWatch;
             // going on again, they leave one after the other, the oldest first
             const count = this._banners.length;
             this._banners.forEach((banner, index) => {
                 if (inZone)
                     banner.hold();
-                else if (active)
+                else
                     banner.run(AGAIN_FIRST_MS + (count - 1 - index) * AGAIN_STEP_MS);
             });
             if (tray.queueCount > 0 && !inZone && this._banners.length < MAX_SHOWN)
@@ -450,27 +449,6 @@ export class SmartBanners {
             this._checkId = 0;
             return GLib.SOURCE_REMOVE;
         });
-    }
-
-    // GNOME keeps a banner on screen until someone uses the computer: the
-    // times start when someone does
-    _userIdle() {
-        return Main.messageTray.idleMonitor.get_idletime() > IDLE_TIME_MS;
-    }
-
-    _startActiveWatch() {
-        if (this._activeWatch)
-            return;
-        this._activeWatch = Main.messageTray.idleMonitor.add_user_active_watch(() => {
-            this._activeWatch = 0;
-        });
-    }
-
-    _stopActiveWatch() {
-        if (this._activeWatch) {
-            Main.messageTray.idleMonitor.remove_watch(this._activeWatch);
-            this._activeWatch = 0;
-        }
     }
 
     _fromSide() {
