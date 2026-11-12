@@ -1285,13 +1285,18 @@
     spacing: 8px;
 }
 
-/* Smart notifications (sch-smart-banners.js): compact banners in the top
-   right corner of the work area, the icon on the right; the rows of the
-   panel's notification list are drawn the same way */
-#notification-container.sch-smart-banners .notification-banner {
+/* Smart notifications (sch-smart-banners.js): up to three compact banners
+   stacked in the top right corner of the work area, the icon on the right;
+   the rows of the panel's notification list are drawn the same way */
+.sch-smart-banners {
+    padding: 6px;
+    spacing: 8px;
+}
+
+.sch-smart-banners .notification-banner {
     width: 26em;
     min-height: 0;
-    margin: 6px;
+    margin: 0;
     border-radius: 14px;
 }
 
@@ -1316,6 +1321,14 @@
     icon-size: 20px;
     border-radius: 12px;
     background-color: st-transparentize(-st-accent-color, 0.7);
+}
+
+/* The line that shortens until the banner goes */
+.sch-smart-time-bar {
+    height: 2px;
+    margin-top: 8px;
+    border-radius: 1px;
+    background-color: st-transparentize(-st-accent-color, 0.4);
 }
 
 /* Option: flat icons in the accent colour (banners and panel's list) */

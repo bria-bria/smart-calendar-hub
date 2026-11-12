@@ -1,34 +1,41 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: 2026 bria-bria
 //
-// Smart notifications. GNOME's own notification banners, redrawn compact and
-// placed in a zone attached to the top right corner of the work area: right
-// under the top bar and against the screen edge, so it follows any dock or
-// panel that takes that edge (GNOME keeps the banner container inside the
-// work area). The zone is two banners wide and three banners high.
-//  - While the pointer is in the zone, a new banner waits in GNOME's queue
-//    (same order, nothing lost) and comes in as soon as the pointer leaves.
-//    Critical notifications never wait.
-//  - Once on screen GNOME keeps it while the pointer is on it and opens it
-//    (full text and action buttons) only when the pointer is on that banner.
-//  - The icon of the notification goes on the right; it comes in from the top
-//    (GNOME's own movement) or from the side (setting smart-notifications-entry).
+// Smart notifications. The notifications GNOME would show as banners, one at
+// a time at the top centre, are shown here instead: up to three stacked in a
+// zone attached to the top right corner of the work area (right under the top
+// bar and against the screen edge, so it follows any dock or panel there).
+// The zone is two banners wide and three high.
+//  - A new banner comes in at the top of the stack, the others move down;
+//    each one stays its own time, shown by a line that shortens.
+//  - While the pointer is in the zone every banner stays (its line full) and
+//    new ones wait in GNOME's queue (same order, nothing lost) until the
+//    pointer leaves; only the banner under the pointer opens (full text and
+//    buttons). Critical banners never wait and never go by themselves.
+//  - The icon is on the right; banners come in from the top or from the side.
 //  - Options: all texts in the accent colour, flat icons in the accent colour.
 //  - The notifications in the panel's list are drawn the same way (drawSmart),
 //    with the flat icons option but not the accent texts.
-// Everything is undone when switched off: GNOME's methods come back as they were.
+// GNOME still decides when a notification may show (Do not disturb, full
+// screen, lock screen): it calls _showNotification() and the banner goes to
+// the stack instead of GNOME's own place. Switched off, everything is undone.
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {Urgency} from 'resource:///org/gnome/shell/ui/messageTray.js';
+import * as MessageList from 'resource:///org/gnome/shell/ui/messageList.js';
+import {NotificationDestroyedReason, Urgency} from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {logWarning} from './sch-log.js';
 
+const MAX_SHOWN = 3;
+const SHOWN_TIME_MS = 5000;
+const MOVE_TIME_MS = 300;
 const CHECK_INTERVAL_MS = 200;
-const SIDE_TIME_MS = 350;
+// GNOME's limit for "the user is using the computer"
+const IDLE_TIME_MS = 1000;
 const ZONE_BANNERS_WIDE = 2;
 const ZONE_BANNERS_HIGH = 3;
 // a closed banner is about four times as wide as it is high
@@ -68,44 +75,112 @@ export function drawSmart(message, on) {
     }
 }
 
+// One banner of the stack, with its own time
+class SmartBanner {
+    constructor(stack, notification) {
+        this.notification = notification;
+        this._stack = stack;
+        this._timeoutId = 0;
+        this.critical = notification.urgency === Urgency.CRITICAL;
+
+        const message = this.message = new MessageList.NotificationMessage(notification);
+        message.can_focus = false;
+        message._header.expandButton.visible = false;
+        message.add_style_class_name('notification-banner');
+        drawSmart(message, true);
+
+        if (!this.critical) {
+            this._bar = new St.Widget({style_class: 'sch-smart-time-bar', x_expand: true});
+            const rtl = message.get_text_direction() === Clutter.TextDirection.RTL;
+            this._bar.set_pivot_point(rtl ? 1 : 0, 0.5);
+            message.get_child().add_child(this._bar);
+        }
+
+        // closed with its X, clicked (a click runs the notification's action)
+        // or withdrawn by its app: out of the stack
+        notification.connectObject(
+            'activated', () => stack.remove(this),
+            'destroy', () => stack.remove(this), this);
+        message.connectObject(
+            'close', () => stack.remove(this),
+            'notify::hover', () => this._onHover(), this);
+
+        if (this.critical)
+            message.expand(false);
+    }
+
+    // Opened only while the pointer is on it
+    _onHover() {
+        if (this.critical)
+            return;
+        if (this.message.hover)
+            this.message.expand(true);
+        else
+            this.message.unexpand(true);
+    }
+
+    get running() {
+        return this._timeoutId !== 0;
+    }
+
+    // Its time starts again from the beginning, line full
+    run() {
+        if (this.critical || this.running)
+            return;
+        this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SHOWN_TIME_MS, () => {
+            this._timeoutId = 0;
+            this._stack.remove(this);
+            return GLib.SOURCE_REMOVE;
+        });
+        this._bar.scale_x = 1;
+        this._bar.ease({scale_x: 0, duration: SHOWN_TIME_MS, mode: Clutter.AnimationMode.LINEAR});
+    }
+
+    hold() {
+        if (!this.running)
+            return;
+        GLib.source_remove(this._timeoutId);
+        this._timeoutId = 0;
+        this._bar.remove_all_transitions();
+        this._bar.scale_x = 1;
+    }
+
+    destroy() {
+        this.hold();
+        this.notification.disconnectObject(this);
+        this.message.disconnectObject(this);
+        this._bar?.destroy();
+        this._bar = null;
+        this.message.destroy();
+    }
+}
+
 export class SmartBanners {
     // list: GNOME's notification list shown in the panel (it gets the flat
     // icons too, not the accent texts)
     constructor(settings, list) {
         this._settings = settings;
         this._list = list;
+        this._banners = [];
         this._checkId = 0;
+        this._activeWatch = 0;
         this._size = null;
-        const tray = Main.messageTray;
-        const bin = tray._bannerBin;
-        // at the top right even if another extension had moved the banners
-        this._oldAlign = [bin.x_align, bin.y_align];
-        bin.x_align = Clutter.ActorAlign.END;
-        bin.y_align = Clutter.ActorAlign.START;
-        bin.add_style_class_name('sch-smart-banners');
 
-        // GNOME calls _showNotification() from _updateState() when the queue
-        // has a notification to show, and _hideNotification() when it goes.
-        // Own properties on the tray: deleting them brings back GNOME's methods.
-        const show = tray._showNotification;
-        const hide = tray._hideNotification;
-        this._showWrapper = tray._showNotification = () => {
-            if (this._mustWait()) {
-                this._waitForPointer();
-                return;
-            }
-            bin.translation_x = 0;
-            show.call(tray);
-            drawSmart(tray._banner, true);
-            this._measure(tray._banner);
-            if (this._fromSide())
-                this._slideIn();
-        };
-        this._hideWrapper = tray._hideNotification = animate => {
-            hide.call(tray, animate);
-            if (animate && this._fromSide())
-                this._slideOut();
-        };
+        this._box = new St.BoxLayout({
+            style_class: 'sch-smart-banners',
+            orientation: Clutter.Orientation.VERTICAL,
+        });
+        this._box.hide();
+        Main.layoutManager.addTopChrome(this._box);
+        this._box.connectObject('notify::width', () => this._place(), this);
+        global.display.connectObject('workareas-changed', () => this._place(), this);
+        this._place();
+
+        // GNOME calls _showNotification() from _updateState() when it has a
+        // banner to show. An own property on the tray: deleting it brings
+        // back GNOME's method.
+        const tray = Main.messageTray;
+        this._showWrapper = tray._showNotification = () => this._takeNext();
 
         settings.connectObject(
             ...STYLE_OPTIONS.flatMap(([key]) => [`changed::${key}`, () => this._syncStyle()]),
@@ -115,37 +190,35 @@ export class SmartBanners {
 
     destroy() {
         this._settings.disconnectObject(this);
+        global.display.disconnectObject(this);
         if (this._checkId) {
             GLib.source_remove(this._checkId);
             this._checkId = 0;
         }
+        this._stopActiveWatch();
         const tray = Main.messageTray;
-        const bin = tray._bannerBin;
-        tray._banner?.disconnectObject(this);
-        for (const [name, wrapper] of [['_showNotification', this._showWrapper],
-            ['_hideNotification', this._hideWrapper]]) {
-            if (tray[name] === wrapper)
-                delete tray[name];
-            else
-                logWarning(`${name} patched by someone else, left as is`);
-        }
-        this._showWrapper = this._hideWrapper = null;
-        bin.remove_style_class_name('sch-smart-banners');
-        for (const [, cls] of STYLE_OPTIONS) {
-            bin.remove_style_class_name(cls);
+        if (tray._showNotification === this._showWrapper)
+            delete tray._showNotification;
+        else
+            logWarning('_showNotification patched by someone else, left as is');
+        this._showWrapper = null;
+        // the notifications stay in the panel's list
+        for (const banner of this._banners)
+            banner.destroy();
+        this._banners = [];
+        for (const [, cls] of STYLE_OPTIONS)
             this._list?.remove_style_class_name(cls);
-        }
-        [bin.x_align, bin.y_align] = this._oldAlign;
-        bin.translation_x = 0;
-        // a notification that was waiting shows up now
+        Main.layoutManager.removeChrome(this._box);
+        this._box.destroy();
+        this._box = null;
+        // a notification that was waiting shows up now, GNOME's way
         tray._updateState();
     }
 
     _syncStyle() {
-        const bin = Main.messageTray._bannerBin;
         for (const [key, cls, inList] of STYLE_OPTIONS) {
             const on = this._settings.get_boolean(key);
-            for (const actor of inList ? [bin, this._list] : [bin]) {
+            for (const actor of inList ? [this._box, this._list] : [this._box]) {
                 if (on)
                     actor?.add_style_class_name(cls);
                 else
@@ -154,88 +227,175 @@ export class SmartBanners {
         }
     }
 
+    // Top right corner of the primary monitor's work area (top left for
+    // right-to-left languages)
+    _place() {
+        const area = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
+        const rtl = this._box.get_text_direction() === Clutter.TextDirection.RTL;
+        this._box.set_position(rtl ? area.x : area.x + area.width - this._box.width, area.y);
+    }
+
+    // The next notification of GNOME's queue joins the stack, unless the
+    // stack is full or the pointer is in the zone (critical ones always join)
+    _takeNext() {
+        const tray = Main.messageTray;
+        const next = tray._notificationQueue[0];
+        if (!next)
+            return;
+        const critical = next.urgency === Urgency.CRITICAL;
+        if (!critical && (this._banners.length >= MAX_SHOWN || this._pointerInZone())) {
+            this._startChecks();
+            return;
+        }
+        tray._notificationQueue.shift();
+        tray.emit('queue-changed');
+        this._add(next);
+        this._startChecks();
+    }
+
+    _add(notification) {
+        // what GNOME does when it shows a banner
+        notification.acknowledged = true;
+        notification.playSound();
+
+        const banner = new SmartBanner(this, notification);
+        this._banners.unshift(banner);
+        this._box.insert_child_at_index(banner.message, 0);
+        this._box.show();
+        this._measure(banner.message);
+
+        const message = banner.message;
+        message.opacity = 0;
+        if (this._fromSide())
+            message.translation_x = this._sideDistance();
+        else
+            message.translation_y = -this._bannerSize()[1];
+        message.ease({
+            opacity: 255,
+            translation_x: 0,
+            translation_y: 0,
+            duration: MOVE_TIME_MS,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
+
+        if (this._userIdle())
+            this._startActiveWatch();
+        else if (!this._pointerInZone())
+            banner.run();
+    }
+
+    // Out of the stack: it slides away, the notification stays in the list
+    // (transient ones go, as GNOME does)
+    remove(banner) {
+        const index = this._banners.indexOf(banner);
+        if (index === -1)
+            return;
+        this._banners.splice(index, 1);
+        banner.hold();
+        banner.notification.disconnectObject(banner);
+        const message = banner.message;
+        message.disconnectObject(banner);
+        message.reactive = false;
+        message.ease({
+            opacity: 0,
+            translation_x: this._fromSide() ? this._sideDistance() : 0,
+            duration: MOVE_TIME_MS,
+            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            onStopped: () => {
+                banner.destroy();
+                // empty, it is not there at all
+                if (this._box)
+                    this._box.visible = this._box.get_n_children() > 0;
+                const notification = banner.notification;
+                if (notification.isTransient && !notification._destroyed)
+                    notification.destroy(NotificationDestroyedReason.EXPIRED);
+            },
+        });
+        Main.messageTray._updateState();
+    }
+
+    // While the stack is shown or something waits: every 200 ms the times
+    // stop or go on with the pointer, and a waiting notification is let in
+    _startChecks() {
+        if (this._checkId)
+            return;
+        this._checkId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CHECK_INTERVAL_MS, () => {
+            const tray = Main.messageTray;
+            const inZone = this._pointerInZone();
+            const active = !this._activeWatch;
+            for (const banner of this._banners) {
+                if (inZone)
+                    banner.hold();
+                else if (active)
+                    banner.run();
+            }
+            if (tray.queueCount > 0 && !inZone && this._banners.length < MAX_SHOWN)
+                tray._updateState();
+            if (this._banners.length > 0 || tray.queueCount > 0)
+                return GLib.SOURCE_CONTINUE;
+            this._checkId = 0;
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // GNOME keeps a banner on screen until someone uses the computer: the
+    // times start when someone does
+    _userIdle() {
+        return Main.messageTray.idleMonitor.get_idletime() > IDLE_TIME_MS;
+    }
+
+    _startActiveWatch() {
+        if (this._activeWatch)
+            return;
+        this._activeWatch = Main.messageTray.idleMonitor.add_user_active_watch(() => {
+            this._activeWatch = 0;
+        });
+    }
+
+    _stopActiveWatch() {
+        if (this._activeWatch) {
+            Main.messageTray.idleMonitor.remove_watch(this._activeWatch);
+            this._activeWatch = 0;
+        }
+    }
+
     _fromSide() {
         return this._settings.get_string('smart-notifications-entry') === 'side';
     }
 
     _sideDistance() {
-        const bin = Main.messageTray._bannerBin;
-        const distance = bin.width || this._bannerSize()[0];
-        return bin.get_text_direction() === Clutter.TextDirection.RTL ? -distance : distance;
+        const distance = this._bannerSize()[0];
+        return this._box.get_text_direction() === Clutter.TextDirection.RTL ? -distance : distance;
     }
 
-    // GNOME has just started its movement from above: it starts from the
-    // final height instead, and the banner slides in from the screen edge
-    _slideIn() {
-        const bin = Main.messageTray._bannerBin;
-        bin.get_transition('y')?.set_from(0);
-        bin.translation_x = this._sideDistance();
-        bin.ease({
-            translation_x: 0,
-            duration: SIDE_TIME_MS,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-        });
-    }
-
-    // Going away: back towards the edge instead of up (GNOME's own end of
-    // the movement still closes the banner)
-    _slideOut() {
-        const bin = Main.messageTray._bannerBin;
-        bin.get_transition('y')?.set_to(bin.y);
-        bin.ease({
-            translation_x: this._sideDistance(),
-            duration: SIDE_TIME_MS,
-            mode: Clutter.AnimationMode.EASE_IN_QUAD,
-        });
-    }
-
-    _mustWait() {
-        const next = Main.messageTray._notificationQueue[0];
-        return next?.urgency !== Urgency.CRITICAL && this._pointerInZone();
-    }
-
-    // One check every 200 ms, only while a notification is waiting
-    _waitForPointer() {
-        if (this._checkId)
-            return;
-        this._checkId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CHECK_INTERVAL_MS, () => {
-            const tray = Main.messageTray;
-            if (tray.queueCount > 0 && this._pointerInZone())
-                return GLib.SOURCE_CONTINUE;
-            this._checkId = 0;
-            tray._updateState();
-            return GLib.SOURCE_REMOVE;
-        });
-    }
-
-    // The zone: in the corner of the primary monitor's work area where the
-    // banners appear (top right; top left for right-to-left languages)
+    // The zone: two banners wide and three high, in the corner of the work
+    // area where the stack is
     _pointerInZone() {
         const [bannerWidth, bannerHeight] = this._bannerSize();
         const width = bannerWidth * ZONE_BANNERS_WIDE;
         const height = bannerHeight * ZONE_BANNERS_HIGH;
         const area = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
-        const rtl = Main.messageTray._bannerBin.get_text_direction() === Clutter.TextDirection.RTL;
+        const rtl = this._box.get_text_direction() === Clutter.TextDirection.RTL;
         const x = rtl ? area.x : area.x + area.width - width;
         const [px, py] = global.get_pointer();
         return px >= x && px < x + width && py >= area.y && py < area.y + height;
     }
 
-    // The size of a closed banner, taken from the real one as soon as GNOME
-    // has laid it out (and again if its text changes)
-    _measure(banner) {
-        banner?.connectObject('notify::height', () => {
-            if (banner.mapped && !banner.expanded && banner.height > 0)
-                this._size = [banner.width, banner.height];
+    // The size of a closed banner, taken from a real one as soon as it is
+    // laid out (and again if its text changes)
+    _measure(message) {
+        message.connectObject('notify::height', () => {
+            if (message.mapped && !message.expanded && message.height > 0)
+                this._size = [message.width, message.height];
         }, this);
     }
 
     // Size of the last banner measured; before the first one, the width the
-    // stylesheet gives to a banner in the zone and a usual height
+    // stylesheet gives to a banner and a usual height
     _bannerSize() {
         if (!this._size) {
             const probe = new St.Widget({style_class: 'notification-banner sch-smart-message'});
-            Main.messageTray._bannerBin.add_child(probe);
+            this._box.add_child(probe);
             const width = probe.width;
             probe.destroy();
             this._size = [width, Math.round(width / FALLBACK_RATIO)];
