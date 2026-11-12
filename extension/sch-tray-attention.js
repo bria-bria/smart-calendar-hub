@@ -83,9 +83,9 @@ export class TrayAttention {
         const gicon = indicator._icon?.gicon ?? null;
         if (!info.source) {
             info.source = new MessageTray.Source({title: name, icon: gicon});
-            info.source.connect('destroy', () => {
+            info.source.connectObject('destroy', () => {
                 info.source = null;
-            });
+            }, this);
             Main.messageTray.add(info.source);
         }
         const notification = new MessageTray.Notification({
@@ -94,7 +94,7 @@ export class TrayAttention {
             body: _('Needs your attention'),
             gicon,
         });
-        notification.connect('activated', () => indicator.menu?.open?.(true));
+        notification.connectObject('activated', () => indicator.menu?.open(true), this);
         info.source.addNotification(notification);
     }
 }

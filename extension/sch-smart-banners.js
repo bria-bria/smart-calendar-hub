@@ -141,10 +141,10 @@ class SmartBanner {
         this._actions = new St.BoxLayout({style_class: 'sch-smart-card-actions', x_expand: true, visible: false});
         for (const action of notification.actions) {
             const button = new St.Button({style_class: 'sch-smart-card-action', label: action.label, x_expand: true});
-            button.connect('clicked', () => {
+            button.connectObject('clicked', () => {
                 action.activate();
                 stack.remove(this);
-            });
+            }, this);
             this._actions.add_child(button);
         }
         content.add_child(this._actions);
@@ -185,6 +185,7 @@ class SmartBanner {
             'notify::body', () => this._sync(),
             'activated', () => stack.remove(this),
             'destroy', () => {
+                // GNOME's destroy() of a notification cannot run twice
                 this.notificationGone = true;
                 stack.remove(this);
             }, this);
