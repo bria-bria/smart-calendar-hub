@@ -41,16 +41,34 @@ const IT = {
         "{app} (icona del vassoio)",
     "Weather":
         "Meteo",
-    "Hide banners near the mouse":
-        "Nascondi gli avvisi vicino al mouse",
-    "A banner on screen hides while the pointer is in that area and comes back when it leaves; it stays in the notification list":
-        "Un avviso visibile si nasconde finché il mouse è in quell'area e torna quando esce; resta nell'elenco delle notifiche",
+    "Smart notifications":
+        "Smart notifiche",
+    "Notifications pop up compact in the top right corner, under the top bar. If the mouse is already there they wait and appear when it moves away; the one under the mouse stays and opens with its buttons (urgent ones appear at once)":
+        "Gli avvisi compaiono compatti nell'angolo in alto a destra, sotto la barra. Se il mouse è già lì aspettano e compaiono quando si sposta; quello sotto il mouse resta e si apre con i suoi tasti (quelli urgenti compaiono subito)",
+    "How they come in":
+        "Come entrano",
+    "From the top, under the bar":
+        "Dall'alto, sotto la barra",
+    "From the side, towards the inside":
+        "Dal lato, verso l'interno",
+    "Texts in the accent colour":
+        "Scritte nel colore d'accento",
+    "All the texts of the notification in the accent colour chosen in GNOME Settings":
+        "Tutte le scritte dell'avviso nel colore d'accento scelto nelle Impostazioni di GNOME",
+    "Flat icons in the accent colour":
+        "Icone piatte nel colore d'accento",
+    "The icon on the right without its coloured square, in the accent colour":
+        "L'icona a destra senza il suo quadratino colorato, nel colore d'accento",
+    "Tray icons too":
+        "Anche le icone del vassoio",
+    "When an app in the tray asks for attention, a notification with its name appears; a click opens its menu":
+        "Quando un'app del vassoio chiede attenzione compare un avviso con il suo nome; un clic apre il suo menu",
+    "Needs your attention":
+        "Chiede la tua attenzione",
+    "Tray icon":
+        "Icona del vassoio",
     "Sunrise and sunset":
         "Alba e tramonto",
-    "Area around the banner (percent)":
-        "Area intorno all'avviso (percentuale)",
-    "How much larger than the notification the area the mouse must leave is: 0 = only the notification itself":
-        "Quanto è più grande dell'avviso l'area da cui il mouse deve uscire: 0 = solo l'avviso stesso",
     "The whole day":
         "Tutta la giornata",
     // --- Settings, section "Extensions" (sch-settings-model.js) ---
@@ -341,10 +359,6 @@ const IT = {
         "Data",
     "Off: no date in the panel, and no sun or moon either":
         "Spento: niente data nel pannello, e niente sole e luna",
-    "Banners away from the mouse":
-        "Avvisi lontani dal mouse",
-    "While the pointer is where a notification would pop up, it waits and appears as soon as the pointer moves away (urgent ones appear at once)":
-        "Se il puntatore è dove apparirebbe una notifica, l'avviso aspetta e compare appena il puntatore si sposta (quelli urgenti compaiono subito)",
     "Today’s events":
         "Impegni di oggi",
     "A card with the events of the day above the notifications; click it to open the calendar beside the panel":

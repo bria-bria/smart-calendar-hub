@@ -4,7 +4,8 @@
 // Silencing apps: no banner and no red dot, notifications kept in the list.
 // A bell next to the X of every notification in the panel chooses for how
 // long. muted-apps: "key TAB name TAB until TAB choice" (sch-settings-model.js).
-// Also the banners kept away from the mouse (sch-banner-guard.js).
+// Also the Smart notifications (sch-smart-banners.js) and, as their option,
+// tray icons that ask for attention (sch-tray-attention.js).
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
@@ -16,8 +17,9 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageList from 'resource:///org/gnome/shell/ui/messageList.js';
 
 import {_} from './sch-i18n.js';
-import {BannerGuard} from './sch-banner-guard.js';
 import {Connections} from './sch-signals.js';
+import {SmartBanners, drawSmart} from './sch-smart-banners.js';
+import {TrayAttention} from './sch-tray-attention.js';
 import {logError, logWarning} from './sch-log.js';
 import {oneLine, parseMuted, stillMuted} from './sch-settings-model.js';
 
@@ -33,14 +35,16 @@ export class Notifications {
         this._mutedCache = null;
         this._sources = new Set();
         this._bannerPolicies = new Map();
-        this._bannerGuard = null;
+        this._smartBanners = null;
+        this._trayAttention = null;
         this._signals = new Connections();
         // connected before the red dot: it reads isMuted() on the same change
         this._signals.connect(settings,
             'changed::muted-apps', () => {
                 this._mutedCache = null;
             },
-            'changed::banners-away-from-mouse', () => this._syncBannerGuard());
+            'changed::smart-notifications', () => this._syncSmart(),
+            'changed::smart-notifications-tray', () => this._syncSmart());
         this._signals.connect(Main.messageTray,
             'source-added', (_t, source) => this._watchSource(source),
             'source-removed', (_t, source) => {
@@ -51,7 +55,7 @@ export class Notifications {
         for (const source of Main.messageTray.getSources())
             this._watchSource(source);
         this._patchNotificationMessages();
-        this._syncBannerGuard();
+        this._syncSmart();
     }
 
     destroy() {
@@ -62,8 +66,14 @@ export class Notifications {
         for (const source of [...this._bannerPolicies.keys()])
             this._releaseBanners(source);
         this._unpatchNotificationMessages();
-        this._bannerGuard?.destroy();
-        this._bannerGuard = null;
+        if (this._smartBanners) {
+            for (const message of this._listMessages())
+                drawSmart(message, false);
+        }
+        this._smartBanners?.destroy();
+        this._smartBanners = null;
+        this._trayAttention?.destroy();
+        this._trayAttention = null;
     }
 
     _watchSource(source) {
@@ -150,8 +160,10 @@ export class Notifications {
             const result = orig.call(this, notification);
             try {
                 const message = this._notificationToMessage?.get(notification);
-                if (message)
+                if (message) {
                     notifications._addMuteButton(message, notification, this.source);
+                    drawSmart(message, notifications._smartBanners !== null);
+                }
             } catch (e) {
                 logError(`cannot add the silence button: ${e}`);
             }
@@ -161,8 +173,10 @@ export class Notifications {
         // Notifications already in the list (login, screen unlock)
         const groups = this._dateMenu._messageList?._messageView?._notificationSourceToGroup;
         for (const group of groups?.values() ?? []) {
-            for (const [notification, message] of group._notificationToMessage ?? [])
+            for (const [notification, message] of group._notificationToMessage ?? []) {
                 this._addMuteButton(message, notification, group.source);
+                drawSmart(message, this._smartBanners !== null);
+            }
         }
     }
 
@@ -301,13 +315,31 @@ export class Notifications {
         message._schMuteActors = [bell, row, note];
     }
 
-    _syncBannerGuard() {
-        const on = this._settings.get_boolean('banners-away-from-mouse');
-        if (on && !this._bannerGuard) {
-            this._bannerGuard = new BannerGuard(this._settings);
-        } else if (!on) {
-            this._bannerGuard?.destroy();
-            this._bannerGuard = null;
+    _listMessages() {
+        const groups = this._dateMenu._messageList?._messageView?._notificationSourceToGroup;
+        return [...groups?.values() ?? []].flatMap(group =>
+            [...group._notificationToMessage?.values() ?? []]);
+    }
+
+    _syncSmart() {
+        const on = this._settings.get_boolean('smart-notifications');
+        if (on !== (this._smartBanners !== null)) {
+            if (on) {
+                this._smartBanners = new SmartBanners(this._settings, this._dateMenu._messageList);
+            } else {
+                this._smartBanners.destroy();
+                this._smartBanners = null;
+            }
+            // the notifications already in the panel's list
+            for (const message of this._listMessages())
+                drawSmart(message, on);
+        }
+        const tray = on && this._settings.get_boolean('smart-notifications-tray');
+        if (tray && !this._trayAttention) {
+            this._trayAttention = new TrayAttention();
+        } else if (!tray && this._trayAttention) {
+            this._trayAttention.destroy();
+            this._trayAttention = null;
         }
     }
 }

@@ -200,15 +200,23 @@ function notificationGroups() {
     return [
         {
             rows: [
-                {type: 'switch', key: 'banners-away-from-mouse', title: _('Banners away from the mouse'),
-                    subtitle: _('While the pointer is where a notification would pop up, it waits and appears as soon as the pointer moves away (urgent ones appear at once)')},
-                {type: 'number', key: 'banners-away-margin', title: _('Area around the banner (percent)'),
-                    subtitle: _('How much larger than the notification the area the mouse must leave is: 0 = only the notification itself'),
-                    min: 0, max: 200, step: 5, page: 25,
-                    enabledWhen: on('banners-away-from-mouse')},
-                {type: 'switch', key: 'banners-hide-near-mouse', title: _('Hide banners near the mouse'),
-                    subtitle: _('A banner on screen hides while the pointer is in that area and comes back when it leaves; it stays in the notification list'),
-                    enabledWhen: on('banners-away-from-mouse')},
+                {type: 'switch', key: 'smart-notifications', title: _('Smart notifications'),
+                    subtitle: _('Notifications pop up compact in the top right corner, under the top bar. If the mouse is already there they wait and appear when it moves away; the one under the mouse stays and opens with its buttons (urgent ones appear at once)')},
+                {type: 'choice', key: 'smart-notifications-entry', title: _('How they come in'),
+                    options: [
+                        ['top', _('From the top, under the bar')],
+                        ['side', _('From the side, towards the inside')],
+                    ],
+                    enabledWhen: on('smart-notifications')},
+                {type: 'switch', key: 'smart-notifications-accent-text', title: _('Texts in the accent colour'),
+                    subtitle: _('All the texts of the notification in the accent colour chosen in GNOME Settings'),
+                    enabledWhen: on('smart-notifications')},
+                {type: 'switch', key: 'smart-notifications-flat-icons', title: _('Flat icons in the accent colour'),
+                    subtitle: _('The icon on the right without its coloured square, in the accent colour'),
+                    enabledWhen: on('smart-notifications')},
+                {type: 'switch', key: 'smart-notifications-tray', title: _('Tray icons too'),
+                    subtitle: _('When an app in the tray asks for attention, a notification with its name appears; a click opens its menu'),
+                    enabledWhen: on('smart-notifications')},
             ],
         },
         {

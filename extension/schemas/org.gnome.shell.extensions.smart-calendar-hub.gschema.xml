@@ -126,20 +126,33 @@
       <summary>The calendar beside the panel when the panel opens: closed, as it was left, or open</summary>
     </key>
 
-    <key name="banners-away-from-mouse" type="b">
+    <key name="smart-notifications" type="b">
       <default>false</default>
-      <summary>A notification banner waits while the pointer is where it would appear (critical ones do not wait)</summary>
+      <summary>Notification banners redrawn compact in a zone attached under the top bar at the screen edge; they wait while the pointer is in the zone (critical ones do not wait)</summary>
     </key>
 
-    <key name="banners-hide-near-mouse" type="b">
-      <default>false</default>
-      <summary>A banner on screen hides while the pointer is near it</summary>
+    <key name="smart-notifications-entry" type="s">
+      <choices>
+        <choice value="top"/>
+        <choice value="side"/>
+      </choices>
+      <default>'top'</default>
+      <summary>How a smart notification comes in: from the top or from the side</summary>
     </key>
 
-    <key name="banners-away-margin" type="i">
-      <range min="0" max="200"/>
-      <default>50</default>
-      <summary>Size of the area kept free of the pointer, in percent larger than the banner</summary>
+    <key name="smart-notifications-accent-text" type="b">
+      <default>false</default>
+      <summary>All the texts of a smart notification in GNOME's accent colour</summary>
+    </key>
+
+    <key name="smart-notifications-flat-icons" type="b">
+      <default>false</default>
+      <summary>The icon of a smart notification flat, in GNOME's accent colour</summary>
+    </key>
+
+    <key name="smart-notifications-tray" type="b">
+      <default>false</default>
+      <summary>A notification when a tray icon asks for attention</summary>
     </key>
 
     <key name="show-today-events" type="b">

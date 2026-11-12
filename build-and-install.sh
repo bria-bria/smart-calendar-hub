@@ -62,7 +62,8 @@ gnome-extensions pack "$EXT_SRC" \
     --extra-source="sch-weather.js" \
     --extra-source="sch-page-kit.js" \
     --extra-source="sch-log.js" \
-    --extra-source="sch-banner-guard.js" \
+    --extra-source="sch-smart-banners.js" \
+    --extra-source="sch-tray-attention.js" \
     --extra-source="sch-ext-settings.js" \
     --extra-source="sch-settings-model.js" \
     --extra-source="sch-hub-settings.js" \

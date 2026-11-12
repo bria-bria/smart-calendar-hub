@@ -1284,3 +1284,49 @@
 .sch-alarm-open-line {
     spacing: 8px;
 }
+
+/* Smart notifications (sch-smart-banners.js): compact banners in the top
+   right corner of the work area, the icon on the right; the rows of the
+   panel's notification list are drawn the same way */
+#notification-container.sch-smart-banners .notification-banner {
+    width: 26em;
+    min-height: 0;
+    margin: 6px;
+    border-radius: 14px;
+}
+
+.sch-smart-message .message-box .message-icon {
+    icon-size: 28px;
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: 12px;
+}
+
+.sch-smart-message .message-box .message-icon:ltr {
+    margin-right: 0;
+    margin-left: 10px;
+}
+
+.sch-smart-message .message-box .message-icon:rtl {
+    margin-left: 0;
+    margin-right: 10px;
+}
+
+.sch-smart-message .message-box .message-icon.message-themed-icon {
+    icon-size: 20px;
+    border-radius: 12px;
+    background-color: st-transparentize(-st-accent-color, 0.7);
+}
+
+/* Option: flat icons in the accent colour (banners and panel's list) */
+.sch-smart-flat-icons .sch-smart-message .message-box .message-icon.message-themed-icon {
+    background-color: transparent;
+    color: -st-accent-color;
+    icon-size: 26px;
+}
+
+/* Option: all the texts in the accent colour (banners only) */
+.sch-smart-accent-text .sch-smart-message StLabel,
+.sch-smart-accent-text .sch-smart-message .message-header .message-source-icon {
+    color: -st-accent-color;
+}
