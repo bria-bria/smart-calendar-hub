@@ -62,7 +62,9 @@ export class TrayAttention {
         const info = this._watched.get(indicator);
         if (!info)
             return;
-        info.sni.disconnect(info.signalId);
+        // a tray icon that went away has already dropped its connections
+        if (info.sni.signalHandlerIsConnected(info.signalId))
+            info.sni.disconnect(info.signalId);
         info.source?.destroy();
         this._watched.delete(indicator);
     }

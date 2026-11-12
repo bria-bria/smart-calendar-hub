@@ -12,7 +12,8 @@
 //    new ones wait in GNOME's queue (same order, nothing lost) until the
 //    pointer leaves; only the banner under the pointer opens (full text and
 //    buttons). Critical banners never wait and never go by themselves.
-//  - The icon is on the right; banners come in from the top or from the side.
+//  - The icon is on the right; banners come in from the top or from the side
+//    and leave through the screen edge.
 //  - Options: all texts in the accent colour, flat icons in the accent colour.
 //  - The notifications in the panel's list are drawn the same way (drawSmart),
 //    with the flat icons option but not the accent texts.
@@ -22,17 +23,27 @@
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as MessageList from 'resource:///org/gnome/shell/ui/messageList.js';
 import {NotificationDestroyedReason, Urgency} from 'resource:///org/gnome/shell/ui/messageTray.js';
+import {formatTimeSpan} from 'resource:///org/gnome/shell/misc/dateUtils.js';
 
 import {logWarning} from './sch-log.js';
 
 const MAX_SHOWN = 3;
 const SHOWN_TIME_MS = 5000;
+// times of the mockup: in 0.45 s with a small bounce at the end, out and
+// the others moving up or down in 0.3 s
+const IN_TIME_MS = 450;
 const MOVE_TIME_MS = 300;
+// space between two banners (spacing of .sch-smart-banners)
+const GAP = 8;
+// when they go on again after a stop, the oldest goes after 3 s, the next
+// ones 1.5 s apart
+const AGAIN_FIRST_MS = 3000;
+const AGAIN_STEP_MS = 1500;
 const CHECK_INTERVAL_MS = 200;
 // GNOME's limit for "the user is using the computer"
 const IDLE_TIME_MS = 1000;
@@ -75,65 +86,135 @@ export function drawSmart(message, on) {
     }
 }
 
-// One banner of the stack, with its own time
+// One banner of the stack, drawn by us: on the left the app (icon, name,
+// time), the title and one line of text; on the right the icon of the
+// notification. A line at the bottom shortens with its time. With the
+// pointer on it, it opens: full text, its buttons across the bottom and a
+// close button in the corner.
 class SmartBanner {
     constructor(stack, notification) {
         this.notification = notification;
         this._stack = stack;
         this._timeoutId = 0;
         this.critical = notification.urgency === Urgency.CRITICAL;
+        const source = notification.source;
 
-        const message = this.message = new MessageList.NotificationMessage(notification);
-        message.can_focus = false;
-        message._header.expandButton.visible = false;
-        message.add_style_class_name('notification-banner');
-        drawSmart(message, true);
+        const card = this.actor = new St.Button({
+            style_class: 'sch-smart-card',
+            can_focus: false,
+            x_expand: true,
+        });
+        const overlay = new St.Widget({layout_manager: new Clutter.BinLayout(), x_expand: true});
+        card.set_child(overlay);
+
+        const content = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+        const row = new St.BoxLayout({style_class: 'sch-smart-card-row', x_expand: true});
+        const text = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+        const header = new St.BoxLayout({style_class: 'sch-smart-card-header'});
+        header.add_child(new St.Icon({
+            style_class: 'sch-smart-card-app-icon',
+            gicon: source?.icon ?? null,
+            visible: !!source?.icon,
+        }));
+        header.add_child(new St.Label({text: source?.title ?? '', y_align: Clutter.ActorAlign.CENTER}));
+        header.add_child(new St.Widget({style_class: 'sch-smart-card-dot', y_align: Clutter.ActorAlign.CENTER}));
+        header.add_child(new St.Label({
+            text: formatTimeSpan(notification.datetime),
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+        this._title = new St.Label({style_class: 'sch-smart-card-title'});
+        this._body = new St.Label({style_class: 'sch-smart-card-body'});
+        text.add_child(header);
+        text.add_child(this._title);
+        text.add_child(this._body);
+        row.add_child(text);
+        const tile = new St.Bin({style_class: 'sch-smart-card-icon', y_align: Clutter.ActorAlign.START});
+        tile.set_child(new St.Icon({gicon: notification.gicon ?? source?.icon ?? null}));
+        row.add_child(tile);
+        content.add_child(row);
+
+        this._actions = new St.BoxLayout({style_class: 'sch-smart-card-actions', x_expand: true, visible: false});
+        for (const action of notification.actions) {
+            const button = new St.Button({style_class: 'sch-smart-card-action', label: action.label, x_expand: true});
+            button.connect('clicked', () => {
+                action.activate();
+                stack.remove(this);
+            });
+            this._actions.add_child(button);
+        }
+        content.add_child(this._actions);
+        overlay.add_child(content);
+
+        this._close = new St.Button({
+            style_class: 'sch-smart-card-close',
+            icon_name: 'window-close-symbolic',
+            // in a bin the alignment counts only for expanded children
+            x_expand: true,
+            y_expand: true,
+            x_align: Clutter.ActorAlign.END,
+            y_align: Clutter.ActorAlign.START,
+            visible: false,
+        });
+        this._close.connect('clicked', () => notification.destroy(NotificationDestroyedReason.DISMISSED));
+        overlay.add_child(this._close);
 
         if (!this.critical) {
-            this._bar = new St.Widget({style_class: 'sch-smart-time-bar', x_expand: true});
-            const rtl = message.get_text_direction() === Clutter.TextDirection.RTL;
+            this._bar = new St.Widget({
+                style_class: 'sch-smart-time-bar',
+                x_expand: true,
+                y_expand: true,
+                y_align: Clutter.ActorAlign.END,
+            });
+            const rtl = card.get_text_direction() === Clutter.TextDirection.RTL;
             this._bar.set_pivot_point(rtl ? 1 : 0, 0.5);
-            message.get_child().add_child(this._bar);
+            overlay.add_child(this._bar);
         }
 
-        // closed with its X, clicked (a click runs the notification's action)
-        // or withdrawn by its app: out of the stack
+        this._sync();
+        // a click runs the notification's main action; closed, clicked or
+        // withdrawn by its app: out of the stack
+        card.connect('clicked', () => notification.activate());
         notification.connectObject(
+            'notify::title', () => this._sync(),
+            'notify::body', () => this._sync(),
             'activated', () => stack.remove(this),
             'destroy', () => stack.remove(this), this);
-        message.connectObject(
-            'close', () => stack.remove(this),
-            'notify::hover', () => this._onHover(), this);
-
-        if (this.critical)
-            message.expand(false);
+        card.connect('notify::hover', () => this._open(card.hover || this.critical));
+        this._open(this.critical);
     }
 
-    // Opened only while the pointer is on it
-    _onHover() {
-        if (this.critical)
-            return;
-        if (this.message.hover)
-            this.message.expand(true);
-        else
-            this.message.unexpand(true);
+    _sync() {
+        this._title.text = this.notification.title ?? '';
+        const body = this.notification.body ?? '';
+        // the text only: the markup some apps send is not needed on a banner
+        this._body.text = this.notification.useBodyMarkup ? body.replace(/<[^>]*>/g, '') : body;
+        this._body.visible = this._body.text !== '';
+    }
+
+    // Open: full text, buttons and close button
+    _open(open) {
+        this.actor[open ? 'add_style_pseudo_class' : 'remove_style_pseudo_class']('open');
+        this._body.clutter_text.line_wrap = open;
+        this._body.clutter_text.ellipsize = open ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END;
+        this._actions.visible = open && this._actions.get_n_children() > 0;
+        this._close.visible = open;
     }
 
     get running() {
         return this._timeoutId !== 0;
     }
 
-    // Its time starts again from the beginning, line full
-    run() {
+    // Its time starts from the beginning, line full
+    run(duration = SHOWN_TIME_MS) {
         if (this.critical || this.running)
             return;
-        this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SHOWN_TIME_MS, () => {
+        this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, duration, () => {
             this._timeoutId = 0;
             this._stack.remove(this);
             return GLib.SOURCE_REMOVE;
         });
         this._bar.scale_x = 1;
-        this._bar.ease({scale_x: 0, duration: SHOWN_TIME_MS, mode: Clutter.AnimationMode.LINEAR});
+        this._bar.ease({scale_x: 0, duration, mode: Clutter.AnimationMode.LINEAR});
     }
 
     hold() {
@@ -148,10 +229,8 @@ class SmartBanner {
     destroy() {
         this.hold();
         this.notification.disconnectObject(this);
-        this.message.disconnectObject(this);
-        this._bar?.destroy();
         this._bar = null;
-        this.message.destroy();
+        this.actor.destroy();
     }
 }
 
@@ -260,23 +339,27 @@ export class SmartBanners {
 
         const banner = new SmartBanner(this, notification);
         this._banners.unshift(banner);
-        this._box.insert_child_at_index(banner.message, 0);
+        this._box.insert_child_at_index(banner.actor, 0);
         this._box.show();
-        this._measure(banner.message);
+        this._measure(banner.actor);
 
-        const message = banner.message;
-        message.opacity = 0;
+        const actor = banner.actor;
+        const height = this._bannerSize()[1];
+        actor.opacity = 0;
         if (this._fromSide())
-            message.translation_x = this._sideDistance();
+            actor.translation_x = this._sideDistance();
         else
-            message.translation_y = -this._bannerSize()[1];
-        message.ease({
+            actor.translation_y = -height;
+        actor.ease({
             opacity: 255,
             translation_x: 0,
             translation_y: 0,
-            duration: MOVE_TIME_MS,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            duration: IN_TIME_MS,
+            mode: Clutter.AnimationMode.EASE_OUT_BACK,
         });
+        // the others make room by sliding down
+        for (const other of this._banners.slice(1))
+            this._slide(other.actor, -(height + GAP));
 
         if (this._userIdle())
             this._startActiveWatch();
@@ -293,16 +376,22 @@ export class SmartBanners {
         this._banners.splice(index, 1);
         banner.hold();
         banner.notification.disconnectObject(banner);
-        const message = banner.message;
-        message.disconnectObject(banner);
-        message.reactive = false;
-        message.ease({
+        const actor = banner.actor;
+        actor.reactive = false;
+        // out through the screen edge, fading: going up it would cross the
+        // banners above it
+        actor.ease({
             opacity: 0,
-            translation_x: this._fromSide() ? this._sideDistance() : 0,
+            translation_x: this._sideDistance(),
             duration: MOVE_TIME_MS,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
             onStopped: () => {
+                const gap = actor.height + GAP;
+                const below = this._box?.get_children().slice(this._box.get_children().indexOf(actor) + 1) ?? [];
                 banner.destroy();
+                // the ones below close the gap by sliding up
+                for (const other of below.filter(a => a.reactive))
+                    this._slide(other, gap);
                 // empty, it is not there at all
                 if (this._box)
                     this._box.visible = this._box.get_n_children() > 0;
@@ -314,6 +403,16 @@ export class SmartBanners {
         Main.messageTray._updateState();
     }
 
+    // From a shift back to its place in the stack
+    _slide(actor, shift) {
+        actor.translation_y += shift;
+        actor.ease({
+            translation_y: 0,
+            duration: MOVE_TIME_MS,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
+    }
+
     // While the stack is shown or something waits: every 200 ms the times
     // stop or go on with the pointer, and a waiting notification is let in
     _startChecks() {
@@ -323,12 +422,14 @@ export class SmartBanners {
             const tray = Main.messageTray;
             const inZone = this._pointerInZone();
             const active = !this._activeWatch;
-            for (const banner of this._banners) {
+            // going on again, they leave one after the other, the oldest first
+            const count = this._banners.length;
+            this._banners.forEach((banner, index) => {
                 if (inZone)
                     banner.hold();
                 else if (active)
-                    banner.run();
-            }
+                    banner.run(AGAIN_FIRST_MS + (count - 1 - index) * AGAIN_STEP_MS);
+            });
             if (tray.queueCount > 0 && !inZone && this._banners.length < MAX_SHOWN)
                 tray._updateState();
             if (this._banners.length > 0 || tray.queueCount > 0)
@@ -394,7 +495,7 @@ export class SmartBanners {
     // stylesheet gives to a banner and a usual height
     _bannerSize() {
         if (!this._size) {
-            const probe = new St.Widget({style_class: 'notification-banner sch-smart-message'});
+            const probe = new St.Widget({style_class: 'sch-smart-card'});
             this._box.add_child(probe);
             const width = probe.width;
             probe.destroy();

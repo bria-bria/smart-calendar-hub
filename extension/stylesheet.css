@@ -1285,21 +1285,135 @@
     spacing: 8px;
 }
 
-/* Smart notifications (sch-smart-banners.js): up to three compact banners
-   stacked in the top right corner of the work area, the icon on the right;
-   the rows of the panel's notification list are drawn the same way */
+/* Smart notifications (sch-smart-banners.js): up to three banners stacked
+   in the top right corner of the work area, drawn by the extension */
 .sch-smart-banners {
-    padding: 6px;
+    padding: 8px;
     spacing: 8px;
 }
 
-.sch-smart-banners .notification-banner {
-    width: 26em;
-    min-height: 0;
-    margin: 0;
+.sch-smart-card {
+    width: 25em;
+    padding: 0;
+    color: #f4f4f6;
+    background-color: #303034;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
 
+.sch-smart-card:open {
+    border-color: st-transparentize(-st-accent-color, 0.55);
+}
+
+.sch-smart-card-row {
+    padding: 10px 12px 10px 14px;
+    spacing: 12px;
+}
+
+.sch-smart-card-header {
+    spacing: 6px;
+    font-size: 8.5pt;
+    color: #a8a8ad;
+}
+
+.sch-smart-card-app-icon {
+    icon-size: 13px;
+}
+
+.sch-smart-card-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 2px;
+    background-color: #777777;
+}
+
+.sch-smart-card-title {
+    margin-top: 3px;
+    font-size: 10.5pt;
+    font-weight: bold;
+    color: #f4f4f6;
+}
+
+.sch-smart-card-body {
+    margin-top: 2px;
+    font-size: 10pt;
+    color: #c9c9ce;
+}
+
+.sch-smart-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background-color: st-transparentize(-st-accent-color, 0.65);
+    color: #ffffff;
+}
+
+.sch-smart-card-icon StIcon {
+    icon-size: 22px;
+}
+
+.sch-smart-card-close {
+    margin: 6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    background-color: #555555;
+    color: #eeeeee;
+}
+
+.sch-smart-card-close StIcon {
+    icon-size: 12px;
+}
+
+.sch-smart-card-actions {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.sch-smart-card-action {
+    padding: 8px 4px;
+    font-size: 10pt;
+    color: #e8e8ec;
+    border-radius: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.sch-smart-card-action:first-child {
+    border-left-width: 0;
+}
+
+.sch-smart-card-action:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* The line that shortens with the time of the banner */
+.sch-smart-time-bar {
+    height: 2px;
+    margin: 0 12px;
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Option: all the texts in the accent colour (banners only) */
+.sch-smart-accent-text .sch-smart-card StLabel,
+.sch-smart-accent-text .sch-smart-card-app-icon {
+    color: -st-accent-color;
+}
+
+.sch-smart-accent-text .sch-smart-card-dot {
+    background-color: -st-accent-color;
+}
+
+/* Option: flat icons in the accent colour */
+.sch-smart-flat-icons .sch-smart-card-icon {
+    background-color: transparent;
+    color: -st-accent-color;
+}
+
+.sch-smart-flat-icons .sch-smart-card-icon StIcon {
+    icon-size: 26px;
+}
+
+/* The rows of the panel's notification list, drawn like the banners */
 .sch-smart-message .message-box .message-icon {
     icon-size: 28px;
     min-width: 40px;
@@ -1323,23 +1437,10 @@
     background-color: st-transparentize(-st-accent-color, 0.7);
 }
 
-/* The line that shortens until the banner goes */
-.sch-smart-time-bar {
-    height: 2px;
-    margin-top: 8px;
-    border-radius: 1px;
-    background-color: st-transparentize(-st-accent-color, 0.4);
-}
-
-/* Option: flat icons in the accent colour (banners and panel's list) */
+/* Option: flat icons in the accent colour, in the panel's list */
 .sch-smart-flat-icons .sch-smart-message .message-box .message-icon.message-themed-icon {
     background-color: transparent;
     color: -st-accent-color;
     icon-size: 26px;
 }
 
-/* Option: all the texts in the accent colour (banners only) */
-.sch-smart-accent-text .sch-smart-message StLabel,
-.sch-smart-accent-text .sch-smart-message .message-header .message-source-icon {
-    color: -st-accent-color;
-}
