@@ -33,6 +33,7 @@ import {formatTimeSpan} from 'resource:///org/gnome/shell/misc/dateUtils.js';
 import {logWarning} from './sch-log.js';
 
 const MAX_SHOWN = 3;
+const MAX_OPEN_LINES = 6;
 const SHOWN_TIME_MS = 5000;
 // times of the mockup: in 0.45 s with a small bounce at the end, out and
 // the others moving up or down in 0.3 s
@@ -94,6 +95,8 @@ class SmartBanner {
         this.notification = notification;
         this._stack = stack;
         this._timeoutId = 0;
+        this._opened = false;
+        this._lines = [];
         this.critical = notification.urgency === Urgency.CRITICAL;
         const source = notification.source;
 
@@ -127,7 +130,10 @@ class SmartBanner {
         text.add_child(this._body);
         row.add_child(text);
         const tile = new St.Bin({style_class: 'sch-smart-card-icon', y_align: Clutter.ActorAlign.START});
-        tile.set_child(new St.Icon({gicon: notification.gicon ?? source?.icon ?? null}));
+        const gicon = notification.gicon ?? source?.icon ?? null;
+        tile.set_child(new St.Icon({gicon}));
+        // no icon at all: no empty square
+        tile.visible = gicon !== null;
         row.add_child(tile);
         content.add_child(row);
 
@@ -184,14 +190,28 @@ class SmartBanner {
 
     _sync() {
         this._title.text = this.notification.title ?? '';
-        const body = this.notification.body ?? '';
+        let body = this.notification.body ?? '';
         // the text only: the markup some apps send is not needed on a banner
-        this._body.text = this.notification.useBodyMarkup ? body.replace(/<[^>]*>/g, '') : body;
-        this._body.visible = this._body.text !== '';
+        if (this.notification.useBodyMarkup)
+            body = body.replace(/<[^>]*>/g, '');
+        this._lines = body.split('\n').map(line => line.trim()).filter(Boolean);
+        this._body.visible = this._lines.length > 0;
+        this._showLines();
+    }
+
+    // Closed: the first line of the text; open: up to six lines, the rest
+    // cut with an ellipsis (some apps send whole messages)
+    _showLines() {
+        const lines = this._lines.slice(0, this._opened ? MAX_OPEN_LINES : 1);
+        if (this._lines.length > lines.length)
+            lines[lines.length - 1] += '…';
+        this._body.text = lines.join('\n');
     }
 
     // Open: full text, buttons and close button
     _open(open) {
+        this._opened = open;
+        this._showLines();
         this.actor[open ? 'add_style_pseudo_class' : 'remove_style_pseudo_class']('open');
         this._body.clutter_text.line_wrap = open;
         this._body.clutter_text.ellipsize = open ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END;
